@@ -1,5 +1,5 @@
 pub enum Instruction {
-    Unsupported,
+    KIL, // every unsupported instruction that needs core to halt!
     ADC,
     SBC,
     AND,
