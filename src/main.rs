@@ -1,5 +1,5 @@
 //mod gui_iced;
-mod gui_druid;
+//mod gui_druid;
 mod mos6510;
 
 fn main() {

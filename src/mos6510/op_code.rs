@@ -9,10 +9,25 @@ pub struct OpCode {
 }
 
 const fn oc(instruction: Instruction, addressing_mode: AddressingMode, cycles: u8) -> OpCode {
+    let size = match addressing_mode {
+        Implied => 1,
+        Branch => 2,
+        Immediate => 2,
+        ZeroPage => 2,
+        ZeroPageX => 2,
+        ZeroPageY => 2,
+        IndexedIndirectX => 2,
+        IndirectIndexedY => 2,
+        Indirect => 3,
+        Absolute => 3,
+        AbsoluteX => 3,
+        AbsoluteY => 3,
+    };
+
     OpCode {
         instruction,
         addressing_mode,
-        size: 1,
+        size,
         cycles,
     }
 }
