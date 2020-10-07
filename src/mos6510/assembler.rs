@@ -10,7 +10,7 @@ const LABEL_GROUP: usize = 1;
 const OPERATION_GROUP: usize = 2;
 const FIRST_OPERAND_GROUP: usize = 3;
 
-type PatternHandler = fn(&mut Assembler, &mut AssemblerSession);
+type PatternHandler = fn(&Assembler, &mut AsmSession);
 
 struct Pattern {
     regex: Regex,
@@ -75,29 +75,38 @@ impl Assembler {
         }
     }
 
-    fn process_line(&mut self, session: &mut session::AssemblerSession, line: String) -> ProcessingStatus {
+    fn process_line(&self, session: &mut session::AsmSession, line: String) -> AsmResult {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
-                Some(captures) => {}
+                Some(captures) => {
+                    session.operand = String::from("");
+                    session.operation = String::from("");
+                    (pattern.handler)(self, session);
+                    return AsmResult::Ok;
+                }
                 None => continue,
             }
         }
-        ProcessingStatus::SyntaxError
+        AsmResult::SyntaxError
     }
 
-    fn handle_no_operation(&mut self, session: &mut AssemblerSession) {}
-    fn handle_set_location_counter(&mut self, session: &mut AssemblerSession) {}
-    fn handle_emit_bytes(&mut self, session: &mut AssemblerSession) {}
-    fn handle_emit_words(&mut self, session: &mut AssemblerSession) {}
-    fn handle_implied(&mut self, session: &mut AssemblerSession) {}
-    fn handle_immediate(&mut self, session: &mut AssemblerSession) {}
-    fn handle_branch(&mut self, session: &mut AssemblerSession) {}
-    fn handle_absolute(&mut self, session: &mut AssemblerSession) {}
-    fn handle_absolute_indexed_x(&mut self, session: &mut AssemblerSession) {}
-    fn handle_absolute_indexed_y(&mut self, session: &mut AssemblerSession) {}
-    fn handle_indirect(&mut self, session: &mut AssemblerSession) {}
-    fn handle_indexed_indirect_x(&mut self, session: &mut AssemblerSession) {}
-    fn handle_indirect_indexed_y(&mut self, session: &mut AssemblerSession) {}
+    fn handle_no_operation(&self, session: &mut AsmSession) {
+        println!("empty line");
+    }
+    fn handle_set_location_counter(&self, session: &mut AsmSession) {
+        println!("set location counter");
+    }
+    fn handle_emit_bytes(&self, session: &mut AsmSession) {}
+    fn handle_emit_words(&self, session: &mut AsmSession) {}
+    fn handle_implied(&self, session: &mut AsmSession) {}
+    fn handle_immediate(&self, session: &mut AsmSession) {}
+    fn handle_branch(&self, session: &mut AsmSession) {}
+    fn handle_absolute(&self, session: &mut AsmSession) {}
+    fn handle_absolute_indexed_x(&self, session: &mut AsmSession) {}
+    fn handle_absolute_indexed_y(&self, session: &mut AsmSession) {}
+    fn handle_indirect(&self, session: &mut AsmSession) {}
+    fn handle_indexed_indirect_x(&self, session: &mut AsmSession) {}
+    fn handle_indirect_indexed_y(&self, session: &mut AsmSession) {}
 }
 
 #[cfg(test)]
@@ -108,5 +117,12 @@ mod tests {
     fn init() {
         let asm = Assembler::new();
         assert!(asm.patterns.len() == 13);
+    }
+    #[test]
+    fn handle_no_operation() {
+        let asm = Assembler::new();
+        let mut session = AsmSession::new();
+        let r = asm.process_line(&mut session, String::from(""));
+        assert!(matches!(r, AsmResult::Ok));
     }
 }
