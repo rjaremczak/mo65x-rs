@@ -1,24 +1,30 @@
 extern crate regex;
 
+mod session;
+
 use regex::Regex;
+use session::*;
+use std::collections::HashMap;
 
 const LABEL_GROUP: usize = 1;
 const OPERATION_GROUP: usize = 2;
 const FIRST_OPERAND_GROUP: usize = 3;
 
+type PatternHandler = fn(&mut Assembler, &mut AssemblerSession);
+
 struct Pattern {
     regex: Regex,
-    handler: fn(&mut Assembler),
+    handler: PatternHandler,
 }
 
 impl Pattern {
-    pub fn new(pattern: &str, handler: fn(&mut Assembler)) -> Pattern {
+    pub fn new(pattern: &str, handler: PatternHandler) -> Pattern {
         Pattern {
             regex: Regex::new(pattern).unwrap(),
             handler,
         }
     }
-    pub fn from(pattern: String, handler: fn(&mut Assembler)) -> Pattern {
+    pub fn from(pattern: String, handler: PatternHandler) -> Pattern {
         Pattern::new(&pattern, handler)
     }
 }
@@ -36,12 +42,12 @@ impl Assembler {
         let symbol = String::from("[a-z]\\w*");
         let label = format!("^(?:({}):)?\\s*", symbol);
         let comment = String::from("(?:;.*)?$");
-        let org_cmd = String::from("((?:\\.ORG\\s+)|(?:\\*\\s*\\=\\s*))");
+        let org_cmd = String::from("((?:\\.ORG\\s+)|(?:\\*\\s*=\\s*))");
         let byte_cmd = String::from("(\\.BYTE|DCB)\\s+");
         let word_cmd = String::from("(\\.WORD)\\s+");
         let hex_num = String::from("\\$[\\d|a-h]{1,4}");
         let dec_num = String::from("\\d{1,5}");
-        let bin_num = String::from("\\%[01]{1,16}");
+        let bin_num = String::from("%[01]{1,16}");
         let mnemonic = String::from("([a-z]{3})\\s*");
         let num_or_symbol = format!("(?:{})|(?:{})|(?:{})|(?:{})", hex_num, dec_num, bin_num, symbol);
         let lo_hi_prefix = format!("[{}|{}]?", lo_byte_prefix, hi_byte_prefix);
@@ -69,19 +75,29 @@ impl Assembler {
         }
     }
 
-    fn handle_no_operation(&mut self) {}
-    fn handle_set_location_counter(&mut self) {}
-    fn handle_emit_bytes(&mut self) {}
-    fn handle_emit_words(&mut self) {}
-    fn handle_implied(&mut self) {}
-    fn handle_immediate(&mut self) {}
-    fn handle_branch(&mut self) {}
-    fn handle_absolute(&mut self) {}
-    fn handle_absolute_indexed_x(&mut self) {}
-    fn handle_absolute_indexed_y(&mut self) {}
-    fn handle_indirect(&mut self) {}
-    fn handle_indexed_indirect_x(&mut self) {}
-    fn handle_indirect_indexed_y(&mut self) {}
+    fn process_line(&mut self, session: &mut session::AssemblerSession, line: String) -> ProcessingStatus {
+        for pattern in self.patterns.iter() {
+            match pattern.regex.captures(&line) {
+                Some(captures) => {}
+                None => continue,
+            }
+        }
+        ProcessingStatus::SyntaxError
+    }
+
+    fn handle_no_operation(&mut self, session: &mut AssemblerSession) {}
+    fn handle_set_location_counter(&mut self, session: &mut AssemblerSession) {}
+    fn handle_emit_bytes(&mut self, session: &mut AssemblerSession) {}
+    fn handle_emit_words(&mut self, session: &mut AssemblerSession) {}
+    fn handle_implied(&mut self, session: &mut AssemblerSession) {}
+    fn handle_immediate(&mut self, session: &mut AssemblerSession) {}
+    fn handle_branch(&mut self, session: &mut AssemblerSession) {}
+    fn handle_absolute(&mut self, session: &mut AssemblerSession) {}
+    fn handle_absolute_indexed_x(&mut self, session: &mut AssemblerSession) {}
+    fn handle_absolute_indexed_y(&mut self, session: &mut AssemblerSession) {}
+    fn handle_indirect(&mut self, session: &mut AssemblerSession) {}
+    fn handle_indexed_indirect_x(&mut self, session: &mut AssemblerSession) {}
+    fn handle_indirect_indexed_y(&mut self, session: &mut AssemblerSession) {}
 }
 
 #[cfg(test)]
@@ -90,6 +106,7 @@ mod tests {
 
     #[test]
     fn init() {
-        let mut asm: Assembler;
+        let asm = Assembler::new();
+        assert!(asm.patterns.len() == 13);
     }
 }
