@@ -29,6 +29,7 @@ pub struct AsmState {
     pub location_counter_prev: u16,
     pub bytes_written: u32,
     pub address_range: RangeInclusive<u16>,
+    pub machine_code: Vec<u8>,
 }
 
 impl AsmState {
@@ -43,6 +44,7 @@ impl AsmState {
             location_counter_prev: 0,
             bytes_written: 0,
             address_range: RangeInclusive::new(1, 0),
+            machine_code: Vec::new(),
         }
     }
 

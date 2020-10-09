@@ -97,7 +97,7 @@ impl Assembler {
     }
 
     // pub fn scan(lines) -> AsmState {}
-    // pub fn code(lines) -> AsmState {}
+    // pub fn code(lines, memory: &mut Memory) -> AsmState {}
 }
 
 #[cfg(test)]
