@@ -95,6 +95,9 @@ impl Assembler {
         }
         AsmResult::SyntaxError
     }
+
+    // pub fn scan(lines) -> AsmState {}
+    // pub fn code(lines) -> AsmState {}
 }
 
 #[cfg(test)]
@@ -106,26 +109,27 @@ mod tests {
         let asm = Assembler::new();
         assert!(asm.patterns.len() == 13);
     }
+
     #[test]
     fn empty_line() {
         let asm = Assembler::new();
-        let mut memory = Memory::new();
-        let mut state = AsmState::new();
-        let r = asm.process_line(&mut state, &mut memory, String::from(""));
+        let mut mem = Memory::new();
+        let mut st = AsmState::new();
+        let r = asm.process_line(&mut st, &mut mem, String::from(""));
         assert!(matches!(r, AsmResult::Ok));
-        assert_eq!(state.location_counter_prev, 0);
-        assert!(state.symbols.is_empty());
+        assert_eq!(st.location_counter_prev, 0);
+        assert!(st.symbols.is_empty());
     }
 
     #[test]
     fn implied_mode() {
         let asm = Assembler::new();
-        let mut memory = Memory::new();
-        let mut state = AsmState::new();
-        let r = asm.process_line(&mut state, &mut memory, String::from("SEI"));
+        let mut mem = Memory::new();
+        let mut st = AsmState::new();
+        let r = asm.process_line(&mut st, &mut mem, String::from("SEI"));
         assert!(matches!(r, AsmResult::Ok));
-        assert_eq!(state.location_counter_prev, 1);
-        assert!(state.symbols.is_empty());
-        assert!(memory.byte(0x0000) == 0);
+        assert_eq!(st.location_counter_prev, 1);
+        assert!(st.symbols.is_empty());
+        assert!(mem.byte(0x0000) == 0);
     }
 }
