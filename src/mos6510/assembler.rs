@@ -2,6 +2,7 @@ extern crate regex;
 
 mod assembly;
 
+use super::Memory;
 use assembly::*;
 use regex::Regex;
 use std::collections::HashMap;
@@ -75,16 +76,21 @@ impl Assembler {
         }
     }
 
-    fn process_line(&self, state: &mut AsmState, line: String) -> AsmResult {
+    fn extract_group(captures: &regex::Captures, i: usize) -> Option<String> {
+        captures.get(i).map_or(None, |m| Some(String::from(m.as_str())))
+    }
+
+    fn process_line(&self, state: &mut AsmState, memory: &mut Memory, line: String) -> AsmResult {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
                 Some(captures) => {
-                    state.operand = String::from("");
-                    state.operation = String::from("");
+                    state.label = Self::extract_group(&captures, LABEL_GROUP);
+                    state.operand = Self::extract_group(&captures, OPERATION_GROUP);
+                    state.operation = Self::extract_group(&captures, FIRST_OPERAND_GROUP);
                     (pattern.handler)(state);
                     return AsmResult::Ok;
                 }
-                None => continue,
+                None => {}
             }
         }
         AsmResult::SyntaxError
@@ -101,10 +107,25 @@ mod tests {
         assert!(asm.patterns.len() == 13);
     }
     #[test]
-    fn handle_no_operation() {
+    fn empty_line() {
         let asm = Assembler::new();
-        let mut session = AsmState::new();
-        let r = asm.process_line(&mut session, String::from(""));
+        let mut memory = Memory::new();
+        let mut state = AsmState::new();
+        let r = asm.process_line(&mut state, &mut memory, String::from(""));
         assert!(matches!(r, AsmResult::Ok));
+        assert_eq!(state.location_counter_prev, 0);
+        assert!(state.symbols.is_empty());
+    }
+
+    #[test]
+    fn implied_mode() {
+        let asm = Assembler::new();
+        let mut memory = Memory::new();
+        let mut state = AsmState::new();
+        let r = asm.process_line(&mut state, &mut memory, String::from("SEI"));
+        assert!(matches!(r, AsmResult::Ok));
+        assert_eq!(state.location_counter_prev, 1);
+        assert!(state.symbols.is_empty());
+        assert!(memory.byte(0x0000) == 0);
     }
 }
