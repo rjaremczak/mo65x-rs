@@ -1,16 +1,16 @@
 extern crate regex;
 
-mod session;
+mod assembly;
 
+use assembly::*;
 use regex::Regex;
-use session::*;
 use std::collections::HashMap;
 
 const LABEL_GROUP: usize = 1;
 const OPERATION_GROUP: usize = 2;
 const FIRST_OPERAND_GROUP: usize = 3;
 
-type PatternHandler = fn(&Assembler, &mut AsmSession);
+type PatternHandler = fn(&mut AsmState) -> AsmResult;
 
 struct Pattern {
     regex: Regex,
@@ -58,30 +58,30 @@ impl Assembler {
         let branch_target = format!("((?:[+|-]?\\d{{1,3}})|(?:{}))\\s*", symbol);
         Assembler {
             patterns: vec![
-                Pattern::new("", Assembler::handle_no_operation),
-                Pattern::from(format!("{}{}", org_cmd, operand), Assembler::handle_set_location_counter),
-                Pattern::from(format!("{}{}", byte_cmd, operand_list), Assembler::handle_emit_bytes),
-                Pattern::from(format!("{}{}", word_cmd, operand_list), Assembler::handle_emit_words),
-                Pattern::from(format!("{}", mnemonic), Assembler::handle_implied),
-                Pattern::from(format!("{}#{}", mnemonic, operand), Assembler::handle_immediate),
-                Pattern::from(format!("{}{}", branch_mnemonic, branch_target), Assembler::handle_branch),
-                Pattern::from(format!("{}{}", mnemonic, operand), Assembler::handle_absolute),
-                Pattern::from(format!("{}{},x", mnemonic, operand), Assembler::handle_absolute_indexed_x),
-                Pattern::from(format!("{}{},y", mnemonic, operand), Assembler::handle_absolute_indexed_y),
-                Pattern::from(format!("{}\\({}\\)", mnemonic, operand), Assembler::handle_indirect),
-                Pattern::from(format!("{}\\({},x\\)", mnemonic, operand), Assembler::handle_indexed_indirect_x),
-                Pattern::from(format!("{}\\({}\\),y", mnemonic, operand), Assembler::handle_indirect_indexed_y),
+                Pattern::new("", AsmState::handle_no_operation),
+                Pattern::from(format!("{}{}", org_cmd, operand), AsmState::handle_set_location_counter),
+                Pattern::from(format!("{}{}", byte_cmd, operand_list), AsmState::handle_emit_bytes),
+                Pattern::from(format!("{}{}", word_cmd, operand_list), AsmState::handle_emit_words),
+                Pattern::from(format!("{}", mnemonic), AsmState::handle_implied),
+                Pattern::from(format!("{}#{}", mnemonic, operand), AsmState::handle_immediate),
+                Pattern::from(format!("{}{}", branch_mnemonic, branch_target), AsmState::handle_branch),
+                Pattern::from(format!("{}{}", mnemonic, operand), AsmState::handle_absolute),
+                Pattern::from(format!("{}{},x", mnemonic, operand), AsmState::handle_absolute_indexed_x),
+                Pattern::from(format!("{}{},y", mnemonic, operand), AsmState::handle_absolute_indexed_y),
+                Pattern::from(format!("{}\\({}\\)", mnemonic, operand), AsmState::handle_indirect),
+                Pattern::from(format!("{}\\({},x\\)", mnemonic, operand), AsmState::handle_indexed_indirect_x),
+                Pattern::from(format!("{}\\({}\\),y", mnemonic, operand), AsmState::handle_indirect_indexed_y),
             ],
         }
     }
 
-    fn process_line(&self, session: &mut session::AsmSession, line: String) -> AsmResult {
+    fn process_line(&self, state: &mut AsmState, line: String) -> AsmResult {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
                 Some(captures) => {
-                    session.operand = String::from("");
-                    session.operation = String::from("");
-                    (pattern.handler)(self, session);
+                    state.operand = String::from("");
+                    state.operation = String::from("");
+                    (pattern.handler)(state);
                     return AsmResult::Ok;
                 }
                 None => continue,
@@ -89,24 +89,6 @@ impl Assembler {
         }
         AsmResult::SyntaxError
     }
-
-    fn handle_no_operation(&self, session: &mut AsmSession) {
-        println!("empty line");
-    }
-    fn handle_set_location_counter(&self, session: &mut AsmSession) {
-        println!("set location counter");
-    }
-    fn handle_emit_bytes(&self, session: &mut AsmSession) {}
-    fn handle_emit_words(&self, session: &mut AsmSession) {}
-    fn handle_implied(&self, session: &mut AsmSession) {}
-    fn handle_immediate(&self, session: &mut AsmSession) {}
-    fn handle_branch(&self, session: &mut AsmSession) {}
-    fn handle_absolute(&self, session: &mut AsmSession) {}
-    fn handle_absolute_indexed_x(&self, session: &mut AsmSession) {}
-    fn handle_absolute_indexed_y(&self, session: &mut AsmSession) {}
-    fn handle_indirect(&self, session: &mut AsmSession) {}
-    fn handle_indexed_indirect_x(&self, session: &mut AsmSession) {}
-    fn handle_indirect_indexed_y(&self, session: &mut AsmSession) {}
 }
 
 #[cfg(test)]
@@ -121,7 +103,7 @@ mod tests {
     #[test]
     fn handle_no_operation() {
         let asm = Assembler::new();
-        let mut session = AsmSession::new();
+        let mut session = AsmState::new();
         let r = asm.process_line(&mut session, String::from(""));
         assert!(matches!(r, AsmResult::Ok));
     }
