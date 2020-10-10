@@ -1,5 +1,5 @@
+use super::object_code::ObjectCode;
 use std::collections::HashMap;
-use std::ops::RangeInclusive;
 
 pub enum AsmPhase {
     Scanning,
@@ -8,6 +8,7 @@ pub enum AsmPhase {
 
 pub enum AsmResult {
     Ok,
+    SymbolAdded,
     SymbolAlreadyDefined,
     SymbolNotDefined,
     MissingOperand,
@@ -17,10 +18,12 @@ pub enum AsmResult {
     ValueOutOfRange,
     InvalidMnemonic,
     InvalidInstructionFormat,
+    InvalidPhase,
 }
 
+type Symbols = HashMap<String, u16>;
+
 pub struct AsmState {
-    pub symbols: HashMap<String, u16>,
     pub label: Option<String>,
     pub operation: Option<String>,
     pub operand: Option<String>,
@@ -28,14 +31,13 @@ pub struct AsmState {
     pub location_counter: u16,
     pub location_counter_prev: u16,
     pub bytes_written: u32,
-    pub address_range: RangeInclusive<u16>,
-    pub machine_code: Vec<u8>,
+    pub symbols: Symbols,
+    pub object_code: ObjectCode,
 }
 
 impl AsmState {
     pub fn new() -> AsmState {
         AsmState {
-            symbols: HashMap::new(),
             label: Option::None,
             operation: Option::None,
             operand: Option::None,
@@ -43,8 +45,21 @@ impl AsmState {
             location_counter: 0,
             location_counter_prev: 0,
             bytes_written: 0,
-            address_range: RangeInclusive::new(1, 0),
-            machine_code: Vec::new(),
+            symbols: Symbols::new(),
+            object_code: ObjectCode::new(),
+        }
+    }
+
+    pub fn handle_define_label(&mut self, label: Option<String>) -> AsmResult {
+        match label {
+            Some(symbol) => match self.phase {
+                AsmPhase::Scanning => match self.symbols.insert(symbol, self.location_counter) {
+                    Some(_) => AsmResult::SymbolAlreadyDefined,
+                    None => AsmResult::SymbolAdded,
+                },
+                AsmPhase::Generating => AsmResult::InvalidPhase,
+            },
+            None => AsmResult::SymbolNotDefined,
         }
     }
 
@@ -52,40 +67,52 @@ impl AsmState {
         println!("empty line");
         AsmResult::Ok
     }
+
     pub fn handle_set_location_counter(&mut self) -> AsmResult {
         println!("set location counter");
         AsmResult::Ok
     }
+
     pub fn handle_emit_bytes(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_emit_words(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_implied(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_immediate(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_branch(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_absolute(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_absolute_indexed_x(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_absolute_indexed_y(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_indirect(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_indexed_indirect_x(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }
+
     pub fn handle_indirect_indexed_y(&mut self) -> AsmResult {
         AsmResult::InvalidMnemonic
     }

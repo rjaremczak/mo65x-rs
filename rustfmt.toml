@@ -1,3 +1,4 @@
 max_width = 140
+#blank_lines_lower_bound = 2
 #struct_lit_width = 80
 #struct_variant_width = 80

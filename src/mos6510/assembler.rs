@@ -1,15 +1,8 @@
-extern crate regex;
-
 mod assembly;
+mod object_code;
 
-use super::Memory;
 use assembly::*;
 use regex::Regex;
-use std::collections::HashMap;
-
-const LABEL_GROUP: usize = 1;
-const OPERATION_GROUP: usize = 2;
-const FIRST_OPERAND_GROUP: usize = 3;
 
 type PatternHandler = fn(&mut AsmState) -> AsmResult;
 
@@ -80,13 +73,13 @@ impl Assembler {
         captures.get(i).map_or(None, |m| Some(String::from(m.as_str())))
     }
 
-    fn process_line(&self, state: &mut AsmState, memory: &mut Memory, line: String) -> AsmResult {
+    fn process_line(&self, state: &mut AsmState, line: String) -> AsmResult {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
                 Some(captures) => {
-                    state.label = Self::extract_group(&captures, LABEL_GROUP);
-                    state.operand = Self::extract_group(&captures, OPERATION_GROUP);
-                    state.operation = Self::extract_group(&captures, FIRST_OPERAND_GROUP);
+                    state.handle_define_label(Self::extract_group(&captures, 1));
+                    state.operand = Self::extract_group(&captures, 2);
+                    state.operation = Self::extract_group(&captures, 3);
                     (pattern.handler)(state);
                     return AsmResult::Ok;
                 }
@@ -95,9 +88,6 @@ impl Assembler {
         }
         AsmResult::SyntaxError
     }
-
-    // pub fn scan(lines) -> AsmState {}
-    // pub fn code(lines, memory: &mut Memory) -> AsmState {}
 }
 
 #[cfg(test)]
@@ -113,9 +103,8 @@ mod tests {
     #[test]
     fn empty_line() {
         let asm = Assembler::new();
-        let mut mem = Memory::new();
         let mut st = AsmState::new();
-        let r = asm.process_line(&mut st, &mut mem, String::from(""));
+        let r = asm.process_line(&mut st, String::from(""));
         assert!(matches!(r, AsmResult::Ok));
         assert_eq!(st.location_counter_prev, 0);
         assert!(st.symbols.is_empty());
@@ -124,12 +113,11 @@ mod tests {
     #[test]
     fn implied_mode() {
         let asm = Assembler::new();
-        let mut mem = Memory::new();
         let mut st = AsmState::new();
-        let r = asm.process_line(&mut st, &mut mem, String::from("SEI"));
+        let r = asm.process_line(&mut st, String::from("SEI"));
         assert!(matches!(r, AsmResult::Ok));
         assert_eq!(st.location_counter_prev, 1);
         assert!(st.symbols.is_empty());
-        assert!(mem.byte(0x0000) == 0);
+        assert!(st.object_code.data.is_empty());
     }
 }
