@@ -50,7 +50,9 @@ impl AsmState {
         }
     }
 
-    pub fn handle_define_label(&mut self, label: Option<String>) -> AsmResult {
+    fn resolve_operand_value(identifier: &str) -> Result<i32, AsmResult> {}
+
+    pub fn handle_symbol(&mut self, label: Option<String>) -> AsmResult {
         match label {
             Some(symbol) => match self.phase {
                 AsmPhase::Scanning => match self.symbols.insert(symbol, self.location_counter) {

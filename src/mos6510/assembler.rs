@@ -77,7 +77,7 @@ impl Assembler {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
                 Some(captures) => {
-                    state.handle_define_label(Self::extract_group(&captures, 1));
+                    state.handle_symbol(Self::extract_group(&captures, 1));
                     state.operand = Self::extract_group(&captures, 2);
                     state.operation = Self::extract_group(&captures, 3);
                     (pattern.handler)(state);
