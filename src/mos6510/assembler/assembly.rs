@@ -1,24 +1,10 @@
+use super::asm_result::AsmResult;
 use super::object_code::ObjectCode;
 use std::collections::HashMap;
 
 pub enum AsmPhase {
     Scanning,
     Generating,
-}
-
-pub enum AsmResult {
-    Ok,
-    SymbolAdded,
-    SymbolAlreadyDefined,
-    SymbolNotDefined,
-    MissingOperand,
-    NumericOperandRequired,
-    SyntaxError,
-    CommandProcessingError,
-    ValueOutOfRange,
-    InvalidMnemonic,
-    InvalidInstructionFormat,
-    InvalidPhase,
 }
 
 type Symbols = HashMap<String, u16>;
@@ -50,7 +36,9 @@ impl AsmState {
         }
     }
 
-    fn resolve_operand_value(identifier: &str) -> Result<i32, AsmResult> {}
+    fn resolve_operand_value(identifier: &str) -> Result<i32, AsmResult> {
+        Result::Err(AsmResult::SyntaxError)
+    }
 
     pub fn handle_symbol(&mut self, label: Option<String>) -> AsmResult {
         match label {
