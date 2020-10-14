@@ -1,4 +1,4 @@
-use super::asm_result::AsmResult;
+use super::asm_result::AsmError;
 use super::object_code::ObjectCode;
 use std::collections::HashMap;
 
@@ -36,75 +36,75 @@ impl AsmState {
         }
     }
 
-    fn resolve_operand_value(identifier: &str) -> Result<i32, AsmResult> {
-        Result::Err(AsmResult::SyntaxError)
+    fn resolve_operand_value(identifier: &str) -> Result<i32, AsmError> {
+        Result::Err(AsmError::SyntaxError)
     }
 
-    pub fn handle_symbol(&mut self, label: Option<String>) -> AsmResult {
+    pub fn handle_symbol(&mut self, label: Option<String>) -> AsmError {
         match label {
             Some(symbol) => match self.phase {
                 AsmPhase::Scanning => match self.symbols.insert(symbol, self.location_counter) {
-                    Some(_) => AsmResult::SymbolAlreadyDefined,
-                    None => AsmResult::SymbolAdded,
+                    Some(_) => AsmError::SymbolAlreadyDefined,
+                    None => AsmError::Ok,
                 },
-                AsmPhase::Generating => AsmResult::InvalidPhase,
+                AsmPhase::Generating => AsmError::InvalidPhase,
             },
-            None => AsmResult::SymbolNotDefined,
+            None => AsmError::SymbolNotDefined,
         }
     }
 
-    pub fn handle_no_operation(&mut self) -> AsmResult {
+    pub fn handle_no_operation(&mut self) -> AsmError {
         println!("empty line");
-        AsmResult::Ok
+        AsmError::Ok
     }
 
-    pub fn handle_set_location_counter(&mut self) -> AsmResult {
+    pub fn handle_set_location_counter(&mut self) -> AsmError {
         println!("set location counter");
-        AsmResult::Ok
+        AsmError::Ok
     }
 
-    pub fn handle_emit_bytes(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_emit_bytes(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_emit_words(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_emit_words(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_implied(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_implied(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_immediate(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_immediate(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_branch(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_branch(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_absolute(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_absolute(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_absolute_indexed_x(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_absolute_indexed_x(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_absolute_indexed_y(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_absolute_indexed_y(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_indirect(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_indirect(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_indexed_indirect_x(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_indexed_indirect_x(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 
-    pub fn handle_indirect_indexed_y(&mut self) -> AsmResult {
-        AsmResult::InvalidMnemonic
+    pub fn handle_indirect_indexed_y(&mut self) -> AsmError {
+        AsmError::InvalidMnemonic
     }
 }
 

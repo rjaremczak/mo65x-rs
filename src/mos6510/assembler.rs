@@ -5,9 +5,10 @@ mod operand;
 
 use asm_result::*;
 use assembly::*;
+use operand::*;
 use regex::Regex;
 
-type PatternHandler = fn(&mut AsmState) -> AsmResult;
+type PatternHandler = fn(&mut AsmState) -> AsmError;
 
 struct Pattern {
     regex: Regex,
@@ -32,10 +33,6 @@ pub struct Assembler {
 
 impl Assembler {
     pub fn new() -> Assembler {
-        let hex_prefix: char = '$';
-        let bin_prefix: char = '%';
-        let lo_byte_prefix: char = '<';
-        let hi_byte_prefix: char = '>';
         let symbol = String::from("[a-z]\\w*");
         let label = format!("^(?:({}):)?\\s*", symbol);
         let comment = String::from("(?:;.*)?$");
@@ -47,7 +44,7 @@ impl Assembler {
         let bin_num = String::from("%[01]{1,16}");
         let mnemonic = String::from("([a-z]{3})\\s*");
         let num_or_symbol = format!("(?:{})|(?:{})|(?:{})|(?:{})", hex_num, dec_num, bin_num, symbol);
-        let lo_hi_prefix = format!("[{}|{}]?", lo_byte_prefix, hi_byte_prefix);
+        let lo_hi_prefix = format!("[{}|{}]?", LO_BYTE_MODIFIER, HI_BYTE_MODIFIER);
         let operand = format!("({}(?:{}))\\s*", lo_hi_prefix, num_or_symbol);
         let operand_separator = String::from("\\s*,?\\s*");
         let operand_list = format!("((?:(?:{}(?:{})){})+)\\s*", lo_hi_prefix, num_or_symbol, operand_separator);
@@ -76,7 +73,7 @@ impl Assembler {
         captures.get(i).map_or(None, |m| Some(String::from(m.as_str())))
     }
 
-    fn process_line(&self, state: &mut AsmState, line: String) -> AsmResult {
+    fn process_line(&self, state: &mut AsmState, line: String) -> AsmError {
         for pattern in self.patterns.iter() {
             match pattern.regex.captures(&line) {
                 Some(captures) => {
@@ -84,12 +81,12 @@ impl Assembler {
                     state.operand = Self::extract_group(&captures, 2);
                     state.operation = Self::extract_group(&captures, 3);
                     (pattern.handler)(state);
-                    return AsmResult::Ok;
+                    return AsmError::Ok;
                 }
                 None => {}
             }
         }
-        AsmResult::SyntaxError
+        AsmError::SyntaxError
     }
 }
 
@@ -108,7 +105,7 @@ mod tests {
         let asm = Assembler::new();
         let mut st = AsmState::new();
         let r = asm.process_line(&mut st, String::from(""));
-        assert!(matches!(r, AsmResult::Ok));
+        assert!(matches!(r, AsmError::Ok));
         assert_eq!(st.location_counter_prev, 0);
         assert!(st.symbols.is_empty());
     }
@@ -118,7 +115,7 @@ mod tests {
         let asm = Assembler::new();
         let mut st = AsmState::new();
         let r = asm.process_line(&mut st, String::from("SEI"));
-        assert!(matches!(r, AsmResult::Ok));
+        assert!(matches!(r, AsmError::Ok));
         assert_eq!(st.location_counter_prev, 1);
         assert!(st.symbols.is_empty());
         assert!(st.object_code.data.is_empty());
