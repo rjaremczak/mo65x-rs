@@ -1,4 +1,4 @@
-use super::asm_result::AsmError;
+use super::error::AsmError;
 
 pub const LO_BYTE_MODIFIER: char = '<';
 pub const HI_BYTE_MODIFIER: char = '>';

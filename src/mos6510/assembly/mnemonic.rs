@@ -1,0 +1,72 @@
+use super::super::Instruction::{self, *};
+
+pub struct Mnemonic {
+    pub instruction: Instruction,
+    pub mnemonic: &'static str,
+}
+
+impl Mnemonic {
+    pub const fn new(instruction: Instruction, mnemonic: &'static str) -> Self {
+        Self { instruction, mnemonic }
+    }
+}
+
+pub static MNEMONICS: [Mnemonic; 57] = [
+    Mnemonic::new(ADC, "ADC"),
+    Mnemonic::new(SBC, "SBC"),
+    Mnemonic::new(AND, "AND"),
+    Mnemonic::new(ORA, "ORA"),
+    Mnemonic::new(ASL, "ASL"),
+    Mnemonic::new(LSR, "LSR"),
+    Mnemonic::new(EOR, "EOR"),
+    Mnemonic::new(ROL, "ROL"),
+    Mnemonic::new(ROR, "ROR"),
+    Mnemonic::new(BIT, "BIT"),
+    Mnemonic::new(CMP, "CMP"),
+    Mnemonic::new(CPX, "CPX"),
+    Mnemonic::new(CPY, "CPY"),
+    Mnemonic::new(INC, "INC"),
+    Mnemonic::new(INX, "INX"),
+    Mnemonic::new(INY, "INY"),
+    Mnemonic::new(DEC, "DEC"),
+    Mnemonic::new(DEX, "DEX"),
+    Mnemonic::new(DEY, "DEY"),
+    Mnemonic::new(BCC, "BCC"),
+    Mnemonic::new(BCS, "BCS"),
+    Mnemonic::new(BEQ, "BEQ"),
+    Mnemonic::new(BMI, "BMI"),
+    Mnemonic::new(BNE, "BNE"),
+    Mnemonic::new(BPL, "BPL"),
+    Mnemonic::new(BVC, "BVC"),
+    Mnemonic::new(BVS, "BVS"),
+    Mnemonic::new(CLC, "CLC"),
+    Mnemonic::new(CLD, "CLD"),
+    Mnemonic::new(CLI, "CLI"),
+    Mnemonic::new(CLV, "CLV"),
+    Mnemonic::new(SEC, "SEC"),
+    Mnemonic::new(SED, "SED"),
+    Mnemonic::new(SEI, "SEI"),
+    Mnemonic::new(JMP, "JMP"),
+    Mnemonic::new(JSR, "JSR"),
+    Mnemonic::new(BRK, "BRK"),
+    Mnemonic::new(RTI, "RTI"),
+    Mnemonic::new(RTS, "RTS"),
+    Mnemonic::new(LDA, "LDA"),
+    Mnemonic::new(LDX, "LDX"),
+    Mnemonic::new(LDY, "LDY"),
+    Mnemonic::new(STA, "STA"),
+    Mnemonic::new(STX, "STX"),
+    Mnemonic::new(STY, "STY"),
+    Mnemonic::new(TAX, "TAX"),
+    Mnemonic::new(TAY, "TAY"),
+    Mnemonic::new(TSX, "TSX"),
+    Mnemonic::new(TXA, "TXA"),
+    Mnemonic::new(TYA, "TYA"),
+    Mnemonic::new(TXS, "TXS"),
+    Mnemonic::new(PHA, "PHA"),
+    Mnemonic::new(PHP, "PHP"),
+    Mnemonic::new(PLA, "PLA"),
+    Mnemonic::new(PLP, "PLP"),
+    Mnemonic::new(NOP, "NOP"),
+    Mnemonic::new(KIL, "KIL"),
+];

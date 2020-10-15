@@ -1,19 +1,14 @@
-use super::asm_result::AsmError;
+use super::super::AddressingMode;
+use super::error::AsmError;
 use super::object_code::ObjectCode;
 use std::collections::HashMap;
 
-pub enum AsmPhase {
-    Scanning,
-    Generating,
-}
-
 type Symbols = HashMap<String, u16>;
 
-pub struct AsmState {
-    pub label: Option<String>,
+pub struct AsmProcessor {
     pub operation: Option<String>,
     pub operand: Option<String>,
-    pub phase: AsmPhase,
+    pub code_generation: bool,
     pub location_counter: u16,
     pub location_counter_prev: u16,
     pub bytes_written: u32,
@@ -21,13 +16,12 @@ pub struct AsmState {
     pub object_code: ObjectCode,
 }
 
-impl AsmState {
-    pub fn new() -> AsmState {
-        AsmState {
-            label: Option::None,
+impl AsmProcessor {
+    pub fn new() -> AsmProcessor {
+        AsmProcessor {
             operation: Option::None,
             operand: Option::None,
-            phase: AsmPhase::Scanning,
+            code_generation: false,
             location_counter: 0,
             location_counter_prev: 0,
             bytes_written: 0,
@@ -40,20 +34,15 @@ impl AsmState {
         Result::Err(AsmError::SyntaxError)
     }
 
-    pub fn handle_symbol(&mut self, label: Option<String>) -> AsmError {
-        match label {
-            Some(symbol) => match self.phase {
-                AsmPhase::Scanning => match self.symbols.insert(symbol, self.location_counter) {
-                    Some(_) => AsmError::SymbolAlreadyDefined,
-                    None => AsmError::Ok,
-                },
-                AsmPhase::Generating => AsmError::InvalidPhase,
-            },
-            None => AsmError::SymbolNotDefined,
+    pub fn handle_symbol(&mut self, label: Option<String>) {
+        if !self.code_generation {
+            if let Some(symbol) = label {
+                self.symbols.insert(symbol, self.location_counter);
+            }
         }
     }
 
-    pub fn handle_no_operation(&mut self) -> AsmError {
+    pub fn handle_empty_line(&mut self) -> AsmError {
         println!("empty line");
         AsmError::Ok
     }
@@ -72,7 +61,7 @@ impl AsmState {
     }
 
     pub fn handle_implied(&mut self) -> AsmError {
-        AsmError::InvalidMnemonic
+        self.assemble(AddressingMode::Implied, None)
     }
 
     pub fn handle_immediate(&mut self) -> AsmError {
@@ -106,6 +95,10 @@ impl AsmState {
     pub fn handle_indirect_indexed_y(&mut self) -> AsmError {
         AsmError::InvalidMnemonic
     }
+
+    fn assemble(&mut self, mode: AddressingMode, operand: Option<String>) -> AsmError {
+        AsmError::InvalidMnemonic
+    }
 }
 
 #[cfg(test)]
@@ -114,9 +107,8 @@ mod tests {
 
     #[test]
     fn initial_state() {
-        let st = AsmState::new();
-        assert!(matches!(st.phase, AsmPhase::Scanning));
-        assert_eq!(st.label, None);
+        let st = AsmProcessor::new();
+        assert_eq!(st.code_generation, false);
         assert_eq!(st.operation, None);
         assert_eq!(st.operand, None);
         assert_eq!(st.bytes_written, 0);
