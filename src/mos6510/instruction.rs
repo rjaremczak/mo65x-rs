@@ -1,3 +1,4 @@
+#[derive(Clone, Copy, PartialEq)]
 pub enum Instruction {
     KIL, // every unsupported instruction that needs core to halt!
     ADC,

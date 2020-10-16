@@ -1,72 +1,86 @@
 use super::super::Instruction::{self, *};
 
-pub struct Mnemonic {
-    pub instruction: Instruction,
-    pub mnemonic: &'static str,
+pub fn find_instruction(mnemonic: &str) -> Option<Instruction> {
+    MNEMONICS.iter().find(|e| e.1 == mnemonic).map_or(None, |e| Some(e.0))
 }
 
-impl Mnemonic {
-    pub const fn new(instruction: Instruction, mnemonic: &'static str) -> Self {
-        Self { instruction, mnemonic }
+pub fn find_mnemonic(instruction: Instruction) -> Option<&'static str> {
+    MNEMONICS.iter().find(|e| e.0 == instruction).map_or(None, |e| Some(e.1))
+}
+
+pub static MNEMONICS: [(Instruction, &str); 57] = [
+    (ADC, "ADC"),
+    (SBC, "SBC"),
+    (AND, "AND"),
+    (ORA, "ORA"),
+    (ASL, "ASL"),
+    (LSR, "LSR"),
+    (EOR, "EOR"),
+    (ROL, "ROL"),
+    (ROR, "ROR"),
+    (BIT, "BIT"),
+    (CMP, "CMP"),
+    (CPX, "CPX"),
+    (CPY, "CPY"),
+    (INC, "INC"),
+    (INX, "INX"),
+    (INY, "INY"),
+    (DEC, "DEC"),
+    (DEX, "DEX"),
+    (DEY, "DEY"),
+    (BCC, "BCC"),
+    (BCS, "BCS"),
+    (BEQ, "BEQ"),
+    (BMI, "BMI"),
+    (BNE, "BNE"),
+    (BPL, "BPL"),
+    (BVC, "BVC"),
+    (BVS, "BVS"),
+    (CLC, "CLC"),
+    (CLD, "CLD"),
+    (CLI, "CLI"),
+    (CLV, "CLV"),
+    (SEC, "SEC"),
+    (SED, "SED"),
+    (SEI, "SEI"),
+    (JMP, "JMP"),
+    (JSR, "JSR"),
+    (BRK, "BRK"),
+    (RTI, "RTI"),
+    (RTS, "RTS"),
+    (LDA, "LDA"),
+    (LDX, "LDX"),
+    (LDY, "LDY"),
+    (STA, "STA"),
+    (STX, "STX"),
+    (STY, "STY"),
+    (TAX, "TAX"),
+    (TAY, "TAY"),
+    (TSX, "TSX"),
+    (TXA, "TXA"),
+    (TYA, "TYA"),
+    (TXS, "TXS"),
+    (PHA, "PHA"),
+    (PHP, "PHP"),
+    (PLA, "PLA"),
+    (PLP, "PLP"),
+    (NOP, "NOP"),
+    (KIL, "KIL"),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn find_instruction_by_mnemonic() {
+        assert!(matches!(find_instruction("LDA").unwrap(), LDA));
+        assert!(matches!(find_instruction("JUH"), None));
+    }
+
+    #[test]
+    fn find_mnemonic_by_instruction() {
+        assert!(matches!(find_mnemonic(TXA).unwrap(), "TXA"));
+        assert!(matches!(find_mnemonic(KIL).unwrap(), "KIL"));
     }
 }
-
-pub static MNEMONICS: [Mnemonic; 57] = [
-    Mnemonic::new(ADC, "ADC"),
-    Mnemonic::new(SBC, "SBC"),
-    Mnemonic::new(AND, "AND"),
-    Mnemonic::new(ORA, "ORA"),
-    Mnemonic::new(ASL, "ASL"),
-    Mnemonic::new(LSR, "LSR"),
-    Mnemonic::new(EOR, "EOR"),
-    Mnemonic::new(ROL, "ROL"),
-    Mnemonic::new(ROR, "ROR"),
-    Mnemonic::new(BIT, "BIT"),
-    Mnemonic::new(CMP, "CMP"),
-    Mnemonic::new(CPX, "CPX"),
-    Mnemonic::new(CPY, "CPY"),
-    Mnemonic::new(INC, "INC"),
-    Mnemonic::new(INX, "INX"),
-    Mnemonic::new(INY, "INY"),
-    Mnemonic::new(DEC, "DEC"),
-    Mnemonic::new(DEX, "DEX"),
-    Mnemonic::new(DEY, "DEY"),
-    Mnemonic::new(BCC, "BCC"),
-    Mnemonic::new(BCS, "BCS"),
-    Mnemonic::new(BEQ, "BEQ"),
-    Mnemonic::new(BMI, "BMI"),
-    Mnemonic::new(BNE, "BNE"),
-    Mnemonic::new(BPL, "BPL"),
-    Mnemonic::new(BVC, "BVC"),
-    Mnemonic::new(BVS, "BVS"),
-    Mnemonic::new(CLC, "CLC"),
-    Mnemonic::new(CLD, "CLD"),
-    Mnemonic::new(CLI, "CLI"),
-    Mnemonic::new(CLV, "CLV"),
-    Mnemonic::new(SEC, "SEC"),
-    Mnemonic::new(SED, "SED"),
-    Mnemonic::new(SEI, "SEI"),
-    Mnemonic::new(JMP, "JMP"),
-    Mnemonic::new(JSR, "JSR"),
-    Mnemonic::new(BRK, "BRK"),
-    Mnemonic::new(RTI, "RTI"),
-    Mnemonic::new(RTS, "RTS"),
-    Mnemonic::new(LDA, "LDA"),
-    Mnemonic::new(LDX, "LDX"),
-    Mnemonic::new(LDY, "LDY"),
-    Mnemonic::new(STA, "STA"),
-    Mnemonic::new(STX, "STX"),
-    Mnemonic::new(STY, "STY"),
-    Mnemonic::new(TAX, "TAX"),
-    Mnemonic::new(TAY, "TAY"),
-    Mnemonic::new(TSX, "TSX"),
-    Mnemonic::new(TXA, "TXA"),
-    Mnemonic::new(TYA, "TYA"),
-    Mnemonic::new(TXS, "TXS"),
-    Mnemonic::new(PHA, "PHA"),
-    Mnemonic::new(PHP, "PHP"),
-    Mnemonic::new(PLA, "PLA"),
-    Mnemonic::new(PLP, "PLP"),
-    Mnemonic::new(NOP, "NOP"),
-    Mnemonic::new(KIL, "KIL"),
-];
