@@ -1,4 +1,4 @@
-use super::super::AddressingMode;
+use super::super::addrmode::AddrMode;
 use super::error::AsmError;
 use super::object_code::ObjectCode;
 use std::collections::HashMap;
@@ -61,7 +61,7 @@ impl AsmProcessor {
     }
 
     pub fn handle_implied(&mut self) -> AsmError {
-        self.assemble(AddressingMode::Implied, None)
+        self.assemble(AddrMode::Implied, None)
     }
 
     pub fn handle_immediate(&mut self) -> AsmError {
@@ -96,7 +96,7 @@ impl AsmProcessor {
         AsmError::InvalidMnemonic
     }
 
-    fn assemble(&mut self, mode: AddressingMode, operand: Option<String>) -> AsmError {
+    fn assemble(&mut self, mode: AddrMode, operand: Option<String>) -> AsmError {
         AsmError::InvalidMnemonic
     }
 }

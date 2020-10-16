@@ -1,5 +1,4 @@
 mod error;
-mod mnemonic;
 mod object_code;
 mod operand;
 mod parser;

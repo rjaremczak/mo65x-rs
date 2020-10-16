@@ -6,6 +6,6 @@ fn main() {
     //gui_iced::run();
     //let _ = gui_druid::run();
     //let mut memory: mos6510::Memory;
-    println!("opcodes {}", mos6510::OPCODES[0].size);
-    let mut assembler = mos6510::Assembler::new();
+    println!("opcodes {}", mos6510::opcode::OPCODES[0].size);
+    let mut assembler = mos6510::assembly::Assembler::new();
 }
