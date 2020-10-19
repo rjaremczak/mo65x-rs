@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub enum AddrMode {
     Implied,
     Branch,
@@ -21,6 +22,15 @@ impl AddrMode {
             Implied => 0,
             Branch | Immediate | ZeroPage | ZeroPageX | ZeroPageY | IndexedIndirectX | IndirectIndexedY => 1,
             Indirect | Absolute | AbsoluteX | AbsoluteY => 2,
+        }
+    }
+
+    pub fn zero_page_variant(&self) -> Option<AddrMode> {
+        match self {
+            Absolute => Some(ZeroPage),
+            AbsoluteX => Some(ZeroPageX),
+            AbsoluteY => Some(ZeroPageY),
+            _ => None,
         }
     }
 }

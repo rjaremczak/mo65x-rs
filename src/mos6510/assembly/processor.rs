@@ -1,13 +1,16 @@
 use super::super::addrmode::AddrMode;
+use super::super::instruction::Instruction;
+use super::super::opcode::*;
+use super::*;
 use super::error::AsmError;
 use super::object_code::ObjectCode;
 use std::collections::HashMap;
 
 type Symbols = HashMap<String, u16>;
 
-pub struct AsmProcessor {
-    pub operation: Option<String>,
-    pub operand: Option<String>,
+pub struct CodeGeneration {
+    pub instruction: Option<Instruction>,
+    pub operand: Option<i32>,
     pub code_generation: bool,
     pub location_counter: u16,
     pub location_counter_prev: u16,
@@ -16,10 +19,10 @@ pub struct AsmProcessor {
     pub object_code: ObjectCode,
 }
 
-impl AsmProcessor {
-    pub fn new() -> AsmProcessor {
-        AsmProcessor {
-            operation: Option::None,
+impl CodeGeneration {
+    pub fn new() -> CodeGeneration {
+        CodeGeneration {
+            instruction: Option::None,
             operand: Option::None,
             code_generation: false,
             location_counter: 0,
@@ -96,7 +99,16 @@ impl AsmProcessor {
         AsmError::InvalidMnemonic
     }
 
-    fn assemble(&mut self, mode: AddrMode, operand: Option<String>) -> AsmError {
+    fn assemble(&mut self, addrmode: AddrMode, operand: Option<String>) -> AsmError {
+
+        let (mode,value) = match addrmode.zero_page_variant() {
+            Some(zpmode) => match operand::resolve(&self.operand.unwrap(), |_| None) {
+                Ok(value) => if operand::is_zero_page(value)
+                Err(err) => err
+            },
+            None => (addrmode, 0)
+        }
+        let opcode = find_opcode(self.instruction, addrmode)
         AsmError::InvalidMnemonic
     }
 }
@@ -107,9 +119,9 @@ mod tests {
 
     #[test]
     fn initial_state() {
-        let st = AsmProcessor::new();
+        let st = CodeGeneration::new();
         assert_eq!(st.code_generation, false);
-        assert_eq!(st.operation, None);
+        assert!(matches!(st.instruction, None));
         assert_eq!(st.operand, None);
         assert_eq!(st.bytes_written, 0);
         assert_eq!(st.location_counter, 0);

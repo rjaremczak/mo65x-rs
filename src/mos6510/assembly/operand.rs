@@ -76,6 +76,11 @@ pub fn resolve(src: &str, symbol_resolver: SymbolResolver) -> Result<i32, AsmErr
     }
 }
 
+#[inline]
+pub fn is_zero_page(num: i32) -> bool {
+    num >= 0 && num <= 256
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

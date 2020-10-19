@@ -8,8 +8,20 @@ pub struct OpCode {
     pub cycles: u8,
 }
 
-pub fn find_opcode(mnemonic: &str, addrmode: AddrMode, zp: bool) {
-    let instruction = find_instruction(mnemonic);
+impl OpCode {
+    pub fn matches(&self, instruction: Instruction, addrmode: AddrMode) -> bool {
+        match (self.instruction, self.addrmode) {
+            (instruction, addrmode) => true,
+            _ => false,
+        }
+    }
+}
+
+pub fn find_opcode(mnemonic: &str, addrmode: AddrMode) -> Option<&OpCode> {
+    match find_instruction(mnemonic) {
+        Some(instruction) => OPCODES.iter().find(|oc| oc.matches(instruction, addrmode)),
+        None => None,
+    }
 }
 
 const fn ins(instruction: Instruction, addrmode: AddrMode, cycles: u8) -> OpCode {
