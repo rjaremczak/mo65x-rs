@@ -17,11 +17,11 @@ impl Assembler {
         Assembler { parser: Parser::new() }
     }
 
-    fn process_line(&self, ap: &mut AsmProcessor, line: &str) -> AsmError {
+    fn process_line(&self, ap: &mut CodeGeneration, line: &str) -> AsmError {
         match self.parser.parse_line(line) {
             Ok(pl) => {
                 ap.handle_symbol(pl.symbol);
-                ap.operation = pl.operation;
+                ap.instruction = pl.operation;
                 ap.operand = pl.operand;
                 (pl.handler)(ap)
             }
@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn empty_line() {
         let asm = Assembler::new();
-        let mut ap = AsmProcessor::new();
+        let mut ap = CodeGeneration::new();
         let r = asm.process_line(&mut ap, "");
         assert!(matches!(r, AsmError::Ok));
         assert_eq!(ap.location_counter_prev, 0);
@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn implied_mode() {
         let asm = Assembler::new();
-        let mut ap = AsmProcessor::new();
+        let mut ap = CodeGeneration::new();
         let r = asm.process_line(&mut ap, "SEI");
         assert!(matches!(r, AsmError::Ok));
         assert_eq!(ap.location_counter_prev, 1);

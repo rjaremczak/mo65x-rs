@@ -3,7 +3,7 @@ use super::operand::{HI_BYTE_MODIFIER, LO_BYTE_MODIFIER};
 use super::processor::*;
 use regex::Regex;
 
-type PatternHandler = fn(&mut AsmProcessor) -> AsmError;
+type PatternHandler = fn(&mut CodeGeneration) -> AsmError;
 
 pub struct Pattern {
     regex: Regex,
@@ -38,19 +38,25 @@ pub fn create_patterns() -> Vec<Pattern> {
     let branch_mnemonic = String::from("(BCC|BCS|BNE|BEQ|BMI|BPL|BVC|BVS)\\s*");
     let branch_target = format!("((?:[+|-]?\\d{{1,3}})|(?:{}))\\s*", symbol);
     vec![
-        Pattern::new("", AsmProcessor::handle_empty_line),
-        Pattern::new(&format!("{}{}", org_cmd, operand), AsmProcessor::handle_set_location_counter),
-        Pattern::new(&format!("{}{}", byte_cmd, operand_list), AsmProcessor::handle_emit_bytes),
-        Pattern::new(&format!("{}{}", word_cmd, operand_list), AsmProcessor::handle_emit_words),
-        Pattern::new(&format!("{}", mnemonic), AsmProcessor::handle_implied),
-        Pattern::new(&format!("{}#{}", mnemonic, operand), AsmProcessor::handle_immediate),
-        Pattern::new(&format!("{}{}", branch_mnemonic, branch_target), AsmProcessor::handle_branch),
-        Pattern::new(&format!("{}{}", mnemonic, operand), AsmProcessor::handle_absolute),
-        Pattern::new(&format!("{}{},x", mnemonic, operand), AsmProcessor::handle_absolute_indexed_x),
-        Pattern::new(&format!("{}{},y", mnemonic, operand), AsmProcessor::handle_absolute_indexed_y),
-        Pattern::new(&format!("{}\\({}\\)", mnemonic, operand), AsmProcessor::handle_indirect),
-        Pattern::new(&format!("{}\\({},x\\)", mnemonic, operand), AsmProcessor::handle_indexed_indirect_x),
-        Pattern::new(&format!("{}\\({}\\),y", mnemonic, operand), AsmProcessor::handle_indirect_indexed_y),
+        Pattern::new("", CodeGeneration::handle_empty_line),
+        Pattern::new(&format!("{}{}", org_cmd, operand), CodeGeneration::handle_set_location_counter),
+        Pattern::new(&format!("{}{}", byte_cmd, operand_list), CodeGeneration::handle_emit_bytes),
+        Pattern::new(&format!("{}{}", word_cmd, operand_list), CodeGeneration::handle_emit_words),
+        Pattern::new(&format!("{}", mnemonic), CodeGeneration::handle_implied),
+        Pattern::new(&format!("{}#{}", mnemonic, operand), CodeGeneration::handle_immediate),
+        Pattern::new(&format!("{}{}", branch_mnemonic, branch_target), CodeGeneration::handle_branch),
+        Pattern::new(&format!("{}{}", mnemonic, operand), CodeGeneration::handle_absolute),
+        Pattern::new(&format!("{}{},x", mnemonic, operand), CodeGeneration::handle_absolute_indexed_x),
+        Pattern::new(&format!("{}{},y", mnemonic, operand), CodeGeneration::handle_absolute_indexed_y),
+        Pattern::new(&format!("{}\\({}\\)", mnemonic, operand), CodeGeneration::handle_indirect),
+        Pattern::new(
+            &format!("{}\\({},x\\)", mnemonic, operand),
+            CodeGeneration::handle_indexed_indirect_x,
+        ),
+        Pattern::new(
+            &format!("{}\\({}\\),y", mnemonic, operand),
+            CodeGeneration::handle_indirect_indexed_y,
+        ),
     ]
 }
 
