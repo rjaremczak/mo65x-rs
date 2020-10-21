@@ -1,4 +1,4 @@
-pub fn find_instruction(mnemonic: &str) -> Option<Instruction> {
+pub fn parse_instruction(mnemonic: &str) -> Option<Instruction> {
     MNEMONICS.iter().find(|e| e.1 == mnemonic).map_or(None, |e| Some(e.0))
 }
 
@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn find_instruction_by_mnemonic() {
-        assert!(matches!(find_instruction("LDA").unwrap(), LDA));
-        assert!(matches!(find_instruction("JUH"), None));
+        assert!(matches!(parse_instruction("LDA").unwrap(), LDA));
+        assert!(matches!(parse_instruction("JUH"), None));
     }
 
     #[test]

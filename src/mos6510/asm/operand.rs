@@ -67,17 +67,22 @@ fn resolve_raw(raw: &str, symbol_resolver: SymbolResolver) -> Result<i32, AsmErr
     }
 }
 
-pub fn resolve(src: &str, symbol_resolver: SymbolResolver) -> Result<i32, AsmError> {
-    let modifier = Modifier::from(src);
-    let rest = &src[modifier.len()..];
-    match resolve_raw(rest, symbol_resolver) {
-        Ok(num) => Ok(modifier.apply(num)),
-        Err(err) => Err(err),
+pub fn resolve_operand(opsrc: Option<&str>, symbol_resolver: SymbolResolver) -> Result<i32, AsmError> {
+    match opsrc {
+        Some(src) => {
+            let modifier = Modifier::from(src);
+            let rest = &src[modifier.len()..];
+            match resolve_raw(rest, symbol_resolver) {
+                Ok(num) => Ok(modifier.apply(num)),
+                Err(err) => Err(err),
+            }
+        }
+        None => Err(AsmError::MissingOperand),
     }
 }
 
 #[inline]
-pub fn is_zero_page(num: i32) -> bool {
+pub fn is_zero_page_operand(num: i32) -> bool {
     num >= 0 && num <= 256
 }
 
@@ -115,7 +120,7 @@ mod tests {
     }
 
     fn assert_ok(s: &str, val: i32) {
-        if let Ok(num) = resolve(s, test_resolver) {
+        if let Ok(num) = resolve_operand(s, test_resolver) {
             assert_eq!(num, val);
         } else {
             assert!(false, "str: {}", s);
@@ -123,7 +128,7 @@ mod tests {
     }
 
     fn assert_err(s: &str, exp: AsmError) {
-        if let Err(err) = resolve(s, test_resolver) {
+        if let Err(err) = resolve_operand(s, test_resolver) {
             assert!(matches!(err, exp));
         } else {
             assert!(false);

@@ -10,4 +10,8 @@ impl ObjectCode {
             data: Vec::new(),
         }
     }
+
+    pub fn emit_byte(&mut self, byte: u8) {}
+
+    pub fn emit_word(&mut self, word: u16) {}
 }
