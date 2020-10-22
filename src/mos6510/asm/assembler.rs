@@ -16,10 +16,6 @@ type Handler = fn(&mut Assembler, tokens: Tokens) -> AsmError;
 
 pub struct Assembler {
     pub handlers: Vec<(Regex, Handler)>,
-    pub code_generation: bool,
-    pub location_counter: u16,
-    pub location_counter_prev: u16,
-    pub bytes_written: u32,
     pub symbols: Symbols,
     pub object_code: ObjectCode,
 }
@@ -27,10 +23,6 @@ pub struct Assembler {
 impl Assembler {
     pub fn new() -> Assembler {
         Assembler {
-            code_generation: false,
-            location_counter: 0,
-            location_counter_prev: 0,
-            bytes_written: 0,
             symbols: Symbols::new(),
             object_code: ObjectCode::new(),
             handlers: {
@@ -58,9 +50,9 @@ impl Assembler {
         for (regex, handler) in self.handlers.iter() {
             if let Some(captures) = regex.captures(&line) {
                 let tokens = Tokens::new(captures);
-                if !self.code_generation {
+                if !self.object_code.write_enabled {
                     if let Some(label) = tokens.label() {
-                        self.symbols.insert(String::from(label), self.location_counter as i32);
+                        self.symbols.insert(String::from(label), self.object_code.location_counter as i32);
                     };
                 }
                 return handler(self, tokens);
@@ -86,7 +78,7 @@ impl Assembler {
     }
 
     fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
-        let operand = resolve_operand(tokens.operand(), |s| Some(1));
+        let operand = resolve_operand(tokens.operand(), |s| self.symbols.get(s).map(|v| *v));
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
             Some(operation) => match parse_instruction(operation) {
@@ -170,10 +162,8 @@ mod tests {
     #[test]
     fn initial_state() {
         let asm = Assembler::new();
-        assert_eq!(asm.code_generation, false);
-        assert_eq!(asm.bytes_written, 0);
-        assert_eq!(asm.location_counter, 0);
-        assert_eq!(asm.location_counter_prev, 0);
+        assert_eq!(asm.object_code.write_enabled, false);
+        assert_eq!(asm.object_code.location_counter, 0);
         assert!(asm.symbols.is_empty());
     }
 
@@ -182,7 +172,7 @@ mod tests {
         let mut asm = Assembler::new();
         let r = asm.process_line("");
         assert!(matches!(r, AsmError::Ok));
-        assert_eq!(asm.location_counter_prev, 0);
+        assert_eq!(asm.object_code.location_counter, 0);
         assert!(asm.symbols.is_empty());
     }
 
@@ -191,7 +181,7 @@ mod tests {
         let mut asm = Assembler::new();
         let r = asm.process_line("SEI");
         assert!(matches!(r, AsmError::Ok));
-        assert_eq!(asm.location_counter_prev, 1);
+        assert_eq!(asm.object_code.location_counter, 1);
         assert!(asm.symbols.is_empty());
         assert!(asm.object_code.data.is_empty());
     }

@@ -5,7 +5,7 @@ pub const HI_BYTE_MODIFIER: char = '>';
 pub const HEX_PREFIX: char = '$';
 pub const BIN_PREFIX: char = '%';
 
-pub type SymbolResolver = fn(symbol: &str) -> Option<i32>;
+pub type SymbolResolver = Fn(&str) -> Option<&i32>;
 
 enum Modifier {
     None,
@@ -48,7 +48,7 @@ fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
     }
 }
 
-fn resolve_raw(raw: &str, symbol_resolver: SymbolResolver) -> Result<i32, AsmError> {
+fn resolve_raw<T: Fn(&str) -> Option<i32>>(raw: &str, symbol_resolver: T) -> Result<i32, AsmError> {
     match raw.chars().next() {
         Some(c) => match c {
             HEX_PREFIX => parse_int(&raw[1..], 16),
@@ -67,7 +67,7 @@ fn resolve_raw(raw: &str, symbol_resolver: SymbolResolver) -> Result<i32, AsmErr
     }
 }
 
-pub fn resolve_operand(opsrc: Option<&str>, symbol_resolver: SymbolResolver) -> Result<i32, AsmError> {
+pub fn resolve_operand<T: Fn(&str) -> Option<i32>>(opsrc: Option<&str>, symbol_resolver: T) -> Result<i32, AsmError> {
     match opsrc {
         Some(src) => {
             let modifier = Modifier::from(src);
@@ -168,6 +168,6 @@ mod tests {
         assert_ok!("label_2", 0xac02);
         assert_ok!("<label_1", 0xfe);
         assert_ok!(">label_1", 0x2f);
-        assert_err!("labeloza", AsmError::SymbolAlreadyDefined);
+        assert_err!("labeloza", AsmError::SymbolNotDefined);
     }
 }

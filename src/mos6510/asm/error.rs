@@ -1,6 +1,5 @@
 pub enum AsmError {
     Ok,
-    SymbolAlreadyDefined,
     SymbolNotDefined,
     MissingOperand,
     NumericOperandRequired,
