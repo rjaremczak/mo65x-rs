@@ -11,7 +11,12 @@ impl ObjectCode {
         }
     }
 
-    pub fn emit_byte(&mut self, byte: u8) {}
+    pub fn emit_byte(&mut self, byte: u8) {
+        self.data.push(byte);
+    }
 
-    pub fn emit_word(&mut self, word: u16) {}
+    pub fn emit_word(&mut self, word: u16) {
+        self.data.push(word as u8);
+        self.data.push((word >> 8) as u8);
+    }
 }

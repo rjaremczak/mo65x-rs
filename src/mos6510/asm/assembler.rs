@@ -1,17 +1,14 @@
 mod patterns;
 mod tokens;
 
-use crate::mos6510::instruction::parse_instruction;
-
 use self::tokens::Tokens;
-
-use super::super::opcode::*;
 use super::error::AsmError;
 use super::object_code::ObjectCode;
 use super::*;
 use super::{super::addrmode::AddrMode, operand::resolve_operand};
-use super::{super::instruction::Instruction, operand::is_zero_page_operand};
-use regex::{Captures, Match, Regex};
+use super::{super::opcode::*, operand::is_zero_page_operand};
+use crate::mos6510::instruction::parse_instruction;
+use regex::Regex;
 use std::collections::HashMap;
 
 type Symbols = HashMap<String, i32>;
@@ -182,17 +179,16 @@ mod tests {
 
     #[test]
     fn empty_line() {
-        let asm = Assembler::new();
-        let mut ap = Assembler::new();
+        let mut asm = Assembler::new();
         let r = asm.process_line("");
         assert!(matches!(r, AsmError::Ok));
-        assert_eq!(ap.location_counter_prev, 0);
-        assert!(ap.symbols.is_empty());
+        assert_eq!(asm.location_counter_prev, 0);
+        assert!(asm.symbols.is_empty());
     }
 
     #[test]
     fn implied_mode() {
-        let asm = Assembler::new();
+        let mut asm = Assembler::new();
         let r = asm.process_line("SEI");
         assert!(matches!(r, AsmError::Ok));
         assert_eq!(asm.location_counter_prev, 1);

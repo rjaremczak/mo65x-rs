@@ -90,6 +90,34 @@ pub fn is_zero_page_operand(num: i32) -> bool {
 mod tests {
     use super::*;
 
+    fn test_resolver(s: &str) -> Option<i32> {
+        match s {
+            "label_1" => Some(0x2ffe),
+            "label_2" => Some(0xac02),
+            _ => None,
+        }
+    }
+
+    macro_rules! assert_err {
+        ($symbol:expr, $experr:path) => {
+            if let Err(err) = resolve_operand(Some($symbol), test_resolver) {
+                assert!(matches!(err, $experr));
+            } else {
+                assert!(false);
+            }
+        };
+    }
+
+    macro_rules! assert_ok {
+        ($symbol:expr, $value:expr) => {
+            if let Ok(num) = resolve_operand(Some($symbol), test_resolver) {
+                assert_eq!(num, $value);
+            } else {
+                assert!(false, "str: {}", $symbol);
+            }
+        };
+    }
+
     #[test]
     fn no_modifier() {
         let p = Modifier::from("$1230");
@@ -111,59 +139,35 @@ mod tests {
         assert_eq!(p.len(), 1);
     }
 
-    fn test_resolver(s: &str) -> Option<i32> {
-        match s {
-            "label_1" => Some(0x2ffe),
-            "label_2" => Some(0xac02),
-            _ => None,
-        }
-    }
-
-    fn assert_ok(s: &str, val: i32) {
-        if let Ok(num) = resolve_operand(s, test_resolver) {
-            assert_eq!(num, val);
-        } else {
-            assert!(false, "str: {}", s);
-        }
-    }
-
-    fn assert_err(s: &str, exp: AsmError) {
-        if let Err(err) = resolve_operand(s, test_resolver) {
-            assert!(matches!(err, exp));
-        } else {
-            assert!(false);
-        }
-    }
-
     #[test]
     fn bin_numbers() {
-        assert_ok("%10000011", 131);
-        assert_ok("<%0011110010100101", 0b10100101);
-        assert_ok(">%1100000000000110", 0b11000000);
+        assert_ok!("%10000011", 131);
+        assert_ok!("<%0011110010100101", 0b10100101);
+        assert_ok!(">%1100000000000110", 0b11000000);
     }
 
     #[test]
     fn dec_numbers() {
-        assert_ok("65000", 65000);
-        assert_ok("-201", -201);
-        assert_ok("<32769", 0x01);
-        assert_ok(">32769", 0x80);
+        assert_ok!("65000", 65000);
+        assert_ok!("-201", -201);
+        assert_ok!("<32769", 0x01);
+        assert_ok!(">32769", 0x80);
     }
 
     #[test]
     fn hex_numbers() {
-        assert_ok("$-100", -256);
-        assert_ok("$01f", 31);
-        assert_ok("<$10ac", 0xac);
-        assert_ok(">$10ac", 0x10);
+        assert_ok!("$-100", -256);
+        assert_ok!("$01f", 31);
+        assert_ok!("<$10ac", 0xac);
+        assert_ok!(">$10ac", 0x10);
     }
 
     #[test]
     fn symbols() {
-        assert_ok("label_1", 0x2ffe);
-        assert_ok("label_2", 0xac02);
-        assert_ok("<label_1", 0xfe);
-        assert_ok(">label_1", 0x2f);
-        assert_err("labeloza", AsmError::SymbolNotDefined);
+        assert_ok!("label_1", 0x2ffe);
+        assert_ok!("label_2", 0xac02);
+        assert_ok!("<label_1", 0xfe);
+        assert_ok!(">label_1", 0x2f);
+        assert_err!("labeloza", AsmError::SymbolAlreadyDefined);
     }
 }
