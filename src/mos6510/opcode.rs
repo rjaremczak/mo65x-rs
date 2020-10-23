@@ -11,10 +11,7 @@ pub struct OpCode {
 
 impl OpCode {
     pub fn matches(&self, instruction: Instruction, addrmode: AddrMode) -> bool {
-        match (self.instruction, self.addrmode) {
-            (instruction, addrmode) => true,
-            _ => false,
-        }
+        self.instruction == instruction && self.addrmode == addrmode
     }
 }
 
@@ -300,3 +297,16 @@ pub static OPCODES: [OpCode; 256] = [
     ins(0xfe, INC, AbsoluteX, 7),
     kil(0xff),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_opcode() {
+        match find_opcode(SEI, Implied) {
+            Some(oc) => assert_eq!(oc.code, 0x78),
+            None => assert!(false, "opcode not found"),
+        }
+    }
+}

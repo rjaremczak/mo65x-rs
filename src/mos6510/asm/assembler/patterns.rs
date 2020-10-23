@@ -30,7 +30,7 @@ impl AsmPatterns {
         let org_cmd = String::from("((?:\\.ORG\\s+)|(?:\\*\\s*=\\s*))");
         let byte_cmd = String::from("(\\.BYTE|DCB)\\s+");
         let word_cmd = String::from("(\\.WORD)\\s+");
-        let hex_num = String::from("\\$[\\d|a-h]{1,4}");
+        let hex_num = String::from("\\$[\\d|a-f|A-F]{1,4}");
         let dec_num = String::from("\\d{1,5}");
         let bin_num = String::from("%[01]{1,16}");
         let mnemonic = String::from("([a-zA-Z]{3})\\s*");
@@ -81,8 +81,16 @@ mod tests {
 
     #[test]
     fn match_implied() {
-        let ap = AsmPatterns::new();
-        assert_line(&ap.ins_implied, "    inc", None, Some("inc"), None);
-        assert_line(&ap.ins_implied, "SEI", None, Some("SEI"), None);
+        let p = AsmPatterns::new().ins_implied;
+        assert_line(&p, "    inc", None, Some("inc"), None);
+        assert_line(&p, "SEI", None, Some("SEI"), None);
+        assert_line(&p, "label1: SEI", Some("label1"), Some("SEI"), None);
+    }
+
+    #[test]
+    fn match_immediate() {
+        let p = AsmPatterns::new().ins_immediate;
+        assert_line(&p, "lda #$AF", None, Some("lda"), Some("$AF"));
+        //assert_line(&p, "lab: lda #$AF", Some("lab"), Some("lda"), Some("#$AF"));
     }
 }

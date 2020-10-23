@@ -15,9 +15,9 @@ type Symbols = HashMap<String, i32>;
 type Handler = fn(&mut Assembler, tokens: Tokens) -> AsmError;
 
 pub struct Assembler {
-    pub handlers: Vec<(Regex, Handler)>,
-    pub symbols: Symbols,
-    pub object_code: ObjectCode,
+    handlers: Vec<(Regex, Handler)>,
+    symbols: Symbols,
+    object_code: ObjectCode,
 }
 
 impl Assembler {
@@ -101,7 +101,6 @@ impl Assembler {
     }
 
     pub fn handle_empty_line(&mut self, tokens: Tokens) -> AsmError {
-        println!("empty line");
         AsmError::Ok
     }
 
@@ -159,8 +158,29 @@ impl Assembler {
 mod tests {
     use super::*;
 
+    fn assert_asm(line: &str, code: &[u8]) {
+        let mut asm = Assembler::new();
+        asm.object_code.write_enabled = true;
+        let r = asm.process_line(line);
+        assert!(matches!(r, AsmError::Ok), "line {} assembly error: {:?}", line, r);
+        assert_eq!(
+            asm.object_code.location_counter,
+            code.len() as u16,
+            "generated code size is {} but should be {}",
+            asm.object_code.location_counter,
+            code.len() as u16
+        );
+        assert_eq!(
+            asm.object_code.data.as_slice(),
+            code,
+            "generated code {:?} differs from {:?}",
+            asm.object_code.data.as_slice(),
+            code
+        );
+    }
+
     #[test]
-    fn initial_state() {
+    fn init() {
         let asm = Assembler::new();
         assert_eq!(asm.object_code.write_enabled, false);
         assert_eq!(asm.object_code.location_counter, 0);
@@ -169,20 +189,11 @@ mod tests {
 
     #[test]
     fn empty_line() {
-        let mut asm = Assembler::new();
-        let r = asm.process_line("");
-        assert!(matches!(r, AsmError::Ok));
-        assert_eq!(asm.object_code.location_counter, 0);
-        assert!(asm.symbols.is_empty());
+        assert_asm("", &[]);
     }
 
     #[test]
     fn implied_mode() {
-        let mut asm = Assembler::new();
-        let r = asm.process_line("SEI");
-        assert!(matches!(r, AsmError::Ok));
-        assert_eq!(asm.object_code.location_counter, 1);
-        assert!(asm.symbols.is_empty());
-        assert!(asm.object_code.data.is_empty());
+        assert_asm("SEI", &[0x78]);
     }
 }
