@@ -1,9 +1,9 @@
 pub fn parse_instruction(mnemonic: &str) -> Option<Instruction> {
-    MNEMONICS.iter().find(|e| e.1 == mnemonic).map_or(None, |e| Some(e.0))
+    MNEMONICS.iter().find(|e| e.mnemonic == mnemonic).map(|e| e.instruction)
 }
 
 pub fn find_mnemonic(instruction: Instruction) -> Option<&'static str> {
-    MNEMONICS.iter().find(|e| e.0 == instruction).map_or(None, |e| Some(e.1))
+    MNEMONICS.iter().find(|e| e.instruction == instruction).map(|e| e.mnemonic)
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -69,64 +69,73 @@ pub enum Instruction {
 
 use Instruction::*;
 
-pub static MNEMONICS: [(Instruction, &str); 57] = [
-    (ADC, "ADC"),
-    (SBC, "SBC"),
-    (AND, "AND"),
-    (ORA, "ORA"),
-    (ASL, "ASL"),
-    (LSR, "LSR"),
-    (EOR, "EOR"),
-    (ROL, "ROL"),
-    (ROR, "ROR"),
-    (BIT, "BIT"),
-    (CMP, "CMP"),
-    (CPX, "CPX"),
-    (CPY, "CPY"),
-    (INC, "INC"),
-    (INX, "INX"),
-    (INY, "INY"),
-    (DEC, "DEC"),
-    (DEX, "DEX"),
-    (DEY, "DEY"),
-    (BCC, "BCC"),
-    (BCS, "BCS"),
-    (BEQ, "BEQ"),
-    (BMI, "BMI"),
-    (BNE, "BNE"),
-    (BPL, "BPL"),
-    (BVC, "BVC"),
-    (BVS, "BVS"),
-    (CLC, "CLC"),
-    (CLD, "CLD"),
-    (CLI, "CLI"),
-    (CLV, "CLV"),
-    (SEC, "SEC"),
-    (SED, "SED"),
-    (SEI, "SEI"),
-    (JMP, "JMP"),
-    (JSR, "JSR"),
-    (BRK, "BRK"),
-    (RTI, "RTI"),
-    (RTS, "RTS"),
-    (LDA, "LDA"),
-    (LDX, "LDX"),
-    (LDY, "LDY"),
-    (STA, "STA"),
-    (STX, "STX"),
-    (STY, "STY"),
-    (TAX, "TAX"),
-    (TAY, "TAY"),
-    (TSX, "TSX"),
-    (TXA, "TXA"),
-    (TYA, "TYA"),
-    (TXS, "TXS"),
-    (PHA, "PHA"),
-    (PHP, "PHP"),
-    (PLA, "PLA"),
-    (PLP, "PLP"),
-    (NOP, "NOP"),
-    (KIL, "KIL"),
+pub struct Mnemonic<'a> {
+    instruction: Instruction,
+    mnemonic: &'a str,
+}
+
+const fn mn(instruction: Instruction, mnemonic: &str) -> Mnemonic {
+    Mnemonic { instruction, mnemonic }
+}
+
+pub static MNEMONICS: [Mnemonic; 57] = [
+    mn(ADC, "ADC"),
+    mn(SBC, "SBC"),
+    mn(AND, "AND"),
+    mn(ORA, "ORA"),
+    mn(ASL, "ASL"),
+    mn(LSR, "LSR"),
+    mn(EOR, "EOR"),
+    mn(ROL, "ROL"),
+    mn(ROR, "ROR"),
+    mn(BIT, "BIT"),
+    mn(CMP, "CMP"),
+    mn(CPX, "CPX"),
+    mn(CPY, "CPY"),
+    mn(INC, "INC"),
+    mn(INX, "INX"),
+    mn(INY, "INY"),
+    mn(DEC, "DEC"),
+    mn(DEX, "DEX"),
+    mn(DEY, "DEY"),
+    mn(BCC, "BCC"),
+    mn(BCS, "BCS"),
+    mn(BEQ, "BEQ"),
+    mn(BMI, "BMI"),
+    mn(BNE, "BNE"),
+    mn(BPL, "BPL"),
+    mn(BVC, "BVC"),
+    mn(BVS, "BVS"),
+    mn(CLC, "CLC"),
+    mn(CLD, "CLD"),
+    mn(CLI, "CLI"),
+    mn(CLV, "CLV"),
+    mn(SEC, "SEC"),
+    mn(SED, "SED"),
+    mn(SEI, "SEI"),
+    mn(JMP, "JMP"),
+    mn(JSR, "JSR"),
+    mn(BRK, "BRK"),
+    mn(RTI, "RTI"),
+    mn(RTS, "RTS"),
+    mn(LDA, "LDA"),
+    mn(LDX, "LDX"),
+    mn(LDY, "LDY"),
+    mn(STA, "STA"),
+    mn(STX, "STX"),
+    mn(STY, "STY"),
+    mn(TAX, "TAX"),
+    mn(TAY, "TAY"),
+    mn(TSX, "TSX"),
+    mn(TXA, "TXA"),
+    mn(TYA, "TYA"),
+    mn(TXS, "TXS"),
+    mn(PHA, "PHA"),
+    mn(PHP, "PHP"),
+    mn(PLA, "PLA"),
+    mn(PLP, "PLP"),
+    mn(NOP, "NOP"),
+    mn(KIL, "KIL"),
 ];
 
 #[cfg(test)]
@@ -134,13 +143,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn find_instruction_by_mnemonic() {
+    fn find_ok() {
+        assert!(matches!(parse_instruction("LDX"), Some(LDX)));
         assert!(matches!(parse_instruction("LDA").unwrap(), LDA));
+    }
+
+    #[test]
+    fn find_failed() {
         assert!(matches!(parse_instruction("JUH"), None));
     }
 
     #[test]
     fn find_mnemonic_by_instruction() {
+        assert!(matches!(find_mnemonic(LDA).unwrap(), "LDA"));
         assert!(matches!(find_mnemonic(TXA).unwrap(), "TXA"));
         assert!(matches!(find_mnemonic(KIL).unwrap(), "KIL"));
     }
