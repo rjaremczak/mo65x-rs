@@ -122,7 +122,7 @@ impl Assembler {
     }
 
     pub fn handle_immediate(&mut self, tokens: Tokens) -> AsmError {
-        AsmError::InvalidMnemonic
+        self.assemble(AddrMode::Immediate, tokens)
     }
 
     pub fn handle_branch(&mut self, tokens: Tokens) -> AsmError {
@@ -158,9 +158,7 @@ impl Assembler {
 mod tests {
     use super::*;
 
-    fn assert_asm(line: &str, code: &[u8]) {
-        let mut asm = Assembler::new();
-        asm.object_code.write_enabled = true;
+    fn assert_asm(asm: &mut Assembler, line: &str, code: &[u8]) {
         let r = asm.process_line(line);
         assert!(matches!(r, AsmError::Ok), "line {} assembly error: {:?}", line, r);
         assert_eq!(
@@ -179,6 +177,13 @@ mod tests {
         );
     }
 
+    fn assert_once(line: &str, code: &[u8]) -> Assembler {
+        let mut asm = Assembler::new();
+        asm.object_code.write_enabled = true;
+        assert_asm(&mut asm, line, code);
+        asm
+    }
+
     #[test]
     fn init() {
         let asm = Assembler::new();
@@ -189,11 +194,18 @@ mod tests {
 
     #[test]
     fn empty_line() {
-        assert_asm("", &[]);
+        assert_once("", &[]);
     }
 
     #[test]
     fn implied_mode() {
-        assert_asm("SEI", &[0x78]);
+        assert_once("SEI", &[0x78]);
+    }
+
+    #[test]
+    fn immediate_mode() {
+        assert_once("LDA #%00110101", &[0xa9, 0b00110101]);
+        assert_once("LDY #255", &[0xa4, 0xff]);
+        assert_once("LDX #123", &[0xa2, 123]);
     }
 }

@@ -91,6 +91,6 @@ mod tests {
     fn match_immediate() {
         let p = AsmPatterns::new().ins_immediate;
         assert_line(&p, "lda #$AF", None, Some("lda"), Some("$AF"));
-        //assert_line(&p, "lab: lda #$AF", Some("lab"), Some("lda"), Some("#$AF"));
+        assert_line(&p, "ldx #128", None, Some("ldx"), Some("128"));
     }
 }
