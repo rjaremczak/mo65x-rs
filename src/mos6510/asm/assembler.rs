@@ -76,11 +76,11 @@ impl Assembler {
 
     fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
         let operand = match addrmode {
-            AddrMode::Implied => match resolve_operand(tokens.operand(), |s| self.symbols.get(s).map(|v| *v)) {
+            AddrMode::Implied => None,
+            _ => match resolve_operand(tokens.operand(), |s| self.symbols.get(s).map(|v| *v)) {
                 Ok(opvalue) => Some(opvalue),
                 Err(err) => return err,
             },
-            _ => None,
         };
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn immediate_mode() {
         assert_once("LDA #%00110101", &[0xa9, 0b00110101]);
-        //assert_once("LDY #255", &[0xa4, 0xff]);
-        //assert_once("LDX #123", &[0xa2, 123]);
+        assert_once("LDX #123", &[0xa2, 123]);
+        assert_once("LDY #255", &[0xa0, 0xff]);
     }
 }
