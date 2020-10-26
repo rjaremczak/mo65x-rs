@@ -50,11 +50,11 @@ impl AsmPatterns {
             ins_immediate: rx(&format!("{}#{}", mnemonic, operand)),
             ins_branch: rx(&format!("{}{}", branch_mnemonic, branch_target)),
             ins_absolute: rx(&format!("{}{}", mnemonic, operand)),
-            ins_absolute_indexed_x: rx(&format!("{}{},x", mnemonic, operand)),
-            ins_absolute_indexed_y: rx(&format!("{}{},y", mnemonic, operand)),
+            ins_absolute_indexed_x: rx(&format!("{}{},[xX]", mnemonic, operand)),
+            ins_absolute_indexed_y: rx(&format!("{}{},[yY]", mnemonic, operand)),
             ins_indirect: rx(&format!("{}\\({}\\)", mnemonic, operand)),
-            ins_indexed_indirect_x: rx(&format!("{}\\({},x\\)", mnemonic, operand)),
-            ins_indirect_indexed_y: rx(&format!("{}\\({}\\),y", mnemonic, operand)),
+            ins_indexed_indirect_x: rx(&format!("{}\\({},[xX]\\)", mnemonic, operand)),
+            ins_indirect_indexed_y: rx(&format!("{}\\({}\\),[yY]", mnemonic, operand)),
         }
     }
 }
@@ -92,5 +92,17 @@ mod tests {
         let p = AsmPatterns::new().ins_immediate;
         assert_line(&p, "lda #$AF", None, Some("lda"), Some("$AF"));
         assert_line(&p, "ldx #128", None, Some("ldx"), Some("128"));
+    }
+
+    #[test]
+    fn match_absolute() {
+        let p = AsmPatterns::new().ins_absolute;
+        assert_line(&p, "LDY $8f", None, Some("LDY"), Some("$8f"));
+    }
+
+    #[test]
+    fn match_absolute_x() {
+        let p = AsmPatterns::new().ins_absolute_indexed_x;
+        assert_line(&p, "LDA $a0,X", None, Some("LDA"), Some("$a0"));
     }
 }
