@@ -1,15 +1,15 @@
 pub struct ObjectCode {
+    pub write_enabled: bool,
     pub origin: u16,
     pub location_counter: u16,
     pub data: Vec<u8>,
-    pub write_enabled: bool,
 }
 
 impl ObjectCode {
-    pub fn new() -> Self {
+    pub fn new(origin: u16) -> Self {
         Self {
-            origin: 0,
-            location_counter: 0,
+            origin,
+            location_counter: origin,
             data: Vec::new(),
             write_enabled: false,
         }

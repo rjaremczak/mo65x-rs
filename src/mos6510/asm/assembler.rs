@@ -21,10 +21,10 @@ pub struct Assembler {
 }
 
 impl Assembler {
-    pub fn new() -> Assembler {
+    pub fn new(origin: u16) -> Assembler {
         Assembler {
             symbols: Symbols::new(),
-            object_code: ObjectCode::new(),
+            object_code: ObjectCode::new(origin),
             handlers: {
                 let p = patterns::AsmPatterns::new();
                 vec![
@@ -171,7 +171,7 @@ mod tests {
     }
 
     fn assert_asm(line: &str, code: &[u8]) -> Assembler {
-        let mut asm = Assembler::new();
+        let mut asm = Assembler::new(0);
         asm.generate_code(true);
         assert_next(&mut asm, line, code);
         asm
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn init() {
-        let asm = Assembler::new();
+        let asm = Assembler::new(0);
         assert_eq!(asm.object_code.write_enabled, false);
         assert_eq!(asm.object_code.location_counter, 0);
         assert!(asm.symbols.is_empty());
