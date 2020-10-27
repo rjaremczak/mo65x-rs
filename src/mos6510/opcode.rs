@@ -294,8 +294,8 @@ mod tests {
 
     #[test]
     fn test_find_opcode() {
-        match find_opcode(&SEI, Implied) {
-            Some(oc) => assert_eq!(oc.code, 0x78),
+        match find_opcode(&JMP, Absolute) {
+            Some(oc) => assert_eq!(oc.code, 0x4c),
             None => assert!(false, "opcode not found"),
         }
     }

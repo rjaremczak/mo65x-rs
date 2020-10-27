@@ -7,10 +7,11 @@ impl Instruction<'_> {
     const fn new(mnemonic: &str) -> Instruction {
         Instruction { mnemonic }
     }
+}
 
-    pub fn from(mnemonic: &str) -> Option<&Instruction> {
-        INSTRUCTIONS.iter().find(|e| e.mnemonic == mnemonic).map(|e| *e)
-    }
+pub fn find_instruction(mnemonic: &str) -> Option<&Instruction> {
+    let m = &mnemonic.to_uppercase();
+    INSTRUCTIONS.iter().find(|e| e.mnemonic == m).map(|e| *e)
 }
 
 pub static ADC: Instruction = Instruction::new("ADC");
@@ -83,13 +84,13 @@ mod tests {
 
     #[test]
     fn find_ok() {
-        assert_eq!(Instruction::from("LDX"), Some(&LDX));
-        assert_eq!(Instruction::from("LDA"), Some(&LDA));
+        assert_eq!(find_instruction("LDX"), Some(&LDX));
+        assert_eq!(find_instruction("LDA"), Some(&LDA));
     }
 
     #[test]
     fn find_failed() {
-        assert!(matches!(Instruction::from("JUH"), None));
+        assert!(matches!(find_instruction("JUH"), None));
     }
 
     #[test]

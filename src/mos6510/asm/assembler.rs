@@ -7,7 +7,7 @@ use super::object_code::ObjectCode;
 use super::*;
 use super::{super::addrmode::AddrMode, operand::resolve_operand};
 use super::{super::opcode::*, operand::is_zero_page_operand};
-use crate::mos6510::instruction::Instruction;
+use crate::mos6510::instruction::find_instruction;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -82,7 +82,7 @@ impl Assembler {
         };
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
-            Some(operation) => match Instruction::from(operation) {
+            Some(operation) => match find_instruction(operation) {
                 Some(instruction) => match find_opcode(instruction, opt_addrmode) {
                     Some(opcode) => {
                         self.object_code.emit_byte(opcode.code);
@@ -163,23 +163,11 @@ impl Assembler {
 mod tests {
     use super::*;
 
-    fn assert_asm(asm: &mut Assembler, line: &str, code: &[u8]) {
+    fn assert_asm(asm: &mut Assembler, line: &str, expected: &[u8]) {
         let r = asm.process_line(line);
         assert!(matches!(r, AsmError::Ok), "line {} assembly error: {:?}", line, r);
-        assert_eq!(
-            asm.object_code.location_counter,
-            code.len() as u16,
-            "generated code size is {} but should be {}",
-            asm.object_code.location_counter,
-            code.len() as u16
-        );
-        assert_eq!(
-            asm.object_code.data.as_slice(),
-            code,
-            "generated code {:?} differs from {:?}",
-            asm.object_code.data.as_slice(),
-            code
-        );
+        let generated = &asm.object_code.data[(asm.object_code.data.len() - expected.len())..];
+        assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
 
     fn assert_once(line: &str, code: &[u8]) -> Assembler {
@@ -230,7 +218,7 @@ mod tests {
         assert_once("STX $7a,Y", &[0x96, 0x7a]);
     }
 
-    // #[test]
+    #[test]
     fn absolute_mode() {
         let mut asm = Assembler::new();
         asm.generate_code(true);
