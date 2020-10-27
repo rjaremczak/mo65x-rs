@@ -163,17 +163,17 @@ impl Assembler {
 mod tests {
     use super::*;
 
-    fn assert_asm(asm: &mut Assembler, line: &str, expected: &[u8]) {
+    fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
         let r = asm.process_line(line);
         assert!(matches!(r, AsmError::Ok), "line {} assembly error: {:?}", line, r);
         let generated = &asm.object_code.data[(asm.object_code.data.len() - expected.len())..];
         assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
 
-    fn assert_once(line: &str, code: &[u8]) -> Assembler {
+    fn assert_asm(line: &str, code: &[u8]) -> Assembler {
         let mut asm = Assembler::new();
         asm.generate_code(true);
-        assert_asm(&mut asm, line, code);
+        assert_next(&mut asm, line, code);
         asm
     }
 
@@ -187,98 +187,85 @@ mod tests {
 
     #[test]
     fn empty_line() {
-        assert_once("", &[]);
+        assert_asm("", &[]);
     }
 
     #[test]
     fn implied_mode() {
-        assert_once("SEI", &[0x78]);
-        assert_once("ASL", &[0x0a]);
+        assert_asm("SEI", &[0x78]);
+        assert_asm("ASL", &[0x0a]);
     }
 
     #[test]
     fn immediate_mode() {
-        assert_once("LDA #%00110101", &[0xa9, 0b00110101]);
-        assert_once("LDX #123", &[0xa2, 123]);
-        assert_once("LDY #255", &[0xa0, 0xff]);
+        assert_asm("LDA #%00110101", &[0xa9, 0b00110101]);
+        assert_asm("LDX #123", &[0xa2, 123]);
+        assert_asm("LDY #255", &[0xa0, 0xff]);
     }
 
     #[test]
     fn zero_page_mode() {
-        assert_once("LDY $8f", &[0xa4, 0x8f]);
+        assert_asm("LDY $8f", &[0xa4, 0x8f]);
     }
 
     #[test]
     fn zero_page_x_mode() {
-        assert_once("LDA $a0,X", &[0xb5, 0xa0]);
+        assert_asm("LDA $a0,X", &[0xb5, 0xa0]);
     }
 
     #[test]
     fn zero_page_y_mode() {
-        assert_once("STX $7a,Y", &[0x96, 0x7a]);
+        assert_asm("STX $7a,Y", &[0x96, 0x7a]);
     }
 
     #[test]
     fn absolute_mode() {
-        let mut asm = Assembler::new();
-        asm.generate_code(true);
-        assert_asm(&mut asm, "ROR $3400", &[0x6e, 0x00, 0x34]);
-        assert_asm(&mut asm, "jmp $2000", &[0x4c, 0x00, 0x20]);
+        let mut asm = assert_asm("ROR $3400", &[0x6e, 0x00, 0x34]);
+        assert_next(&mut asm, "jmp $2000", &[0x4c, 0x00, 0x20]);
         asm.symbols.insert("c".to_string(), 0xfab0);
-        assert_asm(&mut asm, "jmp c", &[0x4c, 0xb0, 0xfa]);
+        assert_next(&mut asm, "jmp c", &[0x4c, 0xb0, 0xfa]);
     }
+
+    #[test]
+    fn absolute_mode_x() {
+        assert_asm("LSR $35f0,X", &[0x5e, 0xf0, 0x35]);
+    }
+
+    #[test]
+    fn absolute_mode_y() {
+        assert_asm("EOR $f7a0,Y", &[0x59, 0xa0, 0xf7]);
+    }
+
+    #[test]
+    fn indirect_mode() {
+        assert_asm("JMP ($ffa0)", &[0x6c, 0xa0, 0xff]);
+    }
+
+    #[test]
+    fn indirect_mode_x() {
+        assert_asm("LDA ($8c,X)", &[0xa1, 0x8c]);
+    }
+
+    #[test]
+    fn indirect_indexed_y() {
+        assert_asm("ORA ($a7),Y", &[0x11, 0xa7]);
+    }
+
+    #[test]
+    fn relative_mode() {
+        assert_asm("BCC -1", &[0x90, u8::from_ne_bytes((-1 as i8).to_ne_bytes())]);
+        assert_asm("BVS +8", &[0x70, 8]);
+    }
+
+    #[test]
+    fn set_location_counter() {
+        let mut asm = assert_asm("  .ORG $3000 ;origin", &[]);
+        assert_eq!(asm.object_code.location_counter, 0x3000);
+        assert_next(&mut asm, "  .ORG $4000 ;origin", &[]);
+        assert_eq!(asm.object_code.location_counter, 0x4000);
+    }
+
     /*
-        #[test]
-    fn (AssemblerTest, testAbsoluteXMode) {
-        TEST_INST_3("LSR $35f0,X", 0x5e, 0xf0, 0x35);
-        }
-
-        #[test]
-    fn (AssemblerTest, testAbsoluteYMode) {
-        TEST_INST_3("EOR $f7a0,Y", 0x59, 0xa0, 0xf7);
-        }
-
-        #[test]
-    fn (AssemblerTest, testIndirectMode) {
-        TEST_INST_3("JMP ($ffa0)", 0x6c, 0xa0, 0xff);
-        }
-
-        #[test]
-    fn (AssemblerTest, testIndexedIndirectXMode) {
-        TEST_INST_2("LDA ($8c,X)", 0xa1, 0x8c);
-        }
-
-        #[test]
-    fn (AssemblerTest, testIndirectIndexedYMode) {
-        TEST_INST_2("ORA ($a7),Y", 0x11, 0xa7);
-        }
-
-        #[test]
-    fn (AssemblerTest, testRelativeModeMinus) {
-        TEST_INST_2("BCC -1", 0x90, -1);
-        }
-
-        #[test]
-    fn (AssemblerTest, testRelativeModeLabel) {
-        assembler.changeMode(Assembler::ProcessingMode::ScanForSymbols);
-        TEST_INST("firstloop:");
-        assembler.changeMode(Assembler::ProcessingMode::EmitCode);
-        TEST_INST_1("  BNE firstloop ;loop until Y is $10", 0xd0);
-        }
-
-        #[test]
-    fn (AssemblerTest, testRelativeModePlus) {
-        TEST_INST_2("BVS +8", 0x70, 8);
-        }
-
-        #[test]
-    fn (AssemblerTest, testOrg) {
-        TEST_INST("  .ORG $3000 ;origin");
-        EXPECT_EQ(assembler.m_locationCounter, 0x3000);
-        TEST_INST("  .ORG $4000 ;origin");
-        EXPECT_EQ(assembler.m_locationCounter, 0x4000);
-        }
-
         #[test]
     fn (AssemblerTest, testOrgStar) {
         TEST_INST("  *= $5000 ;origin");
