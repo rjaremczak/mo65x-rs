@@ -22,7 +22,7 @@ pub struct AsmPatterns {
 }
 
 fn rx(pattern: &str) -> Regex {
-    Regex::new(&format!("{}{}{}", LABEL, pattern, COMMENT)).unwrap()
+    Regex::new(&format!("(?i){}{}{}", LABEL, pattern, COMMENT)).unwrap()
 }
 
 impl AsmPatterns {
@@ -30,10 +30,10 @@ impl AsmPatterns {
         let org_cmd = String::from("((?:\\.ORG\\s+)|(?:\\*\\s*=\\s*))");
         let byte_cmd = String::from("(\\.BYTE|DCB)\\s+");
         let word_cmd = String::from("(\\.WORD)\\s+");
-        let hex_num = String::from("\\$[\\d|a-f|A-F]{1,4}");
+        let hex_num = String::from("\\$[\\d|a-f]{1,4}");
         let dec_num = String::from("\\d{1,5}");
         let bin_num = String::from("%[01]{1,16}");
-        let mnemonic = String::from("([a-zA-Z]{3})\\s*");
+        let mnemonic = String::from("([a-z]{3})\\s*");
         let num_or_symbol = format!("(?:{})|(?:{})|(?:{})|(?:{})", hex_num, dec_num, bin_num, SYMBOL);
         let lo_hi_prefix = format!("[{}|{}]?", LO_BYTE_MODIFIER, HI_BYTE_MODIFIER);
         let operand = format!("({}(?:{}))\\s*", lo_hi_prefix, num_or_symbol);
@@ -50,11 +50,11 @@ impl AsmPatterns {
             ins_immediate: rx(&format!("{}#{}", mnemonic, operand)),
             ins_branch: rx(&format!("{}{}", branch_mnemonic, branch_target)),
             ins_absolute: rx(&format!("{}{}", mnemonic, operand)),
-            ins_absolute_indexed_x: rx(&format!("{}{},[xX]", mnemonic, operand)),
-            ins_absolute_indexed_y: rx(&format!("{}{},[yY]", mnemonic, operand)),
+            ins_absolute_indexed_x: rx(&format!("{}{},x", mnemonic, operand)),
+            ins_absolute_indexed_y: rx(&format!("{}{},y", mnemonic, operand)),
             ins_indirect: rx(&format!("{}\\({}\\)", mnemonic, operand)),
-            ins_indexed_indirect_x: rx(&format!("{}\\({},[xX]\\)", mnemonic, operand)),
-            ins_indirect_indexed_y: rx(&format!("{}\\({}\\),[yY]", mnemonic, operand)),
+            ins_indexed_indirect_x: rx(&format!("{}\\({},x\\)", mnemonic, operand)),
+            ins_indirect_indexed_y: rx(&format!("{}\\({}\\),y", mnemonic, operand)),
         }
     }
 }
@@ -98,6 +98,7 @@ mod tests {
     fn match_absolute() {
         let p = AsmPatterns::new().ins_absolute;
         assert_line(&p, "LDY $8f", None, Some("LDY"), Some("$8f"));
+        assert_line(&p, "jmp $2000", None, Some("jmp"), Some("$2000"));
     }
 
     #[test]

@@ -7,7 +7,7 @@ use super::object_code::ObjectCode;
 use super::*;
 use super::{super::addrmode::AddrMode, operand::resolve_operand};
 use super::{super::opcode::*, operand::is_zero_page_operand};
-use crate::mos6510::instruction::parse_instruction;
+use crate::mos6510::instruction::Instruction;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -82,7 +82,7 @@ impl Assembler {
         };
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
-            Some(operation) => match parse_instruction(operation) {
+            Some(operation) => match Instruction::from(operation) {
                 Some(instruction) => match find_opcode(instruction, opt_addrmode) {
                     Some(opcode) => {
                         self.object_code.emit_byte(opcode.code);
