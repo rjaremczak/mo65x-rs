@@ -1,10 +1,10 @@
 use super::operand::{HI_BYTE_MODIFIER, LO_BYTE_MODIFIER};
 use regex::Regex;
 
-const SYMBOL: &str = "[a-z]\\w*";
-const LABEL: &str = "^(?:([a-z]\\w*):)?\\s*";
-const COMMENT: &str = "(?:;.*)?$";
-const SEPARATOR: &str = "\\s*,?\\s*";
+pub const SYMBOL: &str = "[a-z]\\w*";
+pub const LABEL: &str = "^(?:([a-z]\\w*):)?\\s*";
+pub const COMMENT: &str = "(?:;.*)?$";
+pub const SEPARATOR: &str = "\\s*,?\\s*";
 
 pub struct AsmPatterns {
     pub empty_line: Regex,
@@ -20,7 +20,6 @@ pub struct AsmPatterns {
     pub ins_indirect: Regex,
     pub ins_indexed_indirect_x: Regex,
     pub ins_indirect_indexed_y: Regex,
-    pub op_list_item: Regex,
 }
 
 fn rx(pattern: &str) -> Regex {
@@ -56,7 +55,6 @@ impl AsmPatterns {
             ins_indirect: rx(&format!("{}\\({}\\)", mnemonic, operand)),
             ins_indexed_indirect_x: rx(&format!("{}\\({},x\\)", mnemonic, operand)),
             ins_indirect_indexed_y: rx(&format!("{}\\({}\\),y", mnemonic, operand)),
-            op_list_item: rx(&format!("{}{}", operand, SEPARATOR)),
         }
     }
 }

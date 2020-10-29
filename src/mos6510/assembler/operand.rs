@@ -5,8 +5,6 @@ pub const HI_BYTE_MODIFIER: char = '>';
 pub const HEX_PREFIX: char = '$';
 pub const BIN_PREFIX: char = '%';
 
-//pub type SymbolResolver = dyn Fn(&str) -> Option<&i32>;
-
 enum Modifier {
     None,
     LoByte,
@@ -157,7 +155,7 @@ mod tests {
     #[test]
     fn hex_numbers() {
         assert_ok!("$-100", -256);
-        assert_ok!("1f", 31);
+        assert_ok!("$1f", 31);
         assert_ok!("<$10ac", 0xac);
         assert_ok!(">$10ac", 0x10);
     }

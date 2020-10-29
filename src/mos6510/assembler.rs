@@ -20,6 +20,7 @@ pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
     symbols: Symbols,
     object_code: ObjectCode,
+    op_list_separator: Regex,
 }
 
 impl Assembler {
@@ -27,6 +28,7 @@ impl Assembler {
         Assembler {
             symbols: Symbols::new(),
             object_code: ObjectCode::new(origin),
+            op_list_separator: Regex::new(&format!("(?i){}", patterns::SEPARATOR)).unwrap(),
             handlers: {
                 let p = patterns::AsmPatterns::new();
                 vec![
@@ -74,14 +76,30 @@ impl Assembler {
         }
     }
 
-    fn resolve_operand(&self, opstr: Option<&str>) -> Result<i32, AsmError> {
+    fn parse_operand(&self, opstr: Option<&str>) -> Result<i32, AsmError> {
         resolve_operand(opstr, |s| self.symbols.get(s).map(|v| *v))
+    }
+
+    fn parse_operand_list(&self, oplist: Option<&str>) -> Result<Vec<i32>, AsmError> {
+        match oplist {
+            Some(oplist) => {
+                let mut values: Vec<i32> = Vec::new();
+                for opstr in self.op_list_separator.split(oplist) {
+                    match self.parse_operand(Some(opstr)) {
+                        Ok(opval) => values.push(opval),
+                        Err(err) => return Err(err),
+                    }
+                }
+                Ok(values)
+            }
+            None => Err(AsmError::MissingOperand),
+        }
     }
 
     fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
         let operand = match addrmode {
             AddrMode::Implied => None,
-            _ => match self.resolve_operand(tokens.operand()) {
+            _ => match self.parse_operand(tokens.operand()) {
                 Ok(opvalue) => Some(opvalue),
                 Err(err) => return err,
             },
@@ -116,14 +134,20 @@ impl Assembler {
     }
 
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> AsmError {
-        match self.resolve_operand(tokens.operand()) {
+        match self.parse_operand(tokens.operand()) {
             Ok(val) => self.object_code.set_location_counter(val as u16),
             Err(err) => err,
         }
     }
 
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> AsmError {
-        AsmError::InvalidMnemonic
+        match self.parse_operand_list(tokens.operand()) {
+            Ok(values) => {
+                values.iter().for_each(|v| self.object_code.emit_byte(*v as u8));
+                AsmError::Ok
+            }
+            Err(err) => err,
+        }
     }
 
     pub fn handle_emit_words(&mut self, tokens: Tokens) -> AsmError {
@@ -271,6 +295,7 @@ mod tests {
         assert_eq!(asm.object_code.location_counter, 0x3000);
         assert_next(&mut asm, "  .ORG $4000 ;origin", &[]);
         assert_eq!(asm.object_code.location_counter, 0x4000);
+        assert_eq!(asm.object_code.data.len(), 0x4000);
     }
 
     /*
