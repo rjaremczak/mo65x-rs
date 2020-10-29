@@ -23,7 +23,7 @@ pub struct AsmPatterns {
 }
 
 fn rx(pattern: &str) -> Regex {
-    Regex::new(&format!("(?i){}{}{}", LABEL, pattern, COMMENT)).unwrap()
+    Regex::new(&format!("(?i){}{}\\s*{}", LABEL, pattern, COMMENT)).unwrap()
 }
 
 impl AsmPatterns {
@@ -70,7 +70,7 @@ mod tests {
                 assert_eq!(caps.get(2).map(|m| m.as_str()).as_deref(), operation.as_deref());
                 assert_eq!(caps.get(3).map(|m| m.as_str()).as_deref(), operand.as_deref());
             }
-            None => assert!(false, "matching failed"),
+            None => assert!(false, "line: \"{}\" matching failed", line),
         }
     }
 
@@ -105,5 +105,14 @@ mod tests {
     fn match_absolute_x() {
         let p = AsmPatterns::new().ins_absolute_indexed_x;
         assert_line(&p, "LDA $a0,X", None, Some("LDA"), Some("$a0"));
+    }
+
+    #[test]
+    fn match_comment() {
+        let ap = AsmPatterns::new();
+        assert_line(&ap.empty_line, " ", None, None, None);
+        assert_line(&ap.empty_line, " ;komentarz", None, None, None);
+        assert_line(&ap.ins_implied, "  CLI ;komentarz", None, Some("CLI"), None);
+        assert_line(&ap.ins_indexed_indirect_x, "  LDA ($8c,X) ;asd", None, Some("LDA"), Some("$8c"));
     }
 }

@@ -197,7 +197,7 @@ mod tests {
 
     fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
         let r = asm.process_line(line);
-        assert!(matches!(r, AsmError::Ok), "line {} assembly error: {:?}", line, r);
+        assert!(matches!(r, AsmError::Ok), "line: \"{}\" error: {:?}", line, r);
         let generated = &asm.object_code.data[(asm.object_code.data.len() - expected.len())..];
         assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
@@ -296,15 +296,19 @@ mod tests {
         assert_next(&mut asm, "  .ORG $4000 ;origin", &[]);
         assert_eq!(asm.object_code.location_counter, 0x4000);
         assert_eq!(asm.object_code.data.len(), 0x4000);
+        assert_next(&mut asm, "  *= $5000 ;origin", &[]);
+        assert_eq!(asm.object_code.location_counter, 0x5000);
+    }
+
+    #[test]
+    fn test_comments() {
+        assert_asm("LDA ($8c,X)  ;komentarz", &[0xa1, 0x8c]);
+        // assert_asm("  ;  komentarz", &[]);
+        // assert_asm("label: ;komentarz numer 2", &[0x70, 8]);
+        // assert_asm("LSR $35f0,X ;comment", &[0x5e, 0xf0, 0x35]);
     }
 
     /*
-        #[test]
-    fn (AssemblerTest, testOrgStar) {
-        TEST_INST("  *= $5000 ;origin");
-        EXPECT_EQ(assembler.m_locationCounter, 0x5000);
-        }
-
         #[test]
     fn (AssemblerTest, testComment) {
         TEST_INST("  SEI   ;disable interrupts ");
