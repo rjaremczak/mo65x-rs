@@ -1,13 +1,10 @@
 mod code;
-mod error;
 mod operand;
 mod patterns;
 mod tokens;
 
-use super::instruction::find_instruction;
-use super::{addrmode::AddrMode, opcode::find_opcode};
+use super::{addrmode::AddrMode, error::AsmError, instruction::find_instruction, opcode::find_opcode};
 use code::ObjectCode;
-use error::AsmError;
 use operand::{is_zero_page_operand, resolve_operand};
 use regex::Regex;
 use std::collections::HashMap;

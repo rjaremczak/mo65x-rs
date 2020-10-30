@@ -1,4 +1,4 @@
-use super::error::AsmError;
+use crate::mos6510::error::AsmError;
 
 pub struct ObjectCode {
     pub write_enabled: bool,

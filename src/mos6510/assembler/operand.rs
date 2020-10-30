@@ -1,4 +1,4 @@
-use super::super::assembler::error::AsmError;
+use crate::mos6510::error::AsmError;
 
 pub const LO_BYTE_MODIFIER: char = '<';
 pub const HI_BYTE_MODIFIER: char = '>';
