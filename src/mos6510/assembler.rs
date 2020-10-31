@@ -5,17 +5,15 @@ mod tokens;
 
 use super::{addrmode::AddrMode, error::AsmError, instruction::find_instruction, opcode::find_opcode};
 use code::ObjectCode;
-use operand::{is_zero_page_operand, resolve_operand};
+use operand::OperandParser;
 use regex::Regex;
-use std::collections::HashMap;
 use tokens::Tokens;
 
-type Symbols = HashMap<String, i32>;
 type Handler = fn(&mut Assembler, tokens: Tokens) -> AsmError;
 
 pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
-    symbols: Symbols,
+    operand_parser: OperandParser,
     object_code: ObjectCode,
     op_list_separator: Regex,
 }
@@ -23,7 +21,7 @@ pub struct Assembler {
 impl Assembler {
     pub fn new(origin: u16) -> Assembler {
         Assembler {
-            symbols: Symbols::new(),
+            operand_parser: OperandParser::new(),
             object_code: ObjectCode::new(origin),
             op_list_separator: Regex::new(&format!("(?i){}", patterns::SEPARATOR)).unwrap(),
             handlers: {
@@ -52,7 +50,7 @@ impl Assembler {
             if let Some(captures) = regex.captures(&line) {
                 let tokens = Tokens::new(captures);
                 if let Some(label) = tokens.label() {
-                    self.symbols.insert(String::from(label), self.object_code.location_counter as i32);
+                    self.operand_parser.define_symbol(label, self.object_code.location_counter as i32);
                 };
                 return handler(self, tokens);
             }
@@ -63,7 +61,7 @@ impl Assembler {
     fn preprocess(addrmode: AddrMode, opt_opval: Option<i32>) -> (AddrMode, i32) {
         match addrmode.zero_page_variant() {
             Some(zp_mode) => match opt_opval {
-                Some(opval) => match is_zero_page_operand(opval) {
+                Some(opval) => match operand::is_zero_page(opval) {
                     true => (zp_mode, opval),
                     false => (addrmode, opval),
                 },
@@ -73,16 +71,12 @@ impl Assembler {
         }
     }
 
-    fn parse_operand(&self, opstr: Option<&str>) -> Result<i32, AsmError> {
-        resolve_operand(opstr, |s| self.symbols.get(s).map(|v| *v))
-    }
-
     fn parse_operand_list(&self, oplist: Option<&str>) -> Result<Vec<i32>, AsmError> {
         match oplist {
             Some(oplist) => {
                 let mut values: Vec<i32> = Vec::new();
                 for opstr in self.op_list_separator.split(oplist) {
-                    match self.parse_operand(Some(opstr)) {
+                    match self.operand_parser.resolve(opstr) {
                         Ok(opval) => values.push(opval),
                         Err(err) => return Err(err),
                     }
@@ -96,9 +90,12 @@ impl Assembler {
     fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
         let operand = match addrmode {
             AddrMode::Implied => None,
-            _ => match self.parse_operand(tokens.operand()) {
-                Ok(opvalue) => Some(opvalue),
-                Err(err) => return err,
+            _ => match tokens.operand() {
+                Some(opstr) => match self.operand_parser.resolve(opstr) {
+                    Ok(opval) => Some(opval),
+                    Err(err) => return err,
+                },
+                None => return AsmError::MissingOperand,
             },
         };
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
@@ -126,14 +123,17 @@ impl Assembler {
         self.object_code.write_enabled = on;
     }
 
-    pub fn handle_empty_line(&mut self, tokens: Tokens) -> AsmError {
+    pub fn handle_empty_line(&mut self, _: Tokens) -> AsmError {
         AsmError::Ok
     }
 
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> AsmError {
-        match self.parse_operand(tokens.operand()) {
-            Ok(val) => self.object_code.set_location_counter(val as u16),
-            Err(err) => err,
+        match tokens.operand() {
+            Some(opstr) => match self.operand_parser.resolve(opstr) {
+                Ok(val) => self.object_code.set_location_counter(val as u16),
+                Err(err) => err,
+            },
+            None => AsmError::MissingOperand,
         }
     }
 
@@ -199,7 +199,7 @@ mod tests {
         assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
 
-    fn assert_asm(line: &str, code: &[u8]) -> Assembler {
+    fn assert_asm<'a>(line: &str, code: &[u8]) -> Assembler {
         let mut asm = Assembler::new(0);
         asm.generate_code(true);
         assert_next(&mut asm, line, code);
@@ -211,7 +211,7 @@ mod tests {
         let asm = Assembler::new(0);
         assert_eq!(asm.object_code.write_enabled, false);
         assert_eq!(asm.object_code.location_counter, 0);
-        assert!(asm.symbols.is_empty());
+        assert_eq!(asm.operand_parser.symbols().count(), 0);
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod tests {
     fn absolute_mode() {
         let mut asm = assert_asm("ROR $3400", &[0x6e, 0x00, 0x34]);
         assert_next(&mut asm, "jmp $2000", &[0x4c, 0x00, 0x20]);
-        asm.symbols.insert("c".to_string(), 0xfab0);
+        asm.operand_parser.define_symbol("c", 0xfab0);
         assert_next(&mut asm, "jmp c", &[0x4c, 0xb0, 0xfa]);
     }
 

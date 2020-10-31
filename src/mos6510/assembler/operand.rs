@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::mos6510::error::AsmError;
 
 pub const LO_BYTE_MODIFIER: char = '<';
@@ -39,6 +41,49 @@ impl Modifier {
     }
 }
 
+pub struct OperandParser {
+    symbols: HashMap<String, i32>,
+}
+
+impl OperandParser {
+    pub fn new() -> Self {
+        Self { symbols: HashMap::new() }
+    }
+
+    pub fn resolve(&self, txt: &str) -> Result<i32, AsmError> {
+        let modifier = Modifier::from(txt);
+        let rest = &txt[modifier.len()..];
+        self.resolve_raw(rest).and_then(|num| Ok(modifier.apply(num)))
+    }
+
+    pub fn define_symbol(&mut self, key: &str, val: i32) {
+        self.symbols.insert(String::from(key), val);
+    }
+
+    pub fn symbols(&self) -> impl Iterator<Item = (&String, &i32)> {
+        self.symbols.iter()
+    }
+
+    fn resolve_raw(&self, raw: &str) -> Result<i32, AsmError> {
+        match raw.chars().next() {
+            Some(c) => match c {
+                HEX_PREFIX => parse_int(&raw[1..], 16),
+                BIN_PREFIX => parse_int(&raw[1..], 2),
+                _ => {
+                    if c.is_ascii_digit() || c == '+' || c == '-' {
+                        parse_int(&raw, 10)
+                    } else if let Some(num) = self.symbols.get(raw) {
+                        Ok(*num)
+                    } else {
+                        Err(AsmError::SymbolNotDefined)
+                    }
+                }
+            },
+            None => Err(AsmError::MissingOperand),
+        }
+    }
+}
+
 fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
     match i32::from_str_radix(str, radix) {
         Ok(num) => Ok(num),
@@ -46,41 +91,8 @@ fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
     }
 }
 
-fn resolve_raw<T: Fn(&str) -> Option<i32>>(raw: &str, symbol_resolver: T) -> Result<i32, AsmError> {
-    match raw.chars().next() {
-        Some(c) => match c {
-            HEX_PREFIX => parse_int(&raw[1..], 16),
-            BIN_PREFIX => parse_int(&raw[1..], 2),
-            _ => {
-                if c.is_ascii_digit() || c == '+' || c == '-' {
-                    parse_int(&raw, 10)
-                } else if let Some(num) = symbol_resolver(raw) {
-                    Ok(num)
-                } else {
-                    Err(AsmError::SymbolNotDefined)
-                }
-            }
-        },
-        None => Err(AsmError::MissingOperand),
-    }
-}
-
-pub fn resolve_operand<T: Fn(&str) -> Option<i32>>(opsrc: Option<&str>, symbol_resolver: T) -> Result<i32, AsmError> {
-    match opsrc {
-        Some(src) => {
-            let modifier = Modifier::from(src);
-            let rest = &src[modifier.len()..];
-            match resolve_raw(rest, symbol_resolver) {
-                Ok(num) => Ok(modifier.apply(num)),
-                Err(err) => Err(err),
-            }
-        }
-        None => Err(AsmError::MissingOperand),
-    }
-}
-
 #[inline]
-pub fn is_zero_page_operand(num: i32) -> bool {
+pub fn is_zero_page(num: i32) -> bool {
     num >= 0 && num <= 256
 }
 
@@ -88,32 +100,25 @@ pub fn is_zero_page_operand(num: i32) -> bool {
 mod tests {
     use super::*;
 
-    fn test_resolver(s: &str) -> Option<i32> {
-        match s {
-            "label_1" => Some(0x2ffe),
-            "label_2" => Some(0xac02),
-            _ => None,
+    fn operand_parser() -> OperandParser {
+        let mut op = OperandParser::new();
+        op.define_symbol("label_1", 0x2ffe);
+        op.define_symbol("label_2", 0xac02);
+        op
+    }
+
+    fn assert_err(txt: &str, experr: AsmError) {
+        match operand_parser().resolve(txt) {
+            Ok(_) => assert!(false),
+            Err(err) => assert!(matches!(err, experr)),
         }
     }
 
-    macro_rules! assert_err {
-        ($symbol:expr, $experr:path) => {
-            if let Err(err) = resolve_operand(Some($symbol), test_resolver) {
-                assert!(matches!(err, $experr));
-            } else {
-                assert!(false);
-            }
-        };
-    }
-
-    macro_rules! assert_ok {
-        ($symbol:expr, $value:expr) => {
-            if let Ok(num) = resolve_operand(Some($symbol), test_resolver) {
-                assert_eq!(num, $value);
-            } else {
-                assert!(false, "str: {}", $symbol);
-            }
-        };
+    fn assert_ok(txt: &str, val: i32) {
+        match operand_parser().resolve(txt) {
+            Ok(num) => assert_eq!(num, val),
+            Err(_) => assert!(false, "txt: {}", txt),
+        }
     }
 
     #[test]
@@ -139,34 +144,34 @@ mod tests {
 
     #[test]
     fn bin_numbers() {
-        assert_ok!("%10000011", 131);
-        assert_ok!("<%0011110010100101", 0b10100101);
-        assert_ok!(">%1100000000000110", 0b11000000);
+        assert_ok("%10000011", 131);
+        assert_ok("<%0011110010100101", 0b10100101);
+        assert_ok(">%1100000000000110", 0b11000000);
     }
 
     #[test]
     fn dec_numbers() {
-        assert_ok!("65000", 65000);
-        assert_ok!("-201", -201);
-        assert_ok!("<32769", 0x01);
-        assert_ok!(">32769", 0x80);
+        assert_ok("65000", 65000);
+        assert_ok("-201", -201);
+        assert_ok("<32769", 0x01);
+        assert_ok(">32769", 0x80);
     }
 
     #[test]
     fn hex_numbers() {
-        assert_ok!("$-100", -256);
-        assert_ok!("$1f", 31);
-        assert_ok!("<$10ac", 0xac);
-        assert_ok!(">$10ac", 0x10);
+        assert_ok("$-100", -256);
+        assert_ok("$1f", 31);
+        assert_ok("<$10ac", 0xac);
+        assert_ok(">$10ac", 0x10);
     }
 
     #[test]
-    fn symbols() {
-        assert_ok!("label_1", 0x2ffe);
-        assert_ok!("label_2", 0xac02);
-        assert_ok!("<label_1", 0xfe);
-        assert_ok!(">label_1", 0x2f);
-        assert_err!("labeloza", AsmError::SymbolNotDefined);
+    fn define_symbols() {
+        assert_ok("label_1", 0x2ffe);
+        assert_ok("label_2", 0xac02);
+        assert_ok("<label_1", 0xfe);
+        assert_ok(">label_1", 0x2f);
+        assert_err("labeloza", AsmError::SymbolNotDefined);
     }
 
     fn list() {
