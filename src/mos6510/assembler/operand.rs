@@ -60,6 +60,10 @@ impl OperandParser {
         self.symbols.insert(String::from(key), val);
     }
 
+    pub fn get_symbol(&self, key: &str) -> Option<i32> {
+        self.symbols.get(key).map(|v| *v)
+    }
+
     pub fn symbols(&self) -> impl Iterator<Item = (&String, &i32)> {
         self.symbols.iter()
     }

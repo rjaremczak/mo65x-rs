@@ -194,7 +194,8 @@ mod tests {
 
     fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
         let r = asm.process_line(line);
-        assert!(matches!(r, AsmError::Ok), "line: \"{}\" error: {:?}", line, r);
+        assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
+        assert!(asm.object_code.data.len() >= expected.len(), "line \"{}\" : code too short", line);
         let generated = &asm.object_code.data[(asm.object_code.data.len() - expected.len())..];
         assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
@@ -300,67 +301,41 @@ mod tests {
     #[test]
     fn test_comments() {
         assert_asm("LDA ($8c,X)  ;komentarz", &[0xa1, 0x8c]);
-        // assert_asm("  ;  komentarz", &[]);
-        // assert_asm("label: ;komentarz numer 2", &[0x70, 8]);
-        // assert_asm("LSR $35f0,X ;comment", &[0x5e, 0xf0, 0x35]);
+        assert_asm("  ;  komentarz", &[]);
+        assert_asm("label: ;komentarz numer 2", &[]);
+        assert_asm("LSR $35f0,X ;comment", &[0x5e, 0xf0, 0x35]);
+    }
+
+    #[test]
+    fn test_label() {
+        let mut asm = assert_asm("Label_001:", &[]);
+        assert_next(&mut asm, "LDA ($8c,X)", &[0xa1, 0x8c]);
+        assert_next(&mut asm, "Label_002:", &[]);
+        assert_eq!(asm.operand_parser.get_symbol("Label_001").unwrap(), 0);
+        assert_eq!(asm.operand_parser.get_symbol("Label_002").unwrap(), 2);
+    }
+
+    #[test]
+    fn test_symbols() {
+        let mut asm = Assembler::new(1000);
+        asm.generate_code(true);
+        asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
+        assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
+        assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);
+        assert_eq!(asm.operand_parser.get_symbol("TestLabel_01").unwrap(), 1000);
+        assert_eq!(asm.operand_parser.get_symbol("TestLabel_02"), None);
+        assert_eq!(asm.object_code.data.len(), 4);
+        assert_eq!(asm.object_code.location_counter, 1004);
+    }
+
+    #[test]
+    fn emit_bytes() {
+        let mut asm = assert_asm(".BYTE 20", &[20]);
+        assert_next(&mut asm, ".BYTE $20 45 $4a", &[0x20, 45, 0x4a]);
+        assert_next(&mut asm, ".BYTE $20, $3f,$4a ,$23 , 123", &[0x20, 0x3f, 0x4a, 0x23, 123]);
     }
 
     /*
-        #[test]
-    fn (AssemblerTest, testComment) {
-        TEST_INST("  SEI   ;disable interrupts ");
-        TEST_INST("; disable interrupts ");
-        TEST_INST(" LDA #$20  ;comment");
-        }
-
-        #[test]
-    fn (AssemblerTest, testEmptyLineLabel) {
-        assembler.changeMode(Assembler::ProcessingMode::ScanForSymbols);
-        TEST_INST("Label_001:");
-        EXPECT_EQ(symbols.get("Label_001"), assembler.m_locationCounter);
-        EXPECT_EQ(symbols.get("dummy"), std::nullopt);
-        }
-
-        #[test]
-    fn (AssemblerTest, testSymbolPass) {
-        assembler.init(1000);
-        assembler.changeMode(Assembler::ProcessingMode::ScanForSymbols);
-        TEST_INST("TestLabel_01:  SEI   ; disable interrupts ");
-        TEST_INST("c:lda dziabaDucha");
-        EXPECT_EQ(symbols.get("TestLabel_01"), 1000);
-        EXPECT_EQ(assembler.bytesWritten(), 0);
-        EXPECT_EQ(assembler.m_locationCounter, 1004);
-        }
-
-        #[test]
-    fn (AssemblerTest, testAssemblyPass) {
-        assembler.init(2002);
-        TEST_INST("CLI");
-        TEST_INST("TestLabel_11:  LDA #$20   ; this is a one weird comment  ");
-        EXPECT_EQ(symbols.get("TestLabel_11"), std::nullopt);
-        EXPECT_EQ(assembler.bytesWritten(), 3);
-        EXPECT_EQ(assembler.m_locationCounter, 2005);
-        }
-
-        #[test]
-    fn (AssemblerTest, testEmitBytes) {
-        TEST_INST(".BYTE 20");
-        EXPECT_EQ(assembler.bytesWritten(), 1);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter], 20);
-        TEST_INST(".BYTE $20 45 $4a");
-        EXPECT_EQ(assembler.bytesWritten(), 4);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter], 0x20);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 1], 45);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 2], 0x4a);
-        TEST_INST(".BYTE $20, $3f,$4a ,$23 , 123");
-        EXPECT_EQ(assembler.bytesWritten(), 9);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter], 0x20);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 1], 0x3f);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 2], 0x4a);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 3], 0x23);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 4], 123);
-        }
-
         #[test]
     fn (AssemblerTest, testEmitWords) {
         TEST_INST(".word $20ff $23af $fab0 ; test comment");
