@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_comments() {
-        assert_asm("LDA ($8c,X)  ;komentarz", &[0xa1, 0x8c]);
+        assert_asm("lda ($8c,X)  ;komentarz", &[0xa1, 0x8c]);
         assert_asm("  ;  komentarz", &[]);
         assert_asm("label: ;komentarz numer 2", &[]);
         assert_asm("LSR $35f0,X ;comment", &[0x5e, 0xf0, 0x35]);
@@ -350,6 +350,10 @@ mod tests {
         assert_asm(".BYTE 20", &[20]);
         assert_asm(".BYTE $20 45 $4a", &[0x20, 45, 0x4a]);
         assert_asm(".BYTE $20, $3f,$4a ,$23 , 123", &[0x20, 0x3f, 0x4a, 0x23, 123]);
+        assert_asm(
+            "dcb 0,0,0,0,0,0,0,0,0,$b,$b,$c,$f,$f,$f,$f",
+            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0xb, 0xb, 0xc, 0xf, 0xf, 0xf, 0xf],
+        );
     }
 
     #[test]
@@ -358,46 +362,27 @@ mod tests {
         assert_asm(".word $3000 $15ad 1024", &[0x00, 0x30, 0xad, 0x15, 0x00, 0x04]);
     }
 
-    /*
     #[test]
-    fn (AssemblerTest, testLowerCaseInstruction) {
-        TEST_INST("cli");
-        }
+    fn lo_byte_modifier() {
+        let mut asm = assert_asm("LDA #<$1afc", &[0xa9, 0xfc]);
+        asm.operand_parser.define_symbol("label", 0x2afe);
+        assert_next(&mut asm, "LDA #<label", &[0xa9, 0xfe]);
+        assert_next(&mut asm, "dcb <label, 2", &[0xfe, 2]);
+    }
 
-        #[test]
-    fn (AssemblerTest, testDcb) {
-        TEST_INST("dcb 0,0,0,0,0,0,0,0,0,$b,$b,$c,$f,$f,$f,$f");
-        EXPECT_EQ(assembler.bytesWritten(), 16);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter], 0);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 15], 0xf);
-        }
+    #[test]
+    fn hi_byte_modifier() {
+        let mut asm = assert_asm("LDA #>$1afc", &[0xa9, 0x1a]);
+        asm.operand_parser.define_symbol("label", 0x3afe);
+        assert_next(&mut asm, "LDA #>label", &[0xa9, 0x3a]);
+        assert_next(&mut asm, "dcb >label, 2", &[0x3a, 2]);
+        asm.operand_parser.define_symbol("a", 0xfa20);
+        asm.operand_parser.define_symbol("b", 0x10a0);
+        assert_next(&mut asm, "dcb >a, <b", &[0xfa, 0xa0]);
+        assert_next(&mut asm, "dcb <a, >b", &[0x20, 0x10]);
+    }
 
-        #[test]
-    fn (AssemblerTest, testLoBytePrefix) {
-        TEST_INST_2("LDA #<$1afc", 0xa9, 0xfc);
-        symbols.put("label", 0x2afe);
-        TEST_INST_2("LDA #<label", 0xa9, 0xfe);
-        TEST_INST("dcb <label, 2");
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter], 0xfe);
-        EXPECT_EQ(memory[assembler.m_lastLocationCounter + 1], 2);
-        }
-
-        #[test]
-    fn (AssemblerTest, testHiBytePrefix) {
-        TEST_INST_2("LDA #>$1afc", 0xa9, 0x1a);
-        symbols.put("label", 0x3afe);
-        TEST_INST_2("LDA #>label", 0xa9, 0x3a);
-        TEST_INST_2("dcb >label, 2", 0x3a, 2);
-        }
-
-        #[test]
-    fn (AssemblerTest, testLoHiBytePrefix) {
-        symbols.put("a", 0xfa20);
-        symbols.put("b", 0x10a0);
-        TEST_INST_2("dcb >a, <b", 0xfa, 0xa0);
-        TEST_INST_2("dcb <a, >b", 0x20, 0x10);
-        }
-
+    /*
         #[test]
     fn (AssemblerTest, testSymbolDef) {
         assembler.changeMode(Assembler::ProcessingMode::ScanForSymbols);
