@@ -4,7 +4,7 @@ use regex::Regex;
 pub const SYMBOL: &str = "[a-z]\\w*";
 pub const LABEL: &str = "^(?:([a-z]\\w*):)?\\s*";
 pub const COMMENT: &str = "(?:;.*)?$";
-pub const SEPARATOR: &str = "(?:\\s+)|(?:\\s*,\\s*)"; //"\\s*,?\\s*";
+pub const SEPARATOR: &str = "\\s*,?\\s*";
 
 pub struct AsmPatterns {
     pub empty_line: Regex,
@@ -85,7 +85,7 @@ mod tests {
             &AsmPatterns::new().cmd_emit_bytes,
             ".BYTE 20 30",
             None,
-            Some(".byte"),
+            Some(".BYTE"),
             Some("20 30"),
         );
     }

@@ -23,7 +23,7 @@ impl Assembler {
         Assembler {
             operand_parser: OperandParser::new(),
             object_code: ObjectCode::new(origin),
-            op_list_separator: Regex::new(patterns::SEPARATOR).unwrap(),
+            op_list_separator: Regex::new("(?:\\s*,\\s*)|(?:\\s+)").unwrap(),
             handlers: {
                 let p = patterns::AsmPatterns::new();
                 vec![
