@@ -91,7 +91,7 @@ impl OperandParser {
 fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
     match i32::from_str_radix(str, radix) {
         Ok(num) => Ok(num),
-        Err(perr) => Err(AsmError::MalformedOperand(perr)),
+        Err(perr) => Err(AsmError::MalformedOperand(String::from(str), perr)),
     }
 }
 

@@ -61,14 +61,20 @@ impl AsmPatterns {
 
 #[cfg(test)]
 mod tests {
+    use crate::mos6510::assembler::tokens::Tokens;
+
     use super::*;
 
     fn assert_line(regex: &Regex, line: &str, label: Option<&str>, operation: Option<&str>, operand: Option<&str>) {
         match regex.captures(line) {
             Some(caps) => {
-                assert_eq!(caps.get(1).map(|m| m.as_str()).as_deref(), label.as_deref());
-                assert_eq!(caps.get(2).map(|m| m.as_str()).as_deref(), operation.as_deref());
-                assert_eq!(caps.get(3).map(|m| m.as_str()).as_deref(), operand.as_deref());
+                let t = Tokens::new(caps);
+                assert_eq!(t.label(), label.as_deref());
+                assert_eq!(t.operation(), operation.as_deref());
+                assert_eq!(t.operand(), operand.as_deref());
+                // assert_eq!(caps.get(1).map(|m| m.as_str()).as_deref(), label.as_deref());
+                // assert_eq!(caps.get(2).map(|m| m.as_str()).as_deref(), operation.as_deref());
+                // assert_eq!(caps.get(3).map(|m| m.as_str()).as_deref(), operand.as_deref());
             }
             None => assert!(false, "line: \"{}\" matching failed", line),
         }
@@ -87,6 +93,17 @@ mod tests {
             None,
             Some(".BYTE"),
             Some("20 30"),
+        );
+    }
+
+    #[test]
+    fn match_emit_words() {
+        assert_line(
+            &AsmPatterns::new().cmd_emit_words,
+            ".word $20ff $23af $fab0 ;ddd",
+            None,
+            Some(".word"),
+            Some("$20ff $23af $fab0"),
         );
     }
 

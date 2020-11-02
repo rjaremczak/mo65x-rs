@@ -22,6 +22,6 @@ impl<'a> Tokens<'a> {
     }
 
     fn get_str(&self, i: usize) -> Option<&str> {
-        self.captures.get(i).map_or(None, |m| Some(m.as_str()))
+        self.captures.get(i).map_or(None, |m| Some(m.as_str().trim()))
     }
 }

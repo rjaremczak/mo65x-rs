@@ -148,7 +148,13 @@ impl Assembler {
     }
 
     pub fn handle_emit_words(&mut self, tokens: Tokens) -> AsmError {
-        AsmError::InvalidMnemonic
+        match self.parse_operand_list(tokens.operand()) {
+            Ok(values) => {
+                values.iter().for_each(|v| self.object_code.emit_word(*v as u16));
+                AsmError::Ok
+            }
+            Err(err) => err,
+        }
     }
 
     pub fn handle_implied(&mut self, tokens: Tokens) -> AsmError {
@@ -341,26 +347,18 @@ mod tests {
 
     #[test]
     fn emit_bytes() {
-        let mut asm = assert_asm(".BYTE 20", &[20]);
-        // assert_next(&mut asm, ".BYTE $20 45 $4a", &[0x20, 45, 0x4a]);
-        // assert_next(&mut asm, ".BYTE $20, $3f,$4a ,$23 , 123", &[0x20, 0x3f, 0x4a, 0x23, 123]);
+        assert_asm(".BYTE 20", &[20]);
+        assert_asm(".BYTE $20 45 $4a", &[0x20, 45, 0x4a]);
+        assert_asm(".BYTE $20, $3f,$4a ,$23 , 123", &[0x20, 0x3f, 0x4a, 0x23, 123]);
+    }
+
+    #[test]
+    fn emit_words() {
+        assert_asm(".word $20ff $23af $fab0 ;komm", &[0xff, 0x20, 0xaf, 0x23, 0xb0, 0xfa]);
+        assert_asm(".word $3000 $15ad 1024", &[0x00, 0x30, 0xad, 0x15, 0x00, 0x04]);
     }
 
     /*
-    #[test]
-    fn (AssemblerTest, testEmitWords) {
-        TEST_INST(".word $20ff $23af $fab0 ; test comment");
-        EXPECT_EQ(assembler.bytesWritten(), 6);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter), 0x20ff);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter + 2), 0x23af);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter + 4), 0xfab0);
-        TEST_INST(".word $3000 $15ad 10230");
-        EXPECT_EQ(assembler.bytesWritten(), 12);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter), 0x3000);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter + 2), 0x15ad);
-        EXPECT_EQ(memory.word(assembler.m_lastLocationCounter + 4), 10230);
-    }
-
     #[test]
     fn (AssemblerTest, testLowerCaseInstruction) {
         TEST_INST("cli");

@@ -10,5 +10,5 @@ pub enum AsmError {
     InvalidMnemonic,
     InvalidInstructionFormat,
     InvalidPhase,
-    MalformedOperand(std::num::ParseIntError),
+    MalformedOperand(String, std::num::ParseIntError),
 }
