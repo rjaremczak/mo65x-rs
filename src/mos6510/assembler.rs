@@ -382,13 +382,11 @@ mod tests {
         assert_next(&mut asm, "dcb <a, >b", &[0x20, 0x10]);
     }
 
-    /*
-        #[test]
-    fn (AssemblerTest, testSymbolDef) {
-        assembler.changeMode(Assembler::ProcessingMode::ScanForSymbols);
-        TEST_INST(".org $1000");
-        TEST_INST("lda init");
-        EXPECT_EQ(assembler.m_locationCounter, 0x1003);
-        }
-        */
+    #[test]
+    fn define_symbol() {
+        let mut asm = assert_asm(".org $1000", &[]);
+        asm.operand_parser.define_symbol("init", 0x1234);
+        assert_next(&mut asm, "lda init", &[0xad, 0x34, 0x12]);
+        assert_eq!(asm.object_code.location_counter, 0x1003);
+    }
 }
