@@ -3,7 +3,7 @@ mod operand;
 mod patterns;
 mod tokens;
 
-use super::{addrmode::AddrMode, error::AsmError, instruction::find_instruction, opcode::find_opcode};
+use super::{addrmode::*, error::AsmError, instruction::find_instruction, opcode::find_opcode};
 use code::ObjectCode;
 use operand::OperandParser;
 use regex::Regex;
@@ -58,8 +58,8 @@ impl Assembler {
         AsmError::SyntaxError
     }
 
-    fn preprocess(addrmode: AddrMode, opt_opval: Option<i32>) -> (AddrMode, i32) {
-        match addrmode.zero_page_variant() {
+    fn preprocess<'a>(addrmode: &'a AddrMode, opt_opval: Option<i32>) -> (&'a AddrMode<'a>, i32) {
+        match addrmode.zp_mode {
             Some(zp_mode) => match opt_opval {
                 Some(opval) => match operand::is_zero_page(opval) {
                     true => (zp_mode, opval),
@@ -87,16 +87,17 @@ impl Assembler {
         }
     }
 
-    fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
-        let operand = match addrmode {
-            AddrMode::Implied => None,
-            _ => match tokens.operand() {
+    fn assemble(&mut self, addrmode: &AddrMode, tokens: Tokens) -> AsmError {
+        let operand = if addrmode == &IMPLIED {
+            None
+        } else {
+            match tokens.operand() {
                 Some(opstr) => match self.operand_parser.resolve(opstr) {
                     Ok(opval) => Some(opval),
                     Err(err) => return err,
                 },
                 None => return AsmError::MissingOperand,
-            },
+            }
         };
         let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
@@ -158,39 +159,39 @@ impl Assembler {
     }
 
     pub fn handle_implied(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::Implied, tokens)
+        self.assemble(&IMPLIED, tokens)
     }
 
     pub fn handle_immediate(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::Immediate, tokens)
+        self.assemble(&IMMEDIATE, tokens)
     }
 
     pub fn handle_branch(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::Branch, tokens)
+        self.assemble(&BRANCH, tokens)
     }
 
     pub fn handle_absolute(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::Absolute, tokens)
+        self.assemble(&ABSOLUTE, tokens)
     }
 
     pub fn handle_absolute_indexed_x(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::AbsoluteX, tokens)
+        self.assemble(&ABSOLUTE_X, tokens)
     }
 
     pub fn handle_absolute_indexed_y(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::AbsoluteY, tokens)
+        self.assemble(&ABSOLUTE_Y, tokens)
     }
 
     pub fn handle_indirect(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::Indirect, tokens)
+        self.assemble(&INDIRECT, tokens)
     }
 
     pub fn handle_indexed_indirect_x(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::IndexedIndirectX, tokens)
+        self.assemble(&INDEXED_INDIRECT_X, tokens)
     }
 
     pub fn handle_indirect_indexed_y(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(AddrMode::IndirectIndexedY, tokens)
+        self.assemble(&INDIRECT_INDEXED_Y, tokens)
     }
 }
 
