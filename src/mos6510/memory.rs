@@ -9,22 +9,22 @@ impl Memory {
         Memory { data: [0; MEMORY_SIZE] }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn byte(&self, address: u16) -> u8 {
         self.data[address as usize]
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn set_byte(&mut self, address: u16, value: u8) {
         self.data[address as usize] = value;
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn word(&self, address: u16) -> u16 {
         self.byte(address) as u16 | (self.byte(address.wrapping_add(1)) as u16) << 8
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn set_word(&mut self, address: u16, value: u16) {
         self.set_byte(address, value as u8);
         self.set_byte(address.wrapping_add(1), (value >> 8) as u8);

@@ -3,6 +3,7 @@ mod flags;
 mod registers;
 
 use self::{exec_env::ExecEnv, flags::Flags, registers::Registers};
+use super::{memory::Memory, opcode::OPCODES};
 
 enum CpuExecMode {
     Normal,
@@ -31,7 +32,9 @@ pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv);
 impl Cpu {
     pub fn exec_begin(&mut self) {}
 
-    pub fn exec_instruction(&mut self) -> u8 {
+    pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
+        let opcode = &OPCODES[memory.byte(self.regs.pc) as usize];
+        let env = ExecEnv::new(opcode.cycles);
         0
     }
 

@@ -1,10 +1,21 @@
 pub struct ExecEnv<'a> {
-    inval_lo: u8,
-    inval_hi: u8,
-    outref_lo: &'a mut u8,
-    outref_hi: &'a mut u8,
-    sink_lo: u8,
-    sink_hi: u8,
-    page_crossed: bool,
-    cycles: u8,
+    pub inval_lo: u8,
+    pub inval_hi: u8,
+    pub outref_lo: Option<&'a mut u8>,
+    pub outref_hi: Option<&'a mut u8>,
+    pub page_crossed: bool,
+    pub cycles: u8,
+}
+
+impl<'a> ExecEnv<'a> {
+    pub fn new(cycles: u8) -> Self {
+        Self {
+            inval_lo: 0,
+            inval_hi: 0,
+            outref_lo: None,
+            outref_hi: None,
+            page_crossed: false,
+            cycles,
+        }
+    }
 }
