@@ -1,4 +1,4 @@
-pub struct ExecEnv<'a> {
+pub struct InstrEnv<'a> {
     inval_lo: u8,
     inval_hi: u8,
     outref_lo: &'a mut u8,
