@@ -3,7 +3,7 @@ mod operand;
 mod patterns;
 mod tokens;
 
-use super::{addrmode::*, error::AsmError, instruction::find_instruction, opcode::find_opcode};
+use super::{addr, addrmode::*, error::AsmError, instruction::find_instruction, opcode::find_opcode};
 use code::ObjectCode;
 use operand::OperandParser;
 use regex::Regex;
@@ -61,7 +61,7 @@ impl Assembler {
     fn preprocess<'a>(addrmode: &'a AddrMode, opt_opval: Option<i32>) -> (&'a AddrMode<'a>, i32) {
         match addrmode.zp_mode {
             Some(zp_mode) => match opt_opval {
-                Some(opval) => match operand::is_zero_page(opval) {
+                Some(opval) => match addr::is_zero_page(opval) {
                     true => (zp_mode, opval),
                     false => (addrmode, opval),
                 },

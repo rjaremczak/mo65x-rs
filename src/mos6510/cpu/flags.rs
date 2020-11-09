@@ -16,15 +16,29 @@ impl Flags {
     const BM_ZERO: u8 = 0x02;
     const BM_CARRY: u8 = 0x01;
 
+    pub fn new() -> Self {
+        Self {
+            n: false,
+            o: false,
+            d: false,
+            i: false,
+            z: false,
+            c: false,
+        }
+    }
+
     pub fn compute_n(&mut self, result: u16) {
         self.n = (result & 0x80) != 0;
     }
+
     pub fn compute_z(&mut self, result: u16) {
         self.z = (result & 0xff) == 0;
     }
+
     pub fn compute_c(&mut self, result: u16) {
         self.c = (result & 0xff00) != 0;
     }
+
     pub fn compute_v(&mut self, op1: u16, op2: u16, result: u16) {
         self.o = ((op1 ^ result) & (op2 ^ result) & 0x80) != 0;
     }

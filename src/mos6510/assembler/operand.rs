@@ -95,11 +95,6 @@ fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
     }
 }
 
-#[inline]
-pub fn is_zero_page(num: i32) -> bool {
-    num >= 0 && num <= 256
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

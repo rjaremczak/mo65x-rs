@@ -1,22 +1,13 @@
-use super::{exec_env::ExecEnv, flags::Flags, memory::Memory, opcode::OPCODES, registers::Registers};
+mod exec_env;
+mod flags;
+mod registers;
+mod state;
 
-enum CpuExecMode {
-    Normal,
-    PendingIrq,
-    PendingNmi,
-    PendingReset,
-}
-enum CpuState {
-    Idle,
-    Stopped,
-    Halted,
-    Running,
-    Stopping,
-}
+use self::{exec_env::ExecEnv, flags::Flags, registers::Registers, state::CpuState};
+use super::{memory::Memory, opcode::OPCODES};
 
 pub struct Cpu {
     state: CpuState,
-    exec_mode: CpuExecMode,
     regs: Registers,
     flags: Flags,
 }
@@ -25,26 +16,27 @@ pub type AddrModeHandler = fn(&mut Cpu, &mut ExecEnv);
 pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv);
 
 impl Cpu {
-    const IO_PORT_CONFIG: u16 = 0x0000;
-    const IO_PORT_DATA: u16 = 0x0001;
-
-    /*
-    pub fn new() -> Self {
+    pub fn new(pc: u16) -> Self {
         Self {
-            state: CpuState::
+            state: CpuState::new(),
+            regs: Registers::new(pc, 0xfd),
+            flags: Flags::new(),
         }
     }
-    */
 
-    pub fn exec_begin(&mut self) {}
+    pub fn exec_begin(&mut self) {
+        self.state.start_running();
+    }
 
     pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
-        let opcode = &OPCODES[memory.byte(self.regs.pc) as usize];
+        let opcode = &OPCODES[memory.getb(self.regs.pc) as usize];
         let env = ExecEnv::new(opcode.cycles);
         0
     }
 
-    pub fn exec_end(&mut self) {}
+    pub fn exec_end(&mut self) {
+        self.state.try_stop_running();
+    }
 
     pub fn mode_implied(&mut self, env: &mut ExecEnv) {}
     pub fn mode_branch(&mut self, env: &mut ExecEnv) {}
@@ -120,10 +112,16 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
+    use crate::mos6510::memory::RESET_VECTOR;
+
     use super::*;
 
     #[test]
     fn test_init() {
-        // let mut cpu = Cpu::new();
+        let mut memory = Memory::new();
+        let pc = memory.getw(RESET_VECTOR);
+        let mut cpu = Cpu::new(pc);
+        assert_eq!(cpu.regs.pc, pc);
+        assert_eq!(cpu.state, CpuState::new());
     }
 }

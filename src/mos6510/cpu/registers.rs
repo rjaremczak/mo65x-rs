@@ -1,3 +1,5 @@
+use crate::mos6510::memory::SP_BASE;
+
 pub struct Registers {
     pub a: u8,
     pub x: u8,
@@ -7,9 +9,11 @@ pub struct Registers {
 }
 
 impl Registers {
-    const SP_BASE: u16 = 0x0100;
+    pub fn new(pc: u16, sp: u8) -> Self {
+        Self { a: 0, x: 0, y: 0, pc, sp }
+    }
 
     pub fn sp_address(&self) -> u16 {
-        self.sp as u16 | Self::SP_BASE
+        self.sp as u16 | SP_BASE
     }
 }
