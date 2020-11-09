@@ -1,9 +1,4 @@
-mod exec_env;
-mod flags;
-mod registers;
-
-use self::{exec_env::ExecEnv, flags::Flags, registers::Registers};
-use super::{memory::Memory, opcode::OPCODES};
+use super::{exec_env::ExecEnv, flags::Flags, memory::Memory, opcode::OPCODES, registers::Registers};
 
 enum CpuExecMode {
     Normal,
@@ -30,6 +25,17 @@ pub type AddrModeHandler = fn(&mut Cpu, &mut ExecEnv);
 pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv);
 
 impl Cpu {
+    const IO_PORT_CONFIG: u16 = 0x0000;
+    const IO_PORT_DATA: u16 = 0x0001;
+
+    /*
+    pub fn new() -> Self {
+        Self {
+            state: CpuState::
+        }
+    }
+    */
+
     pub fn exec_begin(&mut self) {}
 
     pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
@@ -110,4 +116,14 @@ impl Cpu {
     pub fn inst_php(&mut self, env: &mut ExecEnv) {}
     pub fn inst_nop(&mut self, env: &mut ExecEnv) {}
     pub fn inst_kil(&mut self, env: &mut ExecEnv) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_init() {
+        // let mut cpu = Cpu::new();
+    }
 }
