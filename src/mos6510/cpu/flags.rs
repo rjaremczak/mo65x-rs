@@ -1,10 +1,10 @@
 pub struct Flags {
-    n: bool,
-    o: bool,
-    d: bool,
-    i: bool,
-    z: bool,
-    c: bool,
+    pub n: bool,
+    pub o: bool,
+    pub d: bool,
+    pub i: bool,
+    pub z: bool,
+    pub c: bool,
 }
 
 impl Flags {

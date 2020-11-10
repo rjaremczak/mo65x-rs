@@ -1,13 +1,11 @@
 mod exec_env;
 mod flags;
 mod registers;
-mod state;
 
-use self::{exec_env::ExecEnv, flags::Flags, registers::Registers, state::CpuState};
+use self::{exec_env::ExecEnv, flags::Flags, registers::Registers};
 use super::{memory::Memory, opcode::OPCODES};
 
 pub struct Cpu {
-    state: CpuState,
     regs: Registers,
     flags: Flags,
 }
@@ -18,96 +16,117 @@ pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv);
 impl Cpu {
     pub fn new(pc: u16) -> Self {
         Self {
-            state: CpuState::new(),
             regs: Registers::new(pc, 0xfd),
             flags: Flags::new(),
         }
     }
 
-    pub fn exec_begin(&mut self) {
-        self.state.start_running();
-    }
-
     pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
-        let opcode = &OPCODES[memory.getb(self.regs.pc) as usize];
-        let env = ExecEnv::new(opcode.cycles);
+        let opcode = &OPCODES[memory[self.regs.pc] as usize];
+        self.regs.pc = self.regs.pc.wrapping_add(1);
+        let mut env = ExecEnv::new(memory, 1, 0, opcode.cycles);
+        (opcode.addrmode.handler)(self, &mut env);
         0
     }
 
-    pub fn exec_end(&mut self) {
-        self.state.try_stop_running();
+    pub fn prep_implied(&mut self, env: &mut ExecEnv) {}
+
+    pub fn prep_branch(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_immediate(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_zero_page(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_zero_page_x(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_zero_page_y(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_indexed_indirect_x(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_indirect_indexed_y(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_indirect(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_absolute(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_absolute_x(&mut self, env: &mut ExecEnv) {}
+    pub fn prep_absolute_y(&mut self, env: &mut ExecEnv) {}
+
+    pub fn exec_adc(&mut self, env: &mut ExecEnv) {
+        let mut result: u16 = self.regs.a as u16 + env.arg + self.flags.c as u16;
+        if self.flags.d {
+            self.flags.c = decimal_correction(&mut result);
+            self.flags.compute_nz(result);
+        } else {
+            self.flags.compute_nzc(result);
+        }
+        self.flags.compute_v(self.regs.a as u16, env.arg, result);
+        self.regs.a = result as u8;
+        env.add_cycle_when_page_crossed();
     }
 
-    pub fn mode_implied(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_branch(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_immediate(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_zero_page(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_zero_page_x(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_zero_page_y(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_indexed_indirect_x(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_indirect_indexed_y(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_indirect(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_absolute(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_absolute_x(&mut self, env: &mut ExecEnv) {}
-    pub fn mode_absolute_y(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sbc(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_and(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_ora(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_asl(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_lsr(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_eor(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_rol(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_ror(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bit(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_cmp(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_cpx(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_cpy(&mut self, env: &mut ExecEnv) {}
 
-    pub fn inst_adc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sbc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_and(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_ora(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_asl(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_lsr(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_eor(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_rol(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_ror(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bit(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_cmp(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_cpx(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_cpy(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_inc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_inx(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_iny(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_dec(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_dex(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_dey(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bcc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bcs(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_beq(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bmi(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bne(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bpl(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bvc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_bvs(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_clc(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_cld(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_cli(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_clv(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sec(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sed(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sei(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_jmp(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_jsr(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_brk(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_rti(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_rts(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_lda(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_ldx(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_ldy(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sta(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_stx(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_sty(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_tax(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_tay(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_tsx(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_txa(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_tya(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_txs(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_pla(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_plp(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_pha(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_php(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_nop(&mut self, env: &mut ExecEnv) {}
-    pub fn inst_kil(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_inc(&mut self, env: &mut ExecEnv) {
+        env.memory[env.addr] += 1;
+    }
+
+    pub fn exec_inx(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_iny(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_dec(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_dex(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_dey(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bcc(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bcs(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_beq(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bmi(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bne(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bpl(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bvc(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_bvs(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_clc(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_cld(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_cli(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_clv(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sec(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sed(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sei(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_jmp(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_jsr(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_brk(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_rti(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_rts(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_lda(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_ldx(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_ldy(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sta(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_stx(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_sty(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_tax(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_tay(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_tsx(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_txa(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_tya(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_txs(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_pla(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_plp(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_pha(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_php(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_nop(&mut self, env: &mut ExecEnv) {}
+    pub fn exec_kil(&mut self, env: &mut ExecEnv) {}
+}
+
+fn decimal_correction(result: &mut u16) -> bool {
+    if (*result & 0x0f) > 0x09 {
+        *result += 0x06;
+    }
+    if (*result & 0xf0) > 0x90 {
+        *result += 0x60;
+        return true;
+    }
+    return false;
 }
 
 #[cfg(test)]
@@ -119,9 +138,8 @@ mod tests {
     #[test]
     fn test_init() {
         let mut memory = Memory::new();
-        let pc = memory.getw(RESET_VECTOR);
+        let pc = memory.word(RESET_VECTOR);
         let mut cpu = Cpu::new(pc);
         assert_eq!(cpu.regs.pc, pc);
-        assert_eq!(cpu.state, CpuState::new());
     }
 }

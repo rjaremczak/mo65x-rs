@@ -16,24 +16,30 @@ impl Memory {
     }
 
     #[inline(always)]
-    pub fn getb(&self, address: u16) -> u8 {
-        self.data[address as usize]
+    pub fn word(&self, address: u16) -> u16 {
+        self[address] as u16 | (self[address.wrapping_add(1)] as u16) << 8
     }
 
     #[inline(always)]
-    pub fn setb(&mut self, address: u16, value: u8) {
-        self.data[address as usize] = value;
+    pub fn set_word(&mut self, address: u16, value: u16) {
+        self[address] = value as u8;
+        self[address.wrapping_add(1)] = (value >> 8) as u8;
     }
+}
+
+impl std::ops::Index<u16> for Memory {
+    type Output = u8;
 
     #[inline(always)]
-    pub fn getw(&self, address: u16) -> u16 {
-        self.getb(address) as u16 | (self.getb(address.wrapping_add(1)) as u16) << 8
+    fn index(&self, index: u16) -> &Self::Output {
+        &self.data[index as usize]
     }
+}
 
+impl std::ops::IndexMut<u16> for Memory {
     #[inline(always)]
-    pub fn setw(&mut self, address: u16, value: u16) {
-        self.setb(address, value as u8);
-        self.setb(address.wrapping_add(1), (value >> 8) as u8);
+    fn index_mut(&mut self, index: u16) -> &mut Self::Output {
+        &mut self.data[index as usize]
     }
 }
 
@@ -43,12 +49,12 @@ mod tests {
 
     impl Memory {
         fn test_byte_rw(&mut self, address: u16, value: u8) {
-            self.setb(address, value);
-            assert_eq!(value, self.getb(address));
+            self[address] = value;
+            assert_eq!(value, self[address]);
         }
         fn test_word_rw(&mut self, address: u16, value: u16) {
-            self.setw(address, value);
-            assert_eq!(value, self.getw(address));
+            self.set_word(address, value);
+            assert_eq!(value, self.word(address));
         }
     }
 
@@ -66,15 +72,15 @@ mod tests {
         mem.test_word_rw(2, 0x1002);
         mem.test_word_rw(30000, 0x8ABC);
         mem.test_word_rw(65535, 0xFA0C);
-        assert_eq!(0x0c, mem.getb(0xffff));
-        assert_eq!(0xfa, mem.getb(0x0000));
+        assert_eq!(0x0c, mem[0xffff]);
+        assert_eq!(0xfa, mem[0x0000]);
     }
 
     #[test]
     fn endianness() {
         let mut mem = Memory::new();
-        mem.setb(0x1000, 0xA0);
-        mem.setb(0x1001, 0x1D);
-        assert_eq!(0x1DA0, mem.getw(0x1000));
+        mem[0x1000] = 0xA0;
+        mem[0x1001] = 0x1D;
+        assert_eq!(0x1DA0, mem.word(0x1000));
     }
 }

@@ -13,73 +13,73 @@ impl<'a> PartialEq for AddrMode<'a> {
 }
 
 pub static IMPLIED: AddrMode = AddrMode {
-    handler: Cpu::mode_implied,
+    handler: Cpu::prep_implied,
     op_size: 0,
     zp_mode: None,
 };
 
 pub static BRANCH: AddrMode = AddrMode {
-    handler: Cpu::mode_branch,
+    handler: Cpu::prep_branch,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static IMMEDIATE: AddrMode = AddrMode {
-    handler: Cpu::mode_immediate,
+    handler: Cpu::prep_immediate,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static ZERO_PAGE: AddrMode = AddrMode {
-    handler: Cpu::mode_zero_page,
+    handler: Cpu::prep_zero_page,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static ZERO_PAGE_X: AddrMode = AddrMode {
-    handler: Cpu::mode_zero_page_x,
+    handler: Cpu::prep_zero_page_x,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static ZERO_PAGE_Y: AddrMode = AddrMode {
-    handler: Cpu::mode_zero_page_y,
+    handler: Cpu::prep_zero_page_y,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static INDEXED_INDIRECT_X: AddrMode = AddrMode {
-    handler: Cpu::mode_indexed_indirect_x,
+    handler: Cpu::prep_indexed_indirect_x,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static INDIRECT_INDEXED_Y: AddrMode = AddrMode {
-    handler: Cpu::mode_indirect_indexed_y,
+    handler: Cpu::prep_indirect_indexed_y,
     op_size: 1,
     zp_mode: None,
 };
 
 pub static INDIRECT: AddrMode = AddrMode {
-    handler: Cpu::mode_indirect,
+    handler: Cpu::prep_indirect,
     op_size: 2,
     zp_mode: None,
 };
 
 pub static ABSOLUTE: AddrMode = AddrMode {
-    handler: Cpu::mode_absolute,
+    handler: Cpu::prep_absolute,
     op_size: 2,
     zp_mode: Some(&ZERO_PAGE),
 };
 
 pub static ABSOLUTE_X: AddrMode = AddrMode {
-    handler: Cpu::mode_absolute_x,
+    handler: Cpu::prep_absolute_x,
     op_size: 2,
     zp_mode: Some(&ZERO_PAGE_X),
 };
 
 pub static ABSOLUTE_Y: AddrMode = AddrMode {
-    handler: Cpu::mode_absolute_y,
+    handler: Cpu::prep_absolute_y,
     op_size: 2,
     zp_mode: Some(&ZERO_PAGE_Y),
 };
