@@ -1,16 +1,14 @@
-mod exec_env;
 mod flags;
 mod registers;
 
-use self::{exec_env::ExecEnv, flags::Flags, registers::Registers};
-use super::{memory::Memory, opcode::OPCODES};
+use self::{flags::Flags, registers::Registers};
+use super::{exec_env::ExecEnv, memory::Memory, opcode::OPCODES};
 
 pub struct Cpu {
     regs: Registers,
     flags: Flags,
 }
 
-pub type AddrModeHandler = fn(&mut Cpu, &mut ExecEnv);
 pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv);
 
 impl Cpu {
@@ -23,25 +21,12 @@ impl Cpu {
 
     pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
         let opcode = &OPCODES[memory[self.regs.pc] as usize];
-        self.regs.pc = self.regs.pc.wrapping_add(1);
-        let mut env = ExecEnv::new(memory, 1, 0, opcode.cycles);
-        (opcode.addrmode.handler)(self, &mut env);
+        let mut env = ExecEnv::new(self.regs.pc, opcode.cycles);
+        (opcode.addrmode.handler)(&mut env, memory);
+        (opcode.instruction.handler)(self, &mut env);
+        self.regs.pc = self.regs.pc.wrapping_add(opcode.size as u16);
         0
     }
-
-    pub fn prep_implied(&mut self, env: &mut ExecEnv) {}
-
-    pub fn prep_branch(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_immediate(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_zero_page(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_zero_page_x(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_zero_page_y(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_indexed_indirect_x(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_indirect_indexed_y(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_indirect(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_absolute(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_absolute_x(&mut self, env: &mut ExecEnv) {}
-    pub fn prep_absolute_y(&mut self, env: &mut ExecEnv) {}
 
     pub fn exec_adc(&mut self, env: &mut ExecEnv) {
         let mut result: u16 = self.regs.a as u16 + env.arg + self.flags.c as u16;
@@ -70,7 +55,7 @@ impl Cpu {
     pub fn exec_cpy(&mut self, env: &mut ExecEnv) {}
 
     pub fn exec_inc(&mut self, env: &mut ExecEnv) {
-        env.memory[env.addr] += 1;
+        // env.memory[env.addr] += 1;
     }
 
     pub fn exec_inx(&mut self, env: &mut ExecEnv) {}
