@@ -8,16 +8,29 @@ use super::{memory::Memory, opcode::OPCODES};
 
 pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv, &mut u8);
 
-pub struct Cpu {
-    regs: Registers,
-    flags: Flags,
+type PrepAddrModeFn<'a> = fn(&mut ExecEnv, &'a mut Memory, &'a mut Registers) -> &'a mut u8;
+type ExecInstFn<'a> = fn(&mut Cpu<'a>, &mut ExecEnv, &mut Memory, &mut u8);
+
+struct DecodeTableEntry<'a> {
+    pub prep_handler: PrepAddrModeFn<'a>,
+    pub exec_handler: ExecInstFn<'a>,
 }
 
-impl Cpu {
+pub struct Cpu<'a> {
+    regs: Registers,
+    flags: Flags,
+    decode_table: [DecodeTableEntry<'a>; 1],
+}
+
+impl<'a> Cpu<'a> {
     pub fn new(pc: u16) -> Self {
         Self {
             regs: Registers::new(pc, 0xfd),
             flags: Flags::new(),
+            decode_table: [DecodeTableEntry {
+                prep_handler: ExecEnv::prep_implied,
+                exec_handler: Cpu::exec_inc,
+            }],
         }
     }
 
@@ -56,9 +69,9 @@ impl Cpu {
     pub fn exec_cpx(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
     pub fn exec_cpy(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
 
-    pub fn exec_inc(&mut self, env: &mut ExecEnv, memory: &mut Memory) {
-        let result = memory[env.addr] as u16 + 1;
-        memory[env.addr] = result as u8;
+    pub fn exec_inc(&mut self, env: &mut ExecEnv, memory: &mut Memory, outref: &mut u8) {
+        let result = *outref as u16 + 1;
+        *outref = result as u8;
         self.flags.compute_nz(result);
     }
 

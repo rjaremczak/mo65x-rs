@@ -1,8 +1,5 @@
-use crate::mos6510::memory::Memory;
-
 use super::registers::Registers;
-
-pub type ExecEnvPrepFn = fn(&mut ExecEnv, &mut Memory, &mut Registers) -> &mut u8;
+use crate::mos6510::memory::Memory;
 
 pub struct ExecEnv {
     pub pc: u16,
@@ -83,7 +80,8 @@ mod tests {
     #[test]
     fn test_implied() {
         let mut memory = Memory::new();
+        let mut regs = Registers::new(1000, 0xfd);
         let mut env = ExecEnv::new(1000, 2);
-        env.prep_implied(&mut memory);
+        env.prep_implied(&mut memory, &mut regs);
     }
 }
