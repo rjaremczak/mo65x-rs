@@ -3,7 +3,7 @@ mod operand;
 mod patterns;
 mod tokens;
 
-use super::{addr, addrmode::*, error::AsmError, instruction::find_instruction, opcode::find_opcode};
+use super::{addr, addrmode::*, error::AsmError, instruction::InstructionDef, opcode::OpCode};
 use code::ObjectCode;
 use operand::OperandParser;
 use regex::Regex;
@@ -58,16 +58,17 @@ impl Assembler {
         AsmError::SyntaxError
     }
 
-    fn preprocess<'a>(addrmode: &'a AddrMode, opt_opval: Option<i32>) -> (&'a AddrMode<'a>, i32) {
-        match addrmode.zp_mode {
+    fn preprocess(addrmode: AddrMode, opt_opval: Option<i32>) -> (&'static AddrModeDef, i32) {
+        let addrmode_def = addrmode.def();
+        match addrmode_def.zp_mode {
             Some(zp_mode) => match opt_opval {
                 Some(opval) => match addr::is_zero_page(opval) {
-                    true => (zp_mode, opval),
-                    false => (addrmode, opval),
+                    true => (zp_mode.def(), opval),
+                    false => (addrmode_def, opval),
                 },
-                None => (addrmode, 0),
+                None => (addrmode_def, 0),
             },
-            None => (addrmode, opt_opval.unwrap_or(0)),
+            None => (addrmode_def, opt_opval.unwrap_or(0)),
         }
     }
 
@@ -87,8 +88,8 @@ impl Assembler {
         }
     }
 
-    fn assemble(&mut self, addrmode: &AddrMode, tokens: Tokens) -> AsmError {
-        let operand = if addrmode == &IMPLIED {
+    fn assemble<'a>(&mut self, addrmode: AddrMode, tokens: Tokens) -> AsmError {
+        let operand = if addrmode == AddrMode::Implied {
             None
         } else {
             match tokens.operand() {
@@ -99,10 +100,10 @@ impl Assembler {
                 None => return AsmError::MissingOperand,
             }
         };
-        let (opt_addrmode, opvalue) = Self::preprocess(addrmode, operand);
+        let (addrmode_def, opvalue) = Self::preprocess(addrmode, operand);
         match tokens.operation() {
-            Some(operation) => match find_instruction(operation) {
-                Some(instruction) => match find_opcode(instruction, opt_addrmode) {
+            Some(operation) => match InstructionDef::by_mnemonic(operation) {
+                Some(instruction_def) => match OpCode::find(instruction_def.id, addrmode_def.id) {
                     Some(opcode) => {
                         self.object_code.emit_byte(opcode.code);
                         if opcode.size == 2 {
@@ -159,39 +160,39 @@ impl Assembler {
     }
 
     pub fn handle_implied(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&IMPLIED, tokens)
+        self.assemble(AddrMode::Implied, tokens)
     }
 
     pub fn handle_immediate(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&IMMEDIATE, tokens)
+        self.assemble(AddrMode::Immediate, tokens)
     }
 
     pub fn handle_branch(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&BRANCH, tokens)
+        self.assemble(AddrMode::Branch, tokens)
     }
 
     pub fn handle_absolute(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&ABSOLUTE, tokens)
+        self.assemble(AddrMode::Absolute, tokens)
     }
 
     pub fn handle_absolute_indexed_x(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&ABSOLUTE_X, tokens)
+        self.assemble(AddrMode::AbsoluteX, tokens)
     }
 
     pub fn handle_absolute_indexed_y(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&ABSOLUTE_Y, tokens)
+        self.assemble(AddrMode::AbsoluteY, tokens)
     }
 
     pub fn handle_indirect(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&INDIRECT, tokens)
+        self.assemble(AddrMode::Indirect, tokens)
     }
 
     pub fn handle_indexed_indirect_x(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&INDEXED_INDIRECT_X, tokens)
+        self.assemble(AddrMode::IndexedIndirectX, tokens)
     }
 
     pub fn handle_indirect_indexed_y(&mut self, tokens: Tokens) -> AsmError {
-        self.assemble(&INDIRECT_INDEXED_Y, tokens)
+        self.assemble(AddrMode::IndirectIndexedY, tokens)
     }
 }
 

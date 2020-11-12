@@ -1,310 +1,144 @@
-use super::cpu::{Cpu, InstructionHandler};
-
-pub struct Instruction<'a> {
-    pub handler: InstructionHandler,
-    pub mnemonic: &'a str,
+#[derive(PartialEq)]
+pub enum Instruction {
+    Adc,
+    Sbc,
+    And,
+    Ora,
+    Asl,
+    Lsr,
+    Eor,
+    Rol,
+    Ror,
+    Bit,
+    Cmp,
+    Cpx,
+    Cpy,
+    Inc,
+    Inx,
+    Iny,
+    Dec,
+    Dex,
+    Dey,
+    Bcc,
+    Bcs,
+    Beq,
+    Bmi,
+    Bne,
+    Bpl,
+    Bvc,
+    Bvs,
+    Clc,
+    Cld,
+    Cli,
+    Clv,
+    Sec,
+    Sed,
+    Sei,
+    Jmp,
+    Jsr,
+    Brk,
+    Rti,
+    Rts,
+    Lda,
+    Ldx,
+    Ldy,
+    Sta,
+    Stx,
+    Sty,
+    Tax,
+    Tay,
+    Tsx,
+    Txa,
+    Tya,
+    Txs,
+    Pha,
+    Php,
+    Pla,
+    Plp,
+    Nop,
+    Kil,
 }
 
-impl<'a> PartialEq for Instruction<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(self, other)
+pub struct InstructionDef {
+    pub id: Instruction,
+    pub mnemonic: &'static str,
+}
+
+impl InstructionDef {
+    fn new(id: Instruction, mnemonic: &'static str) -> Self {
+        Self { id, mnemonic }
+    }
+
+    pub fn by_mnemonic(mnemonic: &str) -> Option<&InstructionDef> {
+        let m = &mnemonic.to_uppercase();
+        INSTRUCTIONS.iter().find(|e| e.mnemonic == m)
+    }
+
+    pub fn find(id: Instruction) -> Option<&'static InstructionDef> {
+        INSTRUCTIONS.iter().find(|e| e.id == id)
     }
 }
 
-pub fn find_instruction(mnemonic: &str) -> Option<&Instruction> {
-    let m = &mnemonic.to_uppercase();
-    INSTRUCTIONS.iter().find(|e| e.mnemonic == m).map(|e| *e)
-}
+use Instruction::*;
 
-pub static ADC: Instruction = Instruction {
-    handler: Cpu::exec_adc,
-    mnemonic: "ADC",
-};
-
-pub static SBC: Instruction = Instruction {
-    handler: Cpu::exec_sbc,
-    mnemonic: "SBC",
-};
-
-pub static AND: Instruction = Instruction {
-    handler: Cpu::exec_and,
-    mnemonic: "AND",
-};
-
-pub static ORA: Instruction = Instruction {
-    handler: Cpu::exec_ora,
-    mnemonic: "ORA",
-};
-
-pub static ASL: Instruction = Instruction {
-    handler: Cpu::exec_asl,
-    mnemonic: "ASL",
-};
-
-pub static LSR: Instruction = Instruction {
-    handler: Cpu::exec_lsr,
-    mnemonic: "LSR",
-};
-
-pub static EOR: Instruction = Instruction {
-    handler: Cpu::exec_eor,
-    mnemonic: "EOR",
-};
-
-pub static ROL: Instruction = Instruction {
-    handler: Cpu::exec_rol,
-    mnemonic: "ROL",
-};
-
-pub static ROR: Instruction = Instruction {
-    handler: Cpu::exec_ror,
-    mnemonic: "ROR",
-};
-
-pub static BIT: Instruction = Instruction {
-    handler: Cpu::exec_bit,
-    mnemonic: "BIT",
-};
-
-pub static CMP: Instruction = Instruction {
-    handler: Cpu::exec_cmp,
-    mnemonic: "CMP",
-};
-
-pub static CPX: Instruction = Instruction {
-    handler: Cpu::exec_cpx,
-    mnemonic: "CPX",
-};
-
-pub static CPY: Instruction = Instruction {
-    handler: Cpu::exec_cpy,
-    mnemonic: "CPY",
-};
-
-pub static INC: Instruction = Instruction {
-    handler: Cpu::exec_inc,
-    mnemonic: "INC",
-};
-
-pub static INX: Instruction = Instruction {
-    handler: Cpu::exec_inx,
-    mnemonic: "INX",
-};
-
-pub static INY: Instruction = Instruction {
-    handler: Cpu::exec_iny,
-    mnemonic: "INY",
-};
-
-pub static DEC: Instruction = Instruction {
-    handler: Cpu::exec_dec,
-    mnemonic: "DEC",
-};
-
-pub static DEX: Instruction = Instruction {
-    handler: Cpu::exec_dex,
-    mnemonic: "DEX",
-};
-
-pub static DEY: Instruction = Instruction {
-    handler: Cpu::exec_dey,
-    mnemonic: "DEY",
-};
-
-pub static BCC: Instruction = Instruction {
-    handler: Cpu::exec_bcc,
-    mnemonic: "BCC",
-};
-
-pub static BCS: Instruction = Instruction {
-    handler: Cpu::exec_bcs,
-    mnemonic: "BCS",
-};
-
-pub static BEQ: Instruction = Instruction {
-    handler: Cpu::exec_beq,
-    mnemonic: "BEQ",
-};
-
-pub static BMI: Instruction = Instruction {
-    handler: Cpu::exec_bmi,
-    mnemonic: "BMI",
-};
-
-pub static BNE: Instruction = Instruction {
-    handler: Cpu::exec_bne,
-    mnemonic: "BNE",
-};
-
-pub static BPL: Instruction = Instruction {
-    handler: Cpu::exec_bpl,
-    mnemonic: "BPL",
-};
-
-pub static BVC: Instruction = Instruction {
-    handler: Cpu::exec_bvc,
-    mnemonic: "BVC",
-};
-
-pub static BVS: Instruction = Instruction {
-    handler: Cpu::exec_bvs,
-    mnemonic: "BVS",
-};
-
-pub static CLC: Instruction = Instruction {
-    handler: Cpu::exec_clc,
-    mnemonic: "CLC",
-};
-
-pub static CLD: Instruction = Instruction {
-    handler: Cpu::exec_cld,
-    mnemonic: "CLD",
-};
-
-pub static CLI: Instruction = Instruction {
-    handler: Cpu::exec_cli,
-    mnemonic: "CLI",
-};
-
-pub static CLV: Instruction = Instruction {
-    handler: Cpu::exec_clv,
-    mnemonic: "CLV",
-};
-
-pub static SEC: Instruction = Instruction {
-    handler: Cpu::exec_sec,
-    mnemonic: "SEC",
-};
-
-pub static SED: Instruction = Instruction {
-    handler: Cpu::exec_sed,
-    mnemonic: "SED",
-};
-
-pub static SEI: Instruction = Instruction {
-    handler: Cpu::exec_sei,
-    mnemonic: "SEI",
-};
-
-pub static JMP: Instruction = Instruction {
-    handler: Cpu::exec_jmp,
-    mnemonic: "JMP",
-};
-
-pub static JSR: Instruction = Instruction {
-    handler: Cpu::exec_jsr,
-    mnemonic: "JSR",
-};
-
-pub static BRK: Instruction = Instruction {
-    handler: Cpu::exec_brk,
-    mnemonic: "BRK",
-};
-
-pub static RTI: Instruction = Instruction {
-    handler: Cpu::exec_rti,
-    mnemonic: "RTI",
-};
-
-pub static RTS: Instruction = Instruction {
-    handler: Cpu::exec_rts,
-    mnemonic: "RTS",
-};
-
-pub static LDA: Instruction = Instruction {
-    handler: Cpu::exec_lda,
-    mnemonic: "LDA",
-};
-
-pub static LDX: Instruction = Instruction {
-    handler: Cpu::exec_ldx,
-    mnemonic: "LDX",
-};
-
-pub static LDY: Instruction = Instruction {
-    handler: Cpu::exec_ldy,
-    mnemonic: "LDY",
-};
-
-pub static STA: Instruction = Instruction {
-    handler: Cpu::exec_sta,
-    mnemonic: "STA",
-};
-
-pub static STX: Instruction = Instruction {
-    handler: Cpu::exec_stx,
-    mnemonic: "STX",
-};
-
-pub static STY: Instruction = Instruction {
-    handler: Cpu::exec_sty,
-    mnemonic: "STY",
-};
-
-pub static TAX: Instruction = Instruction {
-    handler: Cpu::exec_tax,
-    mnemonic: "TAX",
-};
-
-pub static TAY: Instruction = Instruction {
-    handler: Cpu::exec_tay,
-    mnemonic: "TAY",
-};
-
-pub static TSX: Instruction = Instruction {
-    handler: Cpu::exec_tsx,
-    mnemonic: "TSX",
-};
-
-pub static TXA: Instruction = Instruction {
-    handler: Cpu::exec_txa,
-    mnemonic: "TXA",
-};
-
-pub static TYA: Instruction = Instruction {
-    handler: Cpu::exec_tya,
-    mnemonic: "TYA",
-};
-
-pub static TXS: Instruction = Instruction {
-    handler: Cpu::exec_txs,
-    mnemonic: "TXS",
-};
-
-pub static PHA: Instruction = Instruction {
-    handler: Cpu::exec_pha,
-    mnemonic: "PHA",
-};
-
-pub static PHP: Instruction = Instruction {
-    handler: Cpu::exec_php,
-    mnemonic: "PHP",
-};
-
-pub static PLA: Instruction = Instruction {
-    handler: Cpu::exec_pla,
-    mnemonic: "PLA",
-};
-
-pub static PLP: Instruction = Instruction {
-    handler: Cpu::exec_plp,
-    mnemonic: "PLP",
-};
-
-pub static NOP: Instruction = Instruction {
-    handler: Cpu::exec_nop,
-    mnemonic: "NOP",
-};
-
-pub static KIL: Instruction = Instruction {
-    handler: Cpu::exec_kil,
-    mnemonic: "KIL",
-};
-
-pub static INSTRUCTIONS: [&Instruction; 57] = [
-    &KIL, &ADC, &SBC, &AND, &ORA, &ASL, &LSR, &EOR, &ROL, &ROR, &BIT, &CMP, &CPX, &CPY, &INC, &INX, &INY, &DEC, &DEX, &DEY, &BCC, &BCS,
-    &BEQ, &BMI, &BNE, &BPL, &BVC, &BVS, &CLC, &CLD, &CLI, &CLV, &SEC, &SED, &SEI, &JMP, &JSR, &BRK, &RTI, &RTS, &LDA, &LDX, &LDY, &STA,
-    &STX, &STY, &TAX, &TAY, &TSX, &TXA, &TYA, &TXS, &PHA, &PHP, &PLA, &PLP, &NOP,
+pub static INSTRUCTIONS: [InstructionDef; 57] = [
+    InstructionDef::new(Kil, "KIL"),
+    InstructionDef::new(Adc, "ADC"),
+    InstructionDef::new(Sbc, "SBC"),
+    InstructionDef::new(And, "AND"),
+    InstructionDef::new(Ora, "ORA"),
+    InstructionDef::new(Asl, "ASL"),
+    InstructionDef::new(Lsr, "LSR"),
+    InstructionDef::new(Eor, "EOR"),
+    InstructionDef::new(Rol, "ROL"),
+    InstructionDef::new(Ror, "ROR"),
+    InstructionDef::new(Bit, "BIT"),
+    InstructionDef::new(Cmp, "CMP"),
+    InstructionDef::new(Cpx, "CPX"),
+    InstructionDef::new(Cpy, "CPY"),
+    InstructionDef::new(Inc, "INC"),
+    InstructionDef::new(Inx, "INX"),
+    InstructionDef::new(Iny, "INY"),
+    InstructionDef::new(Dec, "DEC"),
+    InstructionDef::new(Dex, "DEX"),
+    InstructionDef::new(Dey, "DEY"),
+    InstructionDef::new(Bcc, "BCC"),
+    InstructionDef::new(Bcs, "BCS"),
+    InstructionDef::new(Beq, "BEQ"),
+    InstructionDef::new(Bmi, "BMI"),
+    InstructionDef::new(Bne, "BNE"),
+    InstructionDef::new(Bpl, "BPL"),
+    InstructionDef::new(Bvc, "BVC"),
+    InstructionDef::new(Bvs, "BVS"),
+    InstructionDef::new(Clc, "CLC"),
+    InstructionDef::new(Cld, "CLD"),
+    InstructionDef::new(Cli, "CLI"),
+    InstructionDef::new(Clv, "CLV"),
+    InstructionDef::new(Sec, "SEC"),
+    InstructionDef::new(Sed, "SED"),
+    InstructionDef::new(Sei, "SEI"),
+    InstructionDef::new(Jmp, "JMP"),
+    InstructionDef::new(Jsr, "JSR"),
+    InstructionDef::new(Brk, "BRK"),
+    InstructionDef::new(Rti, "RTI"),
+    InstructionDef::new(Rts, "RTS"),
+    InstructionDef::new(Lda, "LDA"),
+    InstructionDef::new(Ldx, "LDX"),
+    InstructionDef::new(Ldy, "LDY"),
+    InstructionDef::new(Sta, "STA"),
+    InstructionDef::new(Stx, "STX"),
+    InstructionDef::new(Sty, "STY"),
+    InstructionDef::new(Tax, "TAX"),
+    InstructionDef::new(Tay, "TAY"),
+    InstructionDef::new(Tsx, "TSX"),
+    InstructionDef::new(Txa, "TXA"),
+    InstructionDef::new(Tya, "TYA"),
+    InstructionDef::new(Txs, "TXS"),
+    InstructionDef::new(Pha, "PHA"),
+    InstructionDef::new(Php, "PHP"),
+    InstructionDef::new(Pla, "PLA"),
+    InstructionDef::new(Plp, "PLP"),
+    InstructionDef::new(Nop, "NOP"),
 ];
 
 #[cfg(test)]
@@ -313,20 +147,20 @@ mod tests {
 
     #[test]
     fn find_ok() {
-        assert!(find_instruction("LDX").unwrap() == &LDX);
-        assert!(find_instruction("LDA").unwrap() == &LDA);
+        assert!(InstructionDef::by_mnemonic("LDX").unwrap().id == Ldx);
+        assert!(InstructionDef::by_mnemonic("LDA").unwrap().id == Lda);
     }
 
     #[test]
     fn find_failed() {
-        assert!(matches!(find_instruction("JUH"), None));
+        assert!(matches!(InstructionDef::by_mnemonic("JUH"), None));
     }
 
     #[test]
     fn find_mnemonic_by_instruction() {
-        assert_eq!(LDA.mnemonic, "LDA");
-        assert_eq!(TXA.mnemonic, "TXA");
-        assert_eq!(KIL.mnemonic, "KIL");
-        assert_eq!(JMP.mnemonic, "JMP");
+        assert_eq!(InstructionDef::find(Lda).unwrap().mnemonic, "LDA");
+        assert_eq!(InstructionDef::find(Txa).unwrap().mnemonic, "TXA");
+        assert_eq!(InstructionDef::find(Kil).unwrap().mnemonic, "KIL");
+        assert_eq!(InstructionDef::find(Jmp).unwrap().mnemonic, "JMP");
     }
 }
