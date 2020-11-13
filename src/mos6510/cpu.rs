@@ -1,25 +1,19 @@
 pub mod exec_env;
 
+mod decoder;
 mod flags;
 mod registers;
 
 use self::{exec_env::ExecEnv, flags::Flags, registers::Registers};
 use super::{memory::Memory, opcode::OPCODES};
+use decoder::*;
 
 pub type InstructionHandler = fn(&mut Cpu, &mut ExecEnv, &mut u8);
-
-type PrepAddrModeFn<'a> = fn(&mut ExecEnv, &'a mut Memory, &'a mut Registers) -> &'a mut u8;
-type ExecInstFn<'a> = fn(&mut Cpu<'a>, &mut ExecEnv, &mut Memory, &mut u8);
-
-struct DecodeTableEntry<'a> {
-    pub prep_handler: PrepAddrModeFn<'a>,
-    pub exec_handler: ExecInstFn<'a>,
-}
 
 pub struct Cpu<'a> {
     regs: Registers,
     flags: Flags,
-    decode_table: [DecodeTableEntry<'a>; 1],
+    decode_table: OpCodeTable<'a>,
 }
 
 impl<'a> Cpu<'a> {
@@ -27,31 +21,38 @@ impl<'a> Cpu<'a> {
         Self {
             regs: Registers::new(pc, 0xfd),
             flags: Flags::new(),
-            decode_table: [DecodeTableEntry {
-                prep_handler: ExecEnv::prep_implied,
-                exec_handler: Cpu::exec_inc,
-            }],
+            decode_table: generate_opcode_table(),
         }
     }
 
-    pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
+    pub fn prep_implied(&mut self, env: &mut ExecEnv, b: bool) {}
+
+    pub fn exec_test(&mut self, env: &mut ExecEnv) {}
+
+    pub fn exec_instruction(&'a mut self, memory: &'a mut Memory) -> u8 {
         let opcode = &OPCODES[memory[self.regs.pc] as usize];
-        let mut env = ExecEnv::new(self.regs.pc, opcode.cycles);
-        // let outref = (opcode.addrmode.handler)(&mut env, memory, &mut self.regs);
-        // (opcode.instruction.handler)(self, &mut env, outref);
-        self.regs.pc = self.regs.pc.wrapping_add(opcode.size as u16);
+        let opcode_entry = self.decode_table[opcode.code as usize];
+        // let mut env = ExecEnv::new(memory, self.regs.pc, opcode.cycles);
+        // let outref = (opcode_entry.prep_handler)(&mut env, &mut self.regs);
+        // let mut env = self.prep_implied(memory, true);
+        // (opcode_entry.exec_handler)(self, &mut env, memory, outref);
+        // let mut dummy: u8 = 0;
+        let mut env = ExecEnv::new(self.regs.pc.wrapping_add(1), opcode.cycles);
+        env.prep_implied(memory, &mut self.regs);
+        self.exec_test(&mut env);
+        self.regs.pc = self.regs.pc.wrapping_add(opcode_entry.size as u16);
         0
     }
 
     pub fn exec_adc(&mut self, env: &mut ExecEnv, _: &mut Memory) {
-        let mut result = self.regs.a as u16 + env.arg + self.flags.c as u16;
+        let mut result = self.regs.a as u16 + env.val + self.flags.c as u16;
         if self.flags.d {
             self.flags.c = decimal_correction(&mut result);
             self.flags.compute_nz(result);
         } else {
             self.flags.compute_nzc(result);
         }
-        self.flags.compute_v(self.regs.a as u16, env.arg, result);
+        self.flags.compute_v(self.regs.a as u16, env.val, result);
         self.regs.a = result as u8;
         env.add_cycle_when_page_crossed();
     }
@@ -116,8 +117,8 @@ impl<'a> Cpu<'a> {
     pub fn exec_plp(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
     pub fn exec_pha(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
     pub fn exec_php(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
-    pub fn exec_nop(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
-    pub fn exec_kil(&mut self, env: &mut ExecEnv, memory: &mut Memory) {}
+    pub fn exec_nop(&mut self, env: &mut ExecEnv, memory: &mut Memory, _: &mut u8) {}
+    pub fn exec_kil(&mut self, env: &mut ExecEnv, memory: &mut Memory, _: &mut u8) {}
 }
 
 fn decimal_correction(result: &mut u16) -> bool {

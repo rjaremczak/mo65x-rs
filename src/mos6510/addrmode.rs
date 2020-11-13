@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum AddrMode {
     Implied,
     Branch,
@@ -27,7 +27,7 @@ pub struct AddrModeDef {
 }
 
 impl AddrModeDef {
-    fn new(id: AddrMode, op_size: u8, zp_mode: Option<AddrMode>) -> Self {
+    const fn new(id: AddrMode, op_size: u8, zp_mode: Option<AddrMode>) -> Self {
         Self { id, op_size, zp_mode }
     }
 }

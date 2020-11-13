@@ -106,9 +106,9 @@ impl Assembler {
                 Some(instruction_def) => match OpCode::find(instruction_def.id, addrmode_def.id) {
                     Some(opcode) => {
                         self.object_code.emit_byte(opcode.code);
-                        if opcode.size == 2 {
+                        if addrmode_def.op_size == 1 {
                             self.object_code.emit_byte(opvalue as u8);
-                        } else if opcode.size == 3 {
+                        } else if addrmode_def.op_size == 2 {
                             self.object_code.emit_word(opvalue as u16);
                         }
                         AsmError::Ok

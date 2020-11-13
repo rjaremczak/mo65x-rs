@@ -5,22 +5,20 @@ pub struct OpCode {
     pub code: u8,
     pub instruction: Instruction,
     pub addrmode: AddrMode,
-    pub size: u8,
     pub cycles: u8,
 }
 
 impl OpCode {
-    fn new(code: u8, instruction: Instruction, addrmode: AddrMode, cycles: u8) -> OpCode {
+    const fn new(code: u8, instruction: Instruction, addrmode: AddrMode, cycles: u8) -> OpCode {
         OpCode {
             code,
-            size: addrmode.op_size + 1,
             addrmode,
             instruction,
             cycles,
         }
     }
 
-    pub fn matches(&self, instruction: &Instruction, addrmode: AddrMode) -> bool {
+    pub fn matches(&self, instruction: Instruction, addrmode: AddrMode) -> bool {
         self.instruction == instruction && self.addrmode == addrmode
     }
 
@@ -294,7 +292,7 @@ mod tests {
 
     #[test]
     fn test_find_opcode() {
-        match find_opcode(Jmp, Absolute) {
+        match OpCode::find(Jmp, Absolute) {
             Some(oc) => assert_eq!(oc.code, 0x4c),
             None => assert!(false, "opcode not found"),
         }

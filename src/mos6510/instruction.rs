@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum Instruction {
     Adc,
     Sbc,
@@ -65,7 +65,7 @@ pub struct InstructionDef {
 }
 
 impl InstructionDef {
-    fn new(id: Instruction, mnemonic: &'static str) -> Self {
+    const fn new(id: Instruction, mnemonic: &'static str) -> Self {
         Self { id, mnemonic }
     }
 
