@@ -7,13 +7,13 @@ use self::{env::Env, flags::Flags, registers::Registers};
 use super::{memory::Memory, opcode::OPCODES};
 use decoder::*;
 
-pub struct Cpu<'a> {
+pub struct Cpu {
     regs: Registers,
     flags: Flags,
-    decode_table: OpCodeTable<'a>,
+    decode_table: OpCodeTable,
 }
 
-impl<'a> Cpu<'a> {
+impl Cpu {
     pub fn new(pc: u16) -> Self {
         Self {
             regs: Registers::new(pc, 0xfd),
@@ -26,7 +26,7 @@ impl<'a> Cpu<'a> {
 
     pub fn exec_test(&mut self, env: &mut Env) {}
 
-    pub fn exec_instruction(&'a mut self, memory: &'a mut Memory) -> u8 {
+    pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
         let opcode = &OPCODES[memory[self.regs.pc] as usize];
         let opcode_entry = self.decode_table[opcode.code as usize];
         // let mut env = ExecEnv::new(memory, self.regs.pc, opcode.cycles);
