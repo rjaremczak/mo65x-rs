@@ -15,29 +15,39 @@ impl Memory {
         Memory { data: [0; MEMORY_SIZE] }
     }
 
-    #[inline(always)]
-    pub fn word(&self, address: u16) -> u16 {
-        self[address] as u16 | (self[address.wrapping_add(1)] as u16) << 8
+    #[inline]
+    pub fn byte(&self, address: u16) -> u8 {
+        self.data[address as usize]
     }
 
-    #[inline(always)]
+    #[inline]
+    pub fn set_byte(&mut self, address: u16, value: u8) {
+        self.data[address as usize] = value;
+    }
+
+    #[inline]
+    pub fn word(&self, address: u16) -> u16 {
+        self.byte(address) as u16 | (self.byte(address.wrapping_add(1)) as u16) << 8
+    }
+
+    #[inline]
     pub fn set_word(&mut self, address: u16, value: u16) {
-        self[address] = value as u8;
-        self[address.wrapping_add(1)] = (value >> 8) as u8;
+        self.set_byte(address, value as u8);
+        self.set_byte(address.wrapping_add(1), (value >> 8) as u8);
     }
 }
 
 impl std::ops::Index<u16> for Memory {
     type Output = u8;
 
-    #[inline(always)]
+    #[inline]
     fn index(&self, index: u16) -> &Self::Output {
         &self.data[index as usize]
     }
 }
 
 impl std::ops::IndexMut<u16> for Memory {
-    #[inline(always)]
+    #[inline]
     fn index_mut(&mut self, index: u16) -> &mut Self::Output {
         &mut self.data[index as usize]
     }

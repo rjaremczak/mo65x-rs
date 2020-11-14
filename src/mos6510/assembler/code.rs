@@ -44,10 +44,3 @@ impl ObjectCode {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    //fn
-}

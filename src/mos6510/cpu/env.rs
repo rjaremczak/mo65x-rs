@@ -126,6 +126,7 @@ mod tests {
         env.set_result(0x12);
         assert_eq!(regs.a, 0x12);
         assert_eq!(env.result(), 0x12);
+        assert!(!env.page_crossed);
     }
 
     #[test]
@@ -134,6 +135,7 @@ mod tests {
         memory[regs.pc] = 0x23;
         env.prep_immediate(&mut memory, &mut regs);
         assert_eq!(env.arg, 0x23);
+        assert!(!env.page_crossed);
     }
 
     #[test]
@@ -146,6 +148,7 @@ mod tests {
         assert_eq!(env.result(), 0x32);
         env.set_result(0x0a);
         assert_eq!(env.result(), 0x0a);
+        assert!(!env.page_crossed);
     }
 
     #[test]
@@ -160,6 +163,7 @@ mod tests {
         assert_eq!(env.result(), 0x3a);
         env.set_result(0x2a);
         assert_eq!(env.result(), 0x2a);
+        assert!(!env.page_crossed);
     }
 
     #[test]
@@ -172,6 +176,7 @@ mod tests {
         env.prep_zero_page_y(&mut memory, &mut regs);
         assert_eq!(env.arg, 0xf7);
         assert_eq!(env.result(), 0x3a);
+        assert!(!env.page_crossed);
     }
 
     #[test]
@@ -186,5 +191,68 @@ mod tests {
         assert_eq!(env.result(), 0xc1);
         env.set_result(0x0c);
         assert_eq!(memory[0x2f00], 0x0c);
+        assert!(!env.page_crossed);
+    }
+
+    #[test]
+    fn test_indirect_indexed_y() {
+        let (mut env, mut memory, mut regs) = setup();
+        regs.y = 0x10;
+        memory.set_byte(regs.pc, 0x8f);
+        memory.set_word(0x8f, 0x2af0);
+        memory.set_byte(0x2b00, 0xc3);
+        env.prep_indirect_indexed_y(&mut memory, &mut regs);
+        assert_eq!(env.arg, 0x2b00);
+        assert_eq!(env.result(), 0xc3);
+        assert!(env.page_crossed);
+    }
+
+    #[test]
+    fn test_indirct() {
+        let (mut env, mut memory, mut regs) = setup();
+        memory.set_word(regs.pc, 0xa002);
+        memory.set_word(0xa002, 0x2fc0);
+        memory[0x2fc0] = 0xad;
+        env.prep_indirect(&mut memory, &mut regs);
+        assert_eq!(env.arg, 0x2fc0);
+        assert_eq!(env.result(), 0xad);
+        assert!(!env.page_crossed);
+    }
+
+    #[test]
+    fn test_absolute() {
+        let (mut env, mut memory, mut regs) = setup();
+        memory.set_word(regs.pc, 0xb002);
+        memory.set_word(0xb002, 0x12);
+        env.prep_absolute(&mut memory, &mut regs);
+        assert_eq!(env.arg, 0xb002);
+        assert_eq!(env.result(), 0x12);
+        env.set_result(0x0c);
+        assert_eq!(memory[0xb002], 0x0c);
+        assert!(!env.page_crossed);
+    }
+
+    #[test]
+    fn test_absolute_x() {
+        let (mut env, mut memory, mut regs) = setup();
+        regs.x = 0x20;
+        memory.set_word(regs.pc, 0xb002);
+        memory.set_word(0xb022, 0x14);
+        env.prep_absolute_x(&mut memory, &mut regs);
+        assert_eq!(env.arg, 0xb022);
+        assert_eq!(env.result(), 0x14);
+        assert!(!env.page_crossed);
+    }
+
+    #[test]
+    fn test_absolute_y() {
+        let (mut env, mut memory, mut regs) = setup();
+        regs.y = 0x31;
+        memory.set_word(regs.pc, 0xbfff);
+        memory.set_word(0xc030, 0x11);
+        env.prep_absolute_y(&mut memory, &mut regs);
+        assert_eq!(env.arg, 0xc030);
+        assert_eq!(env.result(), 0x11);
+        assert!(env.page_crossed);
     }
 }
