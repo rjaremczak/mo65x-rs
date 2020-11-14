@@ -1,8 +1,8 @@
-use super::{exec_env::ExecEnv, registers::Registers, Cpu};
+use super::{env::Env, registers::Registers, Cpu};
 use crate::mos6510::{addrmode::AddrMode, instruction::Instruction, memory::Memory, opcode::OPCODES};
 
-pub type PrepAddrModeFn = fn(&mut ExecEnv, &mut Memory, &mut Registers);
-pub type ExecInstFn<'a> = fn(&mut Cpu<'a>, &mut ExecEnv, &mut Memory, &mut u8);
+pub type PrepAddrModeFn = fn(&mut Env, &mut Memory, &mut Registers);
+pub type ExecInstFn<'a> = fn(&mut Cpu<'a>, &mut Env, &mut Memory, &mut u8);
 
 #[derive(Copy, Clone)]
 pub struct OpCodeEntry<'a> {
@@ -21,7 +21,7 @@ impl<'a> OpCodeEntry<'a> {
     }
 
     fn resolve_prep_handler(addrmode: AddrMode) -> PrepAddrModeFn {
-        ExecEnv::prep_implied
+        Env::prep_implied
     }
 
     fn resolve_exec_handler(instruction: Instruction) -> ExecInstFn<'a> {
