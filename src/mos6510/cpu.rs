@@ -33,20 +33,20 @@ impl Cpu {
     }
 
     pub fn exec_adc(&mut self, env: &mut Env, _: &mut Memory) {
-        let mut result = self.regs.a as u16 + env.aux + self.flags.c as u16;
+        let mut result = self.regs.a as u16 + env.arg() as u16 + self.flags.c as u16;
         if self.flags.d {
             self.flags.c = decimal_correction(&mut result);
             self.flags.compute_nz(result);
         } else {
             self.flags.compute_nzc(result);
         }
-        self.flags.compute_v(self.regs.a as u16, env.aux, result);
+        self.flags.compute_v(self.regs.a as u16, env.addr, result);
         self.regs.a = result as u8;
         env.add_cycle_when_page_crossed();
     }
 
     pub fn exec_sbc(&mut self, env: &mut Env, _: &mut Memory) {
-        let op = env.aux ^ 0x00ff;
+        let op = env.arg() as u16 ^ 0x00ff;
         let mut result = self.regs.a as u16 + op + self.flags.c as u16;
         if self.flags.d {
             result -= 0x66;
@@ -58,19 +58,6 @@ impl Cpu {
         self.flags.compute_v(self.regs.a as u16, op, result);
         self.regs.a = result as u8;
         env.add_cycle_when_page_crossed();
-    }
-
-    #[inline]
-    fn exec_general_adc(&mut self, arg: u16) {
-        let mut result = self.regs.a as u16 + arg + self.flags.c as u16;
-        if self.flags.d {
-            self.flags.c = decimal_correction(&mut result);
-            self.flags.compute_nz(result);
-        } else {
-            self.flags.compute_nzc(result);
-        }
-        self.flags.compute_v(self.regs.a as u16, arg, result);
-        self.regs.a = result as u8;
     }
 
     pub fn exec_and(&mut self, env: &mut Env, memory: &mut Memory) {}
@@ -86,8 +73,8 @@ impl Cpu {
     pub fn exec_cpy(&mut self, env: &mut Env, memory: &mut Memory) {}
 
     pub fn exec_inc(&mut self, env: &mut Env, memory: &mut Memory) {
-        let result = env.argument().wrapping_add(1);
-        env.set_result(result);
+        let result = env.arg().wrapping_add(1);
+        env.set_arg(result);
         self.flags.compute_nz(result as u16);
     }
 
@@ -165,17 +152,35 @@ mod tests {
                 cpu: Cpu::new(1000),
             }
         }
-    }
 
-    fn assert_inst(ctx: &mut Ctx, line: &str, size: usize, cycles: u8) {
-        let mut asm = Assembler::new(ctx.cpu.regs.pc);
-        asm.generate_code(true);
-        let r = asm.process_line(line);
-        assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
-        assert_eq!(asm.object_code().data.len(), size);
-        ctx.memory.set_bytes(asm.object_code().origin, &asm.object_code().data);
-        let c = ctx.cpu.exec_inst(&mut ctx.memory);
-        assert_eq!(c, cycles, "wrong number of cycles");
+        fn assert_inst(&mut self, line: &str, size: usize, cycles: u8) {
+            let mut asm = Assembler::new(self.cpu.regs.pc);
+            asm.generate_code(true);
+            let r = asm.process_line(line);
+            assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
+            assert_eq!(asm.object_code().data.len(), size);
+            self.memory.set_bytes(asm.object_code().origin, &asm.object_code().data);
+            let c = self.cpu.exec_inst(&mut self.memory);
+            assert_eq!(c, cycles, "wrong number of cycles");
+        }
+
+        fn assert_anzcv(&self, a: u8, n: bool, z: bool, c: bool, v: bool) {
+            assert_eq!(self.cpu.regs.a, a, "reg a");
+            assert_eq!(self.cpu.flags.n, n, "flag n");
+            assert_eq!(self.cpu.flags.z, z, "flag z");
+            assert_eq!(self.cpu.flags.c, c, "flag c");
+            assert_eq!(self.cpu.flags.v, v, "flag v");
+        }
+
+        fn set_ca(&mut self, c: bool, a: u8) {
+            self.cpu.flags.c = c;
+            self.cpu.regs.a = a;
+        }
+
+        fn set_cam(&mut self, c: bool, a: u8, m: u8) {
+            self.set_ca(c, a);
+            self.memory[0x2000] = m;
+        }
     }
 
     #[test]
@@ -187,13 +192,24 @@ mod tests {
     }
 
     #[test]
+    fn test_adc() {
+        let mut ctx = Ctx::new();
+        ctx.set_cam(true, 0x2e, 0x01);
+        ctx.assert_inst("ADC $2000", 3, 4);
+        ctx.assert_anzcv(0x30, false, false, false, false);
+    }
+
+    #[test]
     fn test_sbc() {
         let mut ctx = Ctx::new();
-        ctx.cpu.regs.a = 0x80;
-        ctx.cpu.flags.c = true;
-        assert_inst(&mut ctx, "SBC #$82", 2, 2);
-        assert_eq!(ctx.cpu.regs.a, -2i8 as u8);
-        assert_eq!(ctx.cpu.flags.n, true);
+        ctx.set_ca(true, 0x80);
+        ctx.assert_inst("SBC #$82", 2, 2);
+        ctx.assert_anzcv(-2i8 as u8, true, false, false, false);
+
+        ctx.set_cam(true, 0x04, 0x04);
+        assert_eq!(ctx.memory[0x2000], 0x04);
+        ctx.assert_inst("SBC $2000", 3, 4);
+        ctx.assert_anzcv(0, false, true, true, false);
     }
 
     #[test]

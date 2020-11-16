@@ -1,6 +1,6 @@
 pub struct Flags {
     pub n: bool,
-    pub o: bool,
+    pub v: bool,
     pub d: bool,
     pub i: bool,
     pub z: bool,
@@ -19,7 +19,7 @@ impl Flags {
     pub fn new() -> Self {
         Self {
             n: false,
-            o: false,
+            v: false,
             d: false,
             i: false,
             z: false,
@@ -40,7 +40,7 @@ impl Flags {
     }
 
     pub fn compute_v(&mut self, op1: u16, op2: u16, result: u16) {
-        self.o = ((op1 ^ result) & (op2 ^ result) & 0x80) != 0;
+        self.v = ((op1 ^ result) & (op2 ^ result) & 0x80) != 0;
     }
 
     pub fn compute_nz(&mut self, result: u16) {
@@ -53,18 +53,18 @@ impl Flags {
         self.compute_c(result);
     }
 
-    pub fn set(&mut self, v: u8) {
-        self.n = (v & Self::BM_NEGATIVE) != 0;
-        self.o = (v & Self::BM_OVERFLOW) != 0;
-        self.d = (v & Self::BM_DECIMAL) != 0;
-        self.i = (v & Self::BM_INTERRUPT) != 0;
-        self.z = (v & Self::BM_ZERO) != 0;
-        self.c = (v & Self::BM_CARRY) != 0;
+    pub fn set(&mut self, val: u8) {
+        self.n = (val & Self::BM_NEGATIVE) != 0;
+        self.v = (val & Self::BM_OVERFLOW) != 0;
+        self.d = (val & Self::BM_DECIMAL) != 0;
+        self.i = (val & Self::BM_INTERRUPT) != 0;
+        self.z = (val & Self::BM_ZERO) != 0;
+        self.c = (val & Self::BM_CARRY) != 0;
     }
 
     pub fn get(&self) -> u8 {
         mask(self.n, Self::BM_NEGATIVE)
-            | mask(self.o, Self::BM_OVERFLOW)
+            | mask(self.v, Self::BM_OVERFLOW)
             | mask(self.d, Self::BM_DECIMAL)
             | mask(self.i, Self::BM_INTERRUPT)
             | mask(self.z, Self::BM_ZERO)
