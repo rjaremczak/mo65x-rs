@@ -25,6 +25,10 @@ impl Memory {
         self.data[address as usize] = value;
     }
 
+    pub fn set_bytes(&mut self, address: u16, data: &Vec<u8>) {
+        data.iter().enumerate().for_each(|(i, e)| self.set_byte(address + i as u16, *e));
+    }
+
     #[inline]
     pub fn word(&self, address: u16) -> u16 {
         self.byte(address) as u16 | (self.byte(address.wrapping_add(1)) as u16) << 8

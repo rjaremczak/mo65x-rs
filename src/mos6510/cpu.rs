@@ -22,39 +22,57 @@ impl Cpu {
         }
     }
 
-    pub fn prep_implied(&mut self, env: &mut Env, b: bool) {}
-
-    pub fn exec_test(&mut self, env: &mut Env) {}
-
-    pub fn exec_instruction(&mut self, memory: &mut Memory) -> u8 {
-        let opcode = &OPCODES[memory[self.regs.pc] as usize];
-        let opcode_entry = self.decode_table[opcode.code as usize];
-        // let mut env = ExecEnv::new(memory, self.regs.pc, opcode.cycles);
-        // let outref = (opcode_entry.prep_handler)(&mut env, &mut self.regs);
-        // let mut env = self.prep_implied(memory, true);
-        // (opcode_entry.exec_handler)(self, &mut env, memory, outref);
-        // let mut dummy: u8 = 0;
-        let mut env = Env::new(self.regs.pc.wrapping_add(1), opcode.cycles);
-        env.prep_implied(memory, &mut self.regs);
-        self.exec_test(&mut env);
-        self.regs.pc = self.regs.pc.wrapping_add(opcode_entry.size as u16);
-        0
+    pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
+        let opcode = memory[self.regs.pc];
+        let entry = self.decode_table[opcode as usize];
+        let mut env = Env::new(self.regs.pc.wrapping_add(1), entry.cycles);
+        (entry.prep_handler)(&mut env, memory, &mut self.regs);
+        (entry.exec_handler)(self, &mut env, memory);
+        self.regs.pc = self.regs.pc.wrapping_add(entry.size as u16);
+        env.cycles
     }
 
     pub fn exec_adc(&mut self, env: &mut Env, _: &mut Memory) {
-        let mut result = self.regs.a as u16 + env.arg + self.flags.c as u16;
+        let mut result = self.regs.a as u16 + env.aux + self.flags.c as u16;
         if self.flags.d {
             self.flags.c = decimal_correction(&mut result);
             self.flags.compute_nz(result);
         } else {
             self.flags.compute_nzc(result);
         }
-        self.flags.compute_v(self.regs.a as u16, env.arg, result);
+        self.flags.compute_v(self.regs.a as u16, env.aux, result);
         self.regs.a = result as u8;
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_sbc(&mut self, env: &mut Env, memory: &mut Memory) {}
+    pub fn exec_sbc(&mut self, env: &mut Env, _: &mut Memory) {
+        let op = env.aux ^ 0x00ff;
+        let mut result = self.regs.a as u16 + op + self.flags.c as u16;
+        if self.flags.d {
+            result -= 0x66;
+            self.flags.c = decimal_correction(&mut result);
+            self.flags.compute_nz(result);
+        } else {
+            self.flags.compute_nzc(result);
+        }
+        self.flags.compute_v(self.regs.a as u16, op, result);
+        self.regs.a = result as u8;
+        env.add_cycle_when_page_crossed();
+    }
+
+    #[inline]
+    fn exec_general_adc(&mut self, arg: u16) {
+        let mut result = self.regs.a as u16 + arg + self.flags.c as u16;
+        if self.flags.d {
+            self.flags.c = decimal_correction(&mut result);
+            self.flags.compute_nz(result);
+        } else {
+            self.flags.compute_nzc(result);
+        }
+        self.flags.compute_v(self.regs.a as u16, arg, result);
+        self.regs.a = result as u8;
+    }
+
     pub fn exec_and(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_ora(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_asl(&mut self, env: &mut Env, memory: &mut Memory) {}
@@ -67,10 +85,10 @@ impl Cpu {
     pub fn exec_cpx(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_cpy(&mut self, env: &mut Env, memory: &mut Memory) {}
 
-    pub fn exec_inc(&mut self, env: &mut Env, memory: &mut Memory, outref: &mut u8) {
-        let result = *outref as u16 + 1;
-        *outref = result as u8;
-        self.flags.compute_nz(result);
+    pub fn exec_inc(&mut self, env: &mut Env, memory: &mut Memory) {
+        let result = env.argument().wrapping_add(1);
+        env.set_result(result);
+        self.flags.compute_nz(result as u16);
     }
 
     pub fn exec_inx(&mut self, env: &mut Env, memory: &mut Memory) {}
@@ -114,8 +132,8 @@ impl Cpu {
     pub fn exec_plp(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_pha(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_php(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_nop(&mut self, env: &mut Env, memory: &mut Memory, _: &mut u8) {}
-    pub fn exec_kil(&mut self, env: &mut Env, memory: &mut Memory, _: &mut u8) {}
+    pub fn exec_nop(&mut self, env: &mut Env, memory: &mut Memory) {}
+    pub fn exec_kil(&mut self, env: &mut Env, memory: &mut Memory) {}
 }
 
 fn decimal_correction(result: &mut u16) -> bool {
@@ -131,15 +149,215 @@ fn decimal_correction(result: &mut u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::mos6510::memory::RESET_VECTOR;
+    use crate::mos6510::{assembler::Assembler, error::AsmError, memory::RESET_VECTOR};
 
     use super::*;
 
+    struct Ctx {
+        cpu: Cpu,
+        memory: Memory,
+    }
+
+    impl Ctx {
+        fn new() -> Self {
+            Self {
+                memory: Memory::new(),
+                cpu: Cpu::new(1000),
+            }
+        }
+    }
+
+    fn assert_inst(ctx: &mut Ctx, line: &str, size: usize, cycles: u8) {
+        let mut asm = Assembler::new(ctx.cpu.regs.pc);
+        asm.generate_code(true);
+        let r = asm.process_line(line);
+        assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
+        assert_eq!(asm.object_code().data.len(), size);
+        ctx.memory.set_bytes(asm.object_code().origin, &asm.object_code().data);
+        let c = ctx.cpu.exec_inst(&mut ctx.memory);
+        assert_eq!(c, cycles, "wrong number of cycles");
+    }
+
     #[test]
     fn test_init() {
-        let mut memory = Memory::new();
+        let memory = Memory::new();
         let pc = memory.word(RESET_VECTOR);
-        let mut cpu = Cpu::new(pc);
+        let cpu = Cpu::new(pc);
         assert_eq!(cpu.regs.pc, pc);
     }
+
+    #[test]
+    fn test_sbc() {
+        let mut ctx = Ctx::new();
+        ctx.cpu.regs.a = 0x80;
+        ctx.cpu.flags.c = true;
+        assert_inst(&mut ctx, "SBC #$82", 2, 2);
+        assert_eq!(ctx.cpu.regs.a, -2i8 as u8);
+        assert_eq!(ctx.cpu.flags.n, true);
+    }
+
+    #[test]
+    fn test_and() {}
+
+    #[test]
+    fn test_ora() {}
+
+    #[test]
+    fn test_asl() {}
+
+    #[test]
+    fn test_lsr() {}
+
+    #[test]
+    fn test_eor() {}
+
+    #[test]
+    fn test_rol() {}
+
+    #[test]
+    fn test_ror() {}
+
+    #[test]
+    fn test_bit() {}
+
+    #[test]
+    fn test_cmp() {}
+
+    #[test]
+    fn test_cpx() {}
+
+    #[test]
+    fn test_cpy() {}
+
+    #[test]
+    fn test_inc() {}
+
+    #[test]
+    fn test_inx() {}
+
+    #[test]
+    fn test_iny() {}
+
+    #[test]
+    fn test_dec() {}
+
+    #[test]
+    fn test_dex() {}
+
+    #[test]
+    fn test_dey() {}
+
+    #[test]
+    fn test_bcc() {}
+
+    #[test]
+    fn test_bcs() {}
+
+    #[test]
+    fn test_beq() {}
+
+    #[test]
+    fn test_bmi() {}
+
+    #[test]
+    fn test_bne() {}
+
+    #[test]
+    fn test_bpl() {}
+
+    #[test]
+    fn test_bvc() {}
+
+    #[test]
+    fn test_bvs() {}
+
+    #[test]
+    fn test_clc() {}
+
+    #[test]
+    fn test_cld() {}
+
+    #[test]
+    fn test_cli() {}
+
+    #[test]
+    fn test_clv() {}
+
+    #[test]
+    fn test_sec() {}
+
+    #[test]
+    fn test_sed() {}
+
+    #[test]
+    fn test_sei() {}
+
+    #[test]
+    fn test_jmp() {}
+
+    #[test]
+    fn test_jsr() {}
+
+    #[test]
+    fn test_brk() {}
+
+    #[test]
+    fn test_rti() {}
+
+    #[test]
+    fn test_rts() {}
+
+    #[test]
+    fn test_lda() {}
+
+    #[test]
+    fn test_ldx() {}
+
+    #[test]
+    fn test_ldy() {}
+
+    #[test]
+    fn test_sta() {}
+
+    #[test]
+    fn test_stx() {}
+
+    #[test]
+    fn test_sty() {}
+
+    #[test]
+    fn test_tax() {}
+
+    #[test]
+    fn test_tay() {}
+
+    #[test]
+    fn test_tsx() {}
+
+    #[test]
+    fn test_txa() {}
+
+    #[test]
+    fn test_tya() {}
+
+    #[test]
+    fn test_txs() {}
+
+    #[test]
+    fn test_pla() {}
+
+    #[test]
+    fn test_plp() {}
+
+    #[test]
+    fn test_pha() {}
+
+    #[test]
+    fn test_php() {}
+
+    #[test]
+    fn test_nop() {}
+
+    #[test]
+    fn test_kil() {}
 }

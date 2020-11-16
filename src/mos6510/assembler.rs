@@ -1,10 +1,11 @@
-mod code;
+mod object_code;
 mod operand;
 mod patterns;
 mod tokens;
 
 use super::{addr, addrmode::*, error::AsmError, instruction::InstructionDef, opcode::OpCode};
-use code::ObjectCode;
+use object_code::ObjectCode;
+use object_code::ObjectCodeBuilder;
 use operand::OperandParser;
 use regex::Regex;
 use tokens::Tokens;
@@ -14,7 +15,7 @@ type Handler = fn(&mut Assembler, tokens: Tokens) -> AsmError;
 pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
     operand_parser: OperandParser,
-    object_code: ObjectCode,
+    object_code_builder: ObjectCodeBuilder,
     op_list_separator: Regex,
 }
 
@@ -22,7 +23,7 @@ impl Assembler {
     pub fn new(origin: u16) -> Assembler {
         Assembler {
             operand_parser: OperandParser::new(),
-            object_code: ObjectCode::new(origin),
+            object_code_builder: ObjectCodeBuilder::new(origin),
             op_list_separator: Regex::new("(?:\\s*,\\s*)|(?:\\s+)").unwrap(),
             handlers: {
                 let p = patterns::AsmPatterns::new();
@@ -45,12 +46,17 @@ impl Assembler {
         }
     }
 
+    pub fn object_code(&self) -> &ObjectCode {
+        &self.object_code_builder.object_code
+    }
+
     pub fn process_line(&mut self, line: &str) -> AsmError {
         for (regex, handler) in self.handlers.iter() {
             if let Some(captures) = regex.captures(&line) {
                 let tokens = Tokens::new(captures);
                 if let Some(label) = tokens.label() {
-                    self.operand_parser.define_symbol(label, self.object_code.location_counter as i32);
+                    self.operand_parser
+                        .define_symbol(label, self.object_code_builder.location_counter as i32);
                 };
                 return handler(self, tokens);
             }
@@ -105,11 +111,11 @@ impl Assembler {
             Some(operation) => match InstructionDef::by_mnemonic(operation) {
                 Some(instruction_def) => match OpCode::find(instruction_def.id, addrmode_def.id) {
                     Some(opcode) => {
-                        self.object_code.emit_byte(opcode.code);
+                        self.object_code_builder.emit_byte(opcode.code);
                         if addrmode_def.op_size == 1 {
-                            self.object_code.emit_byte(opvalue as u8);
+                            self.object_code_builder.emit_byte(opvalue as u8);
                         } else if addrmode_def.op_size == 2 {
-                            self.object_code.emit_word(opvalue as u16);
+                            self.object_code_builder.emit_word(opvalue as u16);
                         }
                         AsmError::Ok
                     }
@@ -122,7 +128,7 @@ impl Assembler {
     }
 
     pub fn generate_code(&mut self, on: bool) {
-        self.object_code.write_enabled = on;
+        self.object_code_builder.write_enabled = on;
     }
 
     pub fn handle_empty_line(&mut self, _: Tokens) -> AsmError {
@@ -132,7 +138,7 @@ impl Assembler {
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> AsmError {
         match tokens.operand() {
             Some(opstr) => match self.operand_parser.resolve(opstr) {
-                Ok(val) => self.object_code.set_location_counter(val as u16),
+                Ok(val) => self.object_code_builder.set_location_counter(val as u16),
                 Err(err) => err,
             },
             None => AsmError::MissingOperand,
@@ -142,7 +148,7 @@ impl Assembler {
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> AsmError {
         match self.parse_operand_list(tokens.operand()) {
             Ok(values) => {
-                values.iter().for_each(|v| self.object_code.emit_byte(*v as u8));
+                values.iter().for_each(|v| self.object_code_builder.emit_byte(*v as u8));
                 AsmError::Ok
             }
             Err(err) => err,
@@ -152,7 +158,7 @@ impl Assembler {
     pub fn handle_emit_words(&mut self, tokens: Tokens) -> AsmError {
         match self.parse_operand_list(tokens.operand()) {
             Ok(values) => {
-                values.iter().for_each(|v| self.object_code.emit_word(*v as u16));
+                values.iter().for_each(|v| self.object_code_builder.emit_word(*v as u16));
                 AsmError::Ok
             }
             Err(err) => err,
@@ -203,8 +209,8 @@ mod tests {
     fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
         let r = asm.process_line(line);
         assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
-        assert!(asm.object_code.data.len() >= expected.len(), "line \"{}\" : code too short", line);
-        let generated = &asm.object_code.data[(asm.object_code.data.len() - expected.len())..];
+        assert!(asm.object_code().data.len() >= expected.len(), "line \"{}\" : code too short", line);
+        let generated = &asm.object_code().data[(asm.object_code().data.len() - expected.len())..];
         assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
     }
 
@@ -218,8 +224,8 @@ mod tests {
     #[test]
     fn init() {
         let asm = Assembler::new(0);
-        assert_eq!(asm.object_code.write_enabled, false);
-        assert_eq!(asm.object_code.location_counter, 0);
+        assert_eq!(asm.object_code_builder.write_enabled, false);
+        assert_eq!(asm.object_code_builder.location_counter, 0);
         assert_eq!(asm.operand_parser.symbols().count(), 0);
     }
 
@@ -309,12 +315,12 @@ mod tests {
     #[test]
     fn set_location_counter() {
         let mut asm = assert_asm("  .ORG $3000 ;origin", &[]);
-        assert_eq!(asm.object_code.location_counter, 0x3000);
+        assert_eq!(asm.object_code_builder.location_counter, 0x3000);
         assert_next(&mut asm, "  .ORG $4000 ;origin", &[]);
-        assert_eq!(asm.object_code.location_counter, 0x4000);
-        assert_eq!(asm.object_code.data.len(), 0x4000);
+        assert_eq!(asm.object_code_builder.location_counter, 0x4000);
+        assert_eq!(asm.object_code().data.len(), 0x4000);
         assert_next(&mut asm, "  *= $5000 ;origin", &[]);
-        assert_eq!(asm.object_code.location_counter, 0x5000);
+        assert_eq!(asm.object_code_builder.location_counter, 0x5000);
     }
 
     #[test]
@@ -343,8 +349,8 @@ mod tests {
         assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);
         assert_eq!(asm.operand_parser.get_symbol("TestLabel_01").unwrap(), 1000);
         assert_eq!(asm.operand_parser.get_symbol("TestLabel_02"), None);
-        assert_eq!(asm.object_code.data.len(), 4);
-        assert_eq!(asm.object_code.location_counter, 1004);
+        assert_eq!(asm.object_code().data.len(), 4);
+        assert_eq!(asm.object_code_builder.location_counter, 1004);
     }
 
     #[test]
@@ -389,6 +395,6 @@ mod tests {
         let mut asm = assert_asm(".org $1000", &[]);
         asm.operand_parser.define_symbol("init", 0x1234);
         assert_next(&mut asm, "lda init", &[0xad, 0x34, 0x12]);
-        assert_eq!(asm.object_code.location_counter, 0x1003);
+        assert_eq!(asm.object_code_builder.location_counter, 0x1003);
     }
 }
