@@ -13,6 +13,7 @@ impl Registers {
         Self { a: 0, x: 0, y: 0, pc, sp }
     }
 
+    #[inline]
     pub fn sp_address(&self) -> u16 {
         self.sp as u16 | SP_BASE
     }

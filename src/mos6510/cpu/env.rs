@@ -104,7 +104,7 @@ impl Env {
     }
 
     #[inline]
-    fn update_page_crossed(&mut self, addr: u16, ea: u16) {
+    pub fn update_page_crossed(&mut self, addr: u16, ea: u16) {
         self.page_crossed = ((addr ^ ea) & 0xff00) != 0;
     }
 }
