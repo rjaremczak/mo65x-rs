@@ -8,13 +8,13 @@ pub struct Flags {
 }
 
 impl Flags {
-    const BM_NEGATIVE: u8 = 0x80;
-    const BM_OVERFLOW: u8 = 0x40;
-    const BM_BREAK: u8 = 0x10;
-    const BM_DECIMAL: u8 = 0x08;
-    const BM_INTERRUPT: u8 = 0x04;
-    const BM_ZERO: u8 = 0x02;
-    const BM_CARRY: u8 = 0x01;
+    pub const BM_NEGATIVE: u8 = 0x80;
+    pub const BM_OVERFLOW: u8 = 0x40;
+    pub const BM_BREAK: u8 = 0x10;
+    pub const BM_DECIMAL: u8 = 0x08;
+    pub const BM_INTERRUPT: u8 = 0x04;
+    pub const BM_ZERO: u8 = 0x02;
+    pub const BM_CARRY: u8 = 0x01;
 
     pub fn new() -> Self {
         Self {
@@ -62,7 +62,7 @@ impl Flags {
         self.c = (val & Self::BM_CARRY) != 0;
     }
 
-    pub fn get(&self) -> u8 {
+    pub fn to_byte(&self) -> u8 {
         mask(self.n, Self::BM_NEGATIVE)
             | mask(self.v, Self::BM_OVERFLOW)
             | mask(self.d, Self::BM_DECIMAL)
