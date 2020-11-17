@@ -60,15 +60,34 @@ impl Cpu {
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_and(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_ora(&mut self, env: &mut Env, memory: &mut Memory) {}
+    pub fn exec_and(&mut self, env: &mut Env, _: &mut Memory) {
+        self.regs.a &= env.arg();
+        self.flags.compute_nz(self.regs.a as u16);
+        env.add_cycle_when_page_crossed();
+    }
+
+    pub fn exec_ora(&mut self, env: &mut Env, _: &mut Memory) {
+        self.regs.a |= env.arg();
+        self.flags.compute_nz(self.regs.a as u16);
+        env.add_cycle_when_page_crossed();
+    }
+
+    pub fn exec_eor(&mut self, env: &mut Env, _: &mut Memory) {
+        self.regs.a ^= env.arg();
+        self.flags.compute_nz(self.regs.a as u16);
+        env.add_cycle_when_page_crossed();
+    }
+
+    pub fn exec_cmp(&mut self, env: &mut Env, _: &mut Memory) {
+        self.flags.compute_nzc(self.regs.a as u16 + (env.arg() as u16 ^ 0xff) + 1);
+        env.add_cycle_when_page_crossed();
+    }
+
     pub fn exec_asl(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_lsr(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_eor(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_rol(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_ror(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_bit(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_cmp(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_cpx(&mut self, env: &mut Env, memory: &mut Memory) {}
     pub fn exec_cpy(&mut self, env: &mut Env, memory: &mut Memory) {}
 
@@ -136,9 +155,8 @@ fn decimal_correction(result: &mut u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::mos6510::{assembler::Assembler, error::AsmError, memory::RESET_VECTOR};
-
     use super::*;
+    use crate::mos6510::{assembler::Assembler, error::AsmError, memory::RESET_VECTOR};
 
     struct Ctx {
         cpu: Cpu,
@@ -153,6 +171,14 @@ mod tests {
             }
         }
 
+        fn from_cam(c: u8, a: u8, m: u8) -> Self {
+            let mut ctx = Self::new();
+            ctx.cpu.flags.c = c != 0;
+            ctx.cpu.regs.a = a;
+            ctx.memory[0x2000] = m;
+            ctx
+        }
+
         fn assert_inst(&mut self, line: &str, size: usize, cycles: u8) {
             let mut asm = Assembler::new(self.cpu.regs.pc);
             asm.generate_code(true);
@@ -164,22 +190,12 @@ mod tests {
             assert_eq!(c, cycles, "wrong number of cycles");
         }
 
-        fn assert_anzcv(&self, a: u8, n: bool, z: bool, c: bool, v: bool) {
+        fn assert_anzcv(&self, a: u8, n: u8, z: u8, c: u8, v: u8) {
             assert_eq!(self.cpu.regs.a, a, "reg a");
-            assert_eq!(self.cpu.flags.n, n, "flag n");
-            assert_eq!(self.cpu.flags.z, z, "flag z");
-            assert_eq!(self.cpu.flags.c, c, "flag c");
-            assert_eq!(self.cpu.flags.v, v, "flag v");
-        }
-
-        fn set_ca(&mut self, c: bool, a: u8) {
-            self.cpu.flags.c = c;
-            self.cpu.regs.a = a;
-        }
-
-        fn set_cam(&mut self, c: bool, a: u8, m: u8) {
-            self.set_ca(c, a);
-            self.memory[0x2000] = m;
+            assert_eq!(self.cpu.flags.n, n != 0, "flag n");
+            assert_eq!(self.cpu.flags.z, z != 0, "flag z");
+            assert_eq!(self.cpu.flags.c, c != 0, "flag c");
+            assert_eq!(self.cpu.flags.v, v != 0, "flag v");
         }
     }
 
@@ -193,48 +209,64 @@ mod tests {
 
     #[test]
     fn test_adc() {
-        let mut ctx = Ctx::new();
-        ctx.set_cam(true, 0x2e, 0x01);
+        let mut ctx = Ctx::from_cam(1, 0x2e, 0x01);
         ctx.assert_inst("ADC $2000", 3, 4);
-        ctx.assert_anzcv(0x30, false, false, false, false);
+        ctx.assert_anzcv(0x30, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_sbc() {
-        let mut ctx = Ctx::new();
-        ctx.set_ca(true, 0x80);
+        let mut ctx = Ctx::from_cam(1, 0x80, 0);
         ctx.assert_inst("SBC #$82", 2, 2);
-        ctx.assert_anzcv(-2i8 as u8, true, false, false, false);
+        ctx.assert_anzcv(-2i8 as u8, 1, 0, 0, 0);
 
-        ctx.set_cam(true, 0x04, 0x04);
+        let mut ctx = Ctx::from_cam(1, 0x04, 0x04);
         assert_eq!(ctx.memory[0x2000], 0x04);
         ctx.assert_inst("SBC $2000", 3, 4);
-        ctx.assert_anzcv(0, false, true, true, false);
+        ctx.assert_anzcv(0, 0, 1, 1, 0);
     }
 
     #[test]
-    fn test_and() {}
+    fn test_and() {
+        let mut ctx = Ctx::from_cam(0, 0x84, 0);
+        ctx.assert_inst("AND #$fb", 2, 2);
+        ctx.assert_anzcv(0x80, 1, 0, 0, 0);
+
+        ctx.cpu.regs.a = 0x84;
+        ctx.cpu.regs.y = 0x12;
+        ctx.memory.set_word(0x70, 0x20f0);
+        ctx.memory[0x2102] = 0xfb;
+        ctx.assert_inst("AND ($70),Y", 2, 6);
+        ctx.assert_anzcv(0x80, 1, 0, 0, 0);
+    }
 
     #[test]
-    fn test_ora() {}
+    fn test_ora() {
+        let mut ctx = Ctx::new();
+        ctx.cpu.regs.a = 0b11000001;
+        ctx.assert_inst("ORA #$02", 2, 2);
+        ctx.assert_anzcv(0xc3, 1, 0, 0, 0);
+
+        ctx.cpu.regs.a = 0b01000000;
+        ctx.assert_inst("ORA #$23", 2, 2);
+        ctx.assert_anzcv(0x63, 0, 0, 0, 0);
+
+        ctx.cpu.regs.a = 0;
+        ctx.assert_inst("ORA #$0", 2, 2);
+        ctx.assert_anzcv(0, 0, 1, 0, 0);
+    }
 
     #[test]
-    fn test_asl() {}
+    fn test_eor() {
+        let mut ctx = Ctx::from_cam(0, 0b11011110, 0b01001101);
+        ctx.assert_inst("EOR $2000", 3, 4);
+        ctx.assert_anzcv(0b10010011, 1, 0, 0, 0);
 
-    #[test]
-    fn test_lsr() {}
-
-    #[test]
-    fn test_eor() {}
-
-    #[test]
-    fn test_rol() {}
-
-    #[test]
-    fn test_ror() {}
-
-    #[test]
-    fn test_bit() {}
+        ctx.cpu.regs.a = 0b01001101;
+        ctx.memory[0x21] = 0b01001101;
+        ctx.assert_inst("EOR $21", 2, 3);
+        ctx.assert_anzcv(0, 0, 1, 0, 0);
+    }
 
     #[test]
     fn test_cmp() {}
@@ -244,6 +276,21 @@ mod tests {
 
     #[test]
     fn test_cpy() {}
+
+    #[test]
+    fn test_asl() {}
+
+    #[test]
+    fn test_lsr() {}
+
+    #[test]
+    fn test_rol() {}
+
+    #[test]
+    fn test_ror() {}
+
+    #[test]
+    fn test_bit() {}
 
     #[test]
     fn test_inc() {}
