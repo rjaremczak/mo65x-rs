@@ -135,7 +135,7 @@ mod tests {
         let (mut env, mut memory, mut regs) = setup();
         memory[regs.pc] = 0x23;
         env.prep_immediate(&mut memory, &mut regs);
-        assert_eq!(env.addr, 0x23);
+        assert_eq!(env.arg(), 0x23);
         assert!(!env.page_crossed);
     }
 
