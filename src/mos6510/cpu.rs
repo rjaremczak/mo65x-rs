@@ -250,8 +250,16 @@ impl Cpu {
         self.regs.pc = memory.word(memory::IRQ_VECTOR);
     }
 
-    pub fn exec_rti(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_rts(&mut self, env: &mut Env, memory: &mut Memory) {}
+    pub fn exec_rti(&mut self, env: &mut Env, memory: &mut Memory) {
+        let f = self.pull(env, memory);
+        self.flags.update(f);
+        self.regs.pc = self.pull_word(env, memory);
+        self.flags.i = false;
+    }
+
+    pub fn exec_rts(&mut self, env: &mut Env, memory: &mut Memory) {
+        self.regs.pc = self.pull_word(env, memory) + 1;
+    }
 
     pub fn exec_lda(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.a = env.arg();
@@ -312,18 +320,22 @@ impl Cpu {
     }
 
     #[inline]
+    fn push_word(&mut self, env: &mut Env, memory: &mut Memory, word: u16) {
+        self.push(env, memory, (word >> 8) as u8);
+        self.push(env, memory, word as u8);
+    }
+
+    #[inline]
     fn pull(&mut self, env: &mut Env, memory: &mut Memory) -> u8 {
         self.regs.sp = self.regs.sp - 1;
         memory[self.regs.sp_address()]
     }
 
     #[inline]
-    fn push_word(&mut self, env: &mut Env, memory: &mut Memory, word: u16) {
-        self.push(env, memory, (word >> 8) as u8);
-        self.push(env, memory, word as u8);
+    fn pull_word(&mut self, env: &mut Env, memory: &mut Memory) -> u16 {
+        self.pull(env, memory) as u16 | (self.pull(env, memory) as u16) << 8
     }
 }
-
 #[inline]
 fn decimal_correction(result: &mut u16) -> bool {
     if (*result & 0x0f) > 0x09 {

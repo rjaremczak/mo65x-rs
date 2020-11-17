@@ -53,7 +53,7 @@ impl Flags {
         self.compute_c(result);
     }
 
-    pub fn set(&mut self, val: u8) {
+    pub fn update(&mut self, val: u8) {
         self.n = (val & Self::BM_NEGATIVE) != 0;
         self.v = (val & Self::BM_OVERFLOW) != 0;
         self.d = (val & Self::BM_DECIMAL) != 0;
