@@ -1,5 +1,3 @@
-use crate::mos6510::memory::SP_BASE;
-
 pub struct Registers {
     pub a: u8,
     pub x: u8,
@@ -15,6 +13,6 @@ impl Registers {
 
     #[inline]
     pub fn sp_address(&self) -> u16 {
-        self.sp as u16 | SP_BASE
+        self.sp as u16 | super::Cpu::SP_BASE
     }
 }

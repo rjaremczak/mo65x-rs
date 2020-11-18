@@ -1,10 +1,4 @@
 pub const MEMORY_SIZE: usize = u16::MAX as usize + 1;
-pub const IO_PORT_CONFIG: u16 = 0x0000;
-pub const IO_PORT_DATA: u16 = 0x0001;
-pub const SP_BASE: u16 = 0x0100;
-pub const NMI_VECTOR: u16 = 0xfffa;
-pub const RESET_VECTOR: u16 = 0xfffc;
-pub const IRQ_VECTOR: u16 = 0xfffe;
 
 pub struct Memory {
     data: [u8; MEMORY_SIZE],

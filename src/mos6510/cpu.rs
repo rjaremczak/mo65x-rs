@@ -14,6 +14,13 @@ pub struct Cpu {
 }
 
 impl Cpu {
+    pub const IO_PORT_CONFIG: u16 = 0x0000;
+    pub const IO_PORT_DATA: u16 = 0x0001;
+    pub const SP_BASE: u16 = 0x0100;
+    pub const NMI_VECTOR: u16 = 0xfffa;
+    pub const RESET_VECTOR: u16 = 0xfffc;
+    pub const IRQ_VECTOR: u16 = 0xfffe;
+
     pub fn new(pc: u16) -> Self {
         Self {
             regs: Registers::new(pc, 0xfd),
@@ -21,6 +28,8 @@ impl Cpu {
             decode_table: generate_opcode_table(),
         }
     }
+
+    pub fn reset(&mut self) {}
 
     pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
         let opcode = memory[self.regs.pc];
@@ -247,12 +256,11 @@ impl Cpu {
         self.push_word(env, memory, self.regs.pc + 1);
         self.push(env, memory, self.flags.to_byte() | Flags::BM_BREAK);
         self.flags.i = true;
-        self.regs.pc = memory.word(memory::IRQ_VECTOR);
+        self.regs.pc = memory.word(Cpu::IRQ_VECTOR);
     }
 
     pub fn exec_rti(&mut self, env: &mut Env, memory: &mut Memory) {
-        let f = self.pull(env, memory);
-        self.flags.update(f);
+        self.flags = Flags::from_byte(self.pull(env, memory));
         self.regs.pc = self.pull_word(env, memory);
         self.flags.i = false;
     }
@@ -291,18 +299,53 @@ impl Cpu {
         env.set_arg(self.regs.y);
     }
 
-    pub fn exec_tax(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_tay(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_tsx(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_txa(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_tya(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_txs(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_pla(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_plp(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_pha(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_php(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_nop(&mut self, env: &mut Env, memory: &mut Memory) {}
-    pub fn exec_kil(&mut self, env: &mut Env, memory: &mut Memory) {}
+    pub fn exec_tax(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.x = self.regs.a;
+        self.flags.compute_nz(self.regs.x as u16);
+    }
+
+    pub fn exec_txa(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.a = self.regs.x;
+        self.flags.compute_nz(self.regs.a as u16);
+    }
+
+    pub fn exec_tay(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.y = self.regs.a;
+        self.flags.compute_nz(self.regs.y as u16);
+    }
+    pub fn exec_tya(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.a = self.regs.y;
+        self.flags.compute_nz(self.regs.a as u16);
+    }
+
+    pub fn exec_tsx(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.x = self.regs.sp;
+        self.flags.compute_nz(self.regs.x as u16);
+    }
+
+    pub fn exec_txs(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.sp = self.regs.x;
+    }
+
+    pub fn exec_pla(&mut self, env: &mut Env, memory: &mut Memory) {
+        self.regs.a = self.pull(env, memory);
+        self.flags.compute_nz(self.regs.a as u16);
+    }
+
+    pub fn exec_plp(&mut self, env: &mut Env, memory: &mut Memory) {
+        self.flags = Flags::from_byte(self.pull(env, memory));
+    }
+
+    pub fn exec_pha(&mut self, env: &mut Env, memory: &mut Memory) {
+        self.push(env, memory, self.regs.a);
+    }
+
+    pub fn exec_php(&mut self, env: &mut Env, memory: &mut Memory) {
+        self.push(env, memory, self.flags.to_byte());
+    }
+
+    pub fn exec_nop(&mut self, _: &mut Env, _: &mut Memory) {}
+    pub fn exec_kil(&mut self, _: &mut Env, _: &mut Memory) {}
 
     #[inline]
     fn exec_branch(&mut self, env: &mut Env) {

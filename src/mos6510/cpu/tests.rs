@@ -1,5 +1,5 @@
 use super::*;
-use crate::mos6510::{assembler::Assembler, error::AsmError, memory::RESET_VECTOR};
+use crate::mos6510::{assembler::Assembler, error::AsmError};
 
 struct Ctx {
     cpu: Cpu,
@@ -45,7 +45,7 @@ impl Ctx {
 #[test]
 fn test_init() {
     let memory = Memory::new();
-    let pc = memory.word(RESET_VECTOR);
+    let pc = memory.word(super::Cpu::RESET_VECTOR);
     let cpu = Cpu::new(pc);
     assert_eq!(cpu.regs.pc, pc);
 }

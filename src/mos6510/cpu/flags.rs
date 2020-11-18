@@ -27,6 +27,17 @@ impl Flags {
         }
     }
 
+    pub fn from_byte(val: u8) -> Self {
+        Self {
+            n: val & Self::BM_NEGATIVE != 0,
+            v: val & Self::BM_OVERFLOW != 0,
+            d: val & Self::BM_DECIMAL != 0,
+            i: val & Self::BM_INTERRUPT != 0,
+            z: val & Self::BM_ZERO != 0,
+            c: val & Self::BM_CARRY != 0,
+        }
+    }
+
     pub fn compute_n(&mut self, result: u16) {
         self.n = (result & 0x80) != 0;
     }
@@ -51,15 +62,6 @@ impl Flags {
     pub fn compute_nzc(&mut self, result: u16) {
         self.compute_nz(result);
         self.compute_c(result);
-    }
-
-    pub fn update(&mut self, val: u8) {
-        self.n = (val & Self::BM_NEGATIVE) != 0;
-        self.v = (val & Self::BM_OVERFLOW) != 0;
-        self.d = (val & Self::BM_DECIMAL) != 0;
-        self.i = (val & Self::BM_INTERRUPT) != 0;
-        self.z = (val & Self::BM_ZERO) != 0;
-        self.c = (val & Self::BM_CARRY) != 0;
     }
 
     pub fn to_byte(&self) -> u8 {
