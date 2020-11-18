@@ -1,12 +1,12 @@
-pub const MEMORY_SIZE: usize = u16::MAX as usize + 1;
-
 pub struct Memory {
-    data: [u8; MEMORY_SIZE],
+    data: [u8; Memory::SIZE],
 }
 
 impl Memory {
+    pub const SIZE: usize = u16::MAX as usize + 1;
+
     pub fn new() -> Memory {
-        Memory { data: [0; MEMORY_SIZE] }
+        Memory { data: [0; Memory::SIZE] }
     }
 
     #[inline]
