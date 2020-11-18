@@ -260,25 +260,60 @@ fn test_bvc() {}
 fn test_bvs() {}
 
 #[test]
-fn test_clc() {}
+fn test_clc() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = true;
+    ctx.assert_inst("CLC", 2);
+    assert_eq!(ctx.cpu.flags.c, false);
+}
 
 #[test]
-fn test_cld() {}
+fn test_cld() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.d = true;
+    ctx.assert_inst("CLD", 2);
+    assert_eq!(ctx.cpu.flags.d, false);
+}
 
 #[test]
-fn test_cli() {}
+fn test_cli() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.i = true;
+    ctx.assert_inst("CLI", 2);
+    assert_eq!(ctx.cpu.flags.i, false);
+}
 
 #[test]
-fn test_clv() {}
+fn test_clv() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.v = true;
+    ctx.assert_inst("CLV", 2);
+    assert_eq!(ctx.cpu.flags.v, false);
+}
 
 #[test]
-fn test_sec() {}
+fn test_sec() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = false;
+    ctx.assert_inst("SEC", 2);
+    assert_eq!(ctx.cpu.flags.c, true);
+}
 
 #[test]
-fn test_sed() {}
+fn test_sed() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.d = false;
+    ctx.assert_inst("SED", 2);
+    assert_eq!(ctx.cpu.flags.d, true);
+}
 
 #[test]
-fn test_sei() {}
+fn test_sei() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.i = false;
+    ctx.assert_inst("SEI", 2);
+    assert_eq!(ctx.cpu.flags.i, true);
+}
 
 #[test]
 fn test_jmp() {}
