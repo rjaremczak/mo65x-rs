@@ -316,7 +316,16 @@ fn test_sei() {
 }
 
 #[test]
-fn test_jmp() {}
+fn test_jmp() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.reset(&mut ctx.memory);
+    ctx.assert_inst("jmp $8000", 3);
+    assert_eq!(ctx.cpu.regs.pc, 0x8000);
+
+    ctx.memory.set_word(0xa000, 0x1f80);
+    ctx.assert_inst("JMP ($a000)", 5);
+    assert_eq!(ctx.cpu.regs.pc, 0x1f80);
+}
 
 #[test]
 fn test_jsr() {}
@@ -367,13 +376,28 @@ fn test_tya() {}
 fn test_txs() {}
 
 #[test]
-fn test_pla() {}
+fn test_pla() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.sp = 0x80;
+    ctx.memory[0x181] = 0xab;
+    ctx.assert_inst("PLA", 4);
+    ctx.assert_anzcv(0xab, 1, 0, 0, 0);
+    assert_eq!(ctx.cpu.regs.sp_address(), 0x181);
+}
 
 #[test]
 fn test_plp() {}
 
 #[test]
-fn test_pha() {}
+fn test_pha() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.reset(&mut ctx.memory);
+    let sp = ctx.cpu.regs.sp_address();
+    ctx.cpu.regs.a = 0x1f;
+    ctx.assert_inst("PHA", 3);
+    assert_eq!(ctx.cpu.regs.sp_address(), sp - 1);
+    assert_eq!(ctx.memory[sp], 0x1f);
+}
 
 #[test]
 fn test_php() {}

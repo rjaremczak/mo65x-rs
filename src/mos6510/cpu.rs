@@ -61,9 +61,9 @@ impl Cpu {
         let opcode = memory[self.regs.pc];
         let entry = self.decode_table[opcode as usize];
         let mut env = Env::with(self.regs.pc + 1, entry.cycles);
+        self.regs.pc = self.regs.pc + entry.size as u16;
         (entry.prep_handler)(&mut env, memory, &mut self.regs);
         (entry.exec_handler)(self, &mut env, memory);
-        self.regs.pc = self.regs.pc + entry.size as u16;
         env.cycles
     }
 
@@ -346,20 +346,20 @@ impl Cpu {
         self.regs.sp = self.regs.x;
     }
 
-    pub fn exec_pla(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_pla(&mut self, _: &mut Env, memory: &mut Memory) {
         self.regs.a = self.pull(memory);
         self.flags.compute_nz(self.regs.a as u16);
     }
 
-    pub fn exec_plp(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_plp(&mut self, _: &mut Env, memory: &mut Memory) {
         self.flags = Flags::from_byte(self.pull(memory));
     }
 
-    pub fn exec_pha(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_pha(&mut self, _: &mut Env, memory: &mut Memory) {
         self.push(memory, self.regs.a);
     }
 
-    pub fn exec_php(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_php(&mut self, _: &mut Env, memory: &mut Memory) {
         self.push(memory, self.flags.to_byte());
     }
 
@@ -389,7 +389,7 @@ impl Cpu {
 
     #[inline]
     fn pull(&mut self, memory: &Memory) -> u8 {
-        self.regs.sp = self.regs.sp - 1;
+        self.regs.sp = self.regs.sp + 1;
         memory[self.regs.sp_address()]
     }
 
