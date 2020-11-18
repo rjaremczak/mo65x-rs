@@ -14,7 +14,7 @@ impl Ctx {
         }
     }
 
-    fn from_cam(c: u8, a: u8, m: u8) -> Self {
+    fn with_cam(c: u8, a: u8, m: u8) -> Self {
         let mut ctx = Self::new();
         ctx.cpu.flags.c = c != 0;
         ctx.cpu.regs.a = a;
@@ -32,12 +32,16 @@ impl Ctx {
         assert_eq!(c, cycles, "wrong number of cycles");
     }
 
-    fn assert_anzcv(&self, a: u8, n: u8, z: u8, c: u8, v: u8) {
-        assert_eq!(self.cpu.regs.a, a, "reg a");
+    fn assert_nzcv(&self, n: u8, z: u8, c: u8, v: u8) {
         assert_eq!(self.cpu.flags.n, n != 0, "flag n");
         assert_eq!(self.cpu.flags.z, z != 0, "flag z");
         assert_eq!(self.cpu.flags.c, c != 0, "flag c");
         assert_eq!(self.cpu.flags.v, v != 0, "flag v");
+    }
+
+    fn assert_anzcv(&self, a: u8, n: u8, z: u8, c: u8, v: u8) {
+        assert_eq!(self.cpu.regs.a, a, "reg a");
+        self.assert_nzcv(n, z, c, v);
     }
 }
 
@@ -82,18 +86,18 @@ fn test_nmi() {
 
 #[test]
 fn test_adc() {
-    let mut ctx = Ctx::from_cam(1, 0x2e, 0x01);
+    let mut ctx = Ctx::with_cam(1, 0x2e, 0x01);
     ctx.assert_inst("ADC $2000", 4);
     ctx.assert_anzcv(0x30, 0, 0, 0, 0);
 }
 
 #[test]
 fn test_sbc() {
-    let mut ctx = Ctx::from_cam(1, 0x80, 0);
+    let mut ctx = Ctx::with_cam(1, 0x80, 0);
     ctx.assert_inst("SBC #$82", 2);
     ctx.assert_anzcv(-2i8 as u8, 1, 0, 0, 0);
 
-    let mut ctx = Ctx::from_cam(1, 0x04, 0x04);
+    let mut ctx = Ctx::with_cam(1, 0x04, 0x04);
     assert_eq!(ctx.memory[0x2000], 0x04);
     ctx.assert_inst("SBC $2000", 4);
     ctx.assert_anzcv(0, 0, 1, 1, 0);
@@ -101,7 +105,7 @@ fn test_sbc() {
 
 #[test]
 fn test_and() {
-    let mut ctx = Ctx::from_cam(0, 0x84, 0);
+    let mut ctx = Ctx::with_cam(0, 0x84, 0);
     ctx.assert_inst("AND #$fb", 2);
     ctx.assert_anzcv(0x80, 1, 0, 0, 0);
 
@@ -131,7 +135,7 @@ fn test_ora() {
 
 #[test]
 fn test_eor() {
-    let mut ctx = Ctx::from_cam(0, 0b11011110, 0b01001101);
+    let mut ctx = Ctx::with_cam(0, 0b11011110, 0b01001101);
     ctx.assert_inst("EOR $2000", 4);
     ctx.assert_anzcv(0b10010011, 1, 0, 0, 0);
 
@@ -168,10 +172,35 @@ fn test_cmp() {
 }
 
 #[test]
-fn test_cpx() {}
+fn test_cpx() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = -100i8 as u8;
+    ctx.memory[0x2000] = -110i8 as u8;
+    ctx.assert_inst("CPX $2000", 4);
+    ctx.assert_nzcv(0, 0, 1, 0);
+    assert_eq!(ctx.cpu.regs.x, -100i8 as u8);
+
+    ctx.cpu.regs.x = 150;
+    ctx.memory[0x20] = 120;
+    ctx.assert_inst("CPX $20", 3);
+    ctx.assert_nzcv(0, 0, 1, 0);
+    assert_eq!(ctx.cpu.regs.x, 150);
+}
 
 #[test]
-fn test_cpy() {}
+fn test_cpy() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.y = 0x71;
+    ctx.assert_inst("CPY #$90", 2);
+    ctx.assert_nzcv(1, 0, 0, 0);
+    assert_eq!(ctx.cpu.regs.y, 0x71);
+
+    ctx.cpu.regs.y = -100i8 as u8;
+    ctx.memory[0x2000] = -110i8 as u8;
+    ctx.assert_inst("CPY $2000", 4);
+    ctx.assert_nzcv(0, 0, 1, 0);
+    assert_eq!(ctx.cpu.regs.y, -100i8 as u8);
+}
 
 #[test]
 fn test_asl() {}
