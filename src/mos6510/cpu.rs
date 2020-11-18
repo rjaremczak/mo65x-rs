@@ -378,7 +378,7 @@ impl Cpu {
     #[inline]
     fn push(&mut self, memory: &mut Memory, b: u8) {
         memory[self.regs.sp_address()] = b;
-        self.regs.sp = self.regs.sp - 1;
+        self.regs.sp = self.regs.sp.wrapping_sub(1);
     }
 
     #[inline]
@@ -389,7 +389,7 @@ impl Cpu {
 
     #[inline]
     fn pull(&mut self, memory: &Memory) -> u8 {
-        self.regs.sp = self.regs.sp + 1;
+        self.regs.sp = self.regs.sp.wrapping_add(1);
         memory[self.regs.sp_address()]
     }
 

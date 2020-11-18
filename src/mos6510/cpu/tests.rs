@@ -8,10 +8,12 @@ struct Ctx {
 
 impl Ctx {
     fn new() -> Self {
-        Self {
+        let mut ctx = Self {
             memory: Memory::new(),
             cpu: Cpu::new(),
-        }
+        };
+        ctx.cpu.regs.sp = 0xff;
+        ctx
     }
 
     fn with_cam(c: u8, a: u8, m: u8) -> Self {
@@ -386,12 +388,8 @@ fn test_pla() {
 }
 
 #[test]
-fn test_plp() {}
-
-#[test]
 fn test_pha() {
     let mut ctx = Ctx::new();
-    ctx.cpu.reset(&mut ctx.memory);
     let sp = ctx.cpu.regs.sp_address();
     ctx.cpu.regs.a = 0x1f;
     ctx.assert_inst("PHA", 3);
@@ -400,7 +398,25 @@ fn test_pha() {
 }
 
 #[test]
-fn test_php() {}
+fn test_plp() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.sp = 0x80;
+    ctx.memory[0x181] = 0b00001100;
+    ctx.assert_inst("PLP", 4);
+    assert_eq!(ctx.cpu.flags.to_byte(), 0b00001100);
+    assert_eq!(ctx.cpu.regs.sp_address(), 0x181);
+}
+
+#[test]
+fn test_php() {
+    let mut ctx = Ctx::new();
+    let sp = ctx.cpu.regs.sp_address();
+    ctx.memory[sp] = 0;
+    ctx.cpu.flags = Flags::from_byte(0b11001100);
+    ctx.assert_inst("PHP", 3);
+    assert_eq!(ctx.cpu.regs.sp_address(), sp - 1);
+    assert_eq!(ctx.memory[sp], 0b11001100);
+}
 
 #[test]
 fn test_nop() {}
