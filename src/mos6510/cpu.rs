@@ -38,19 +38,23 @@ impl Cpu {
     }
 
     #[inline]
-    fn general_irq(&mut self, memory: &mut Memory, pc: u16, flags: u8) {
+    fn general_irq(&mut self, memory: &mut Memory, pc: u16, flags: u8, vector: u16) {
         self.push_word(memory, pc);
         self.push(memory, flags);
         self.flags.i = true;
-        self.regs.pc = memory.word(Cpu::IRQ_VECTOR);
+        self.regs.pc = memory.word(vector);
     }
 
     pub fn irq(&mut self, memory: &mut Memory) {
-        self.general_irq(memory, self.regs.pc, self.flags.to_byte());
+        self.general_irq(memory, self.regs.pc, self.flags.to_byte(), Cpu::IRQ_VECTOR);
+    }
+
+    pub fn nmi(&mut self, memory: &mut Memory) {
+        self.general_irq(memory, self.regs.pc, self.flags.to_byte(), Cpu::NMI_VECTOR);
     }
 
     pub fn exec_brk(&mut self, _: &mut Env, memory: &mut Memory) {
-        self.general_irq(memory, self.regs.pc + 1, self.flags.to_byte() | Flags::BM_BREAK);
+        self.general_irq(memory, self.regs.pc + 1, self.flags.to_byte() | Flags::BM_BREAK, Cpu::IRQ_VECTOR);
     }
 
     pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
