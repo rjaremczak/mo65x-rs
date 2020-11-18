@@ -9,4 +9,7 @@ fn main() {
     //let mut memory: mos6510::Memory;
     // println!("opcodes {}", mos6510::opcode::OPCODES[0].size);
     let mut assembler = mos6510::assembler::Assembler::new(0);
+    let mut memory = mos6510::memory::Memory::new();
+    let mut cpu = mos6510::cpu::Cpu::new();
+    cpu.reset(&memory);
 }

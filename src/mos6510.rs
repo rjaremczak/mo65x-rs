@@ -1,9 +1,9 @@
 pub mod assembler;
+pub mod cpu;
 pub mod error;
+pub mod memory;
 
 mod addr;
 mod addrmode;
-mod cpu;
 mod instruction;
-mod memory;
 mod opcode;

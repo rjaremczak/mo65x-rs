@@ -4,7 +4,7 @@ mod flags;
 mod registers;
 
 use self::{env::Env, flags::Flags, registers::Registers};
-use super::memory::{self, Memory};
+use super::memory::Memory;
 use decoder::*;
 
 pub struct Cpu {
@@ -16,25 +16,47 @@ pub struct Cpu {
 impl Cpu {
     pub const IO_PORT_CONFIG: u16 = 0x0000;
     pub const IO_PORT_DATA: u16 = 0x0001;
-    pub const SP_BASE: u16 = 0x0100;
     pub const NMI_VECTOR: u16 = 0xfffa;
     pub const RESET_VECTOR: u16 = 0xfffc;
     pub const IRQ_VECTOR: u16 = 0xfffe;
+    pub const SP_BASE: u16 = 0x0100;
+    pub const SP_INIT: u8 = 0xfd;
 
-    pub fn new(pc: u16) -> Self {
+    pub fn new() -> Self {
         Self {
-            regs: Registers::new(pc, 0xfd),
+            regs: Registers::new(),
             flags: Flags::new(),
             decode_table: generate_opcode_table(),
         }
     }
 
-    pub fn reset(&mut self) {}
+    pub fn reset(&mut self, memory: &Memory) {
+        self.regs = Registers::new();
+        self.regs.pc = memory.word(Cpu::RESET_VECTOR);
+        self.regs.sp = Cpu::SP_INIT;
+        self.flags = Flags::new();
+    }
+
+    #[inline]
+    fn general_irq(&mut self, memory: &mut Memory, pc: u16, flags: u8) {
+        self.push_word(memory, pc);
+        self.push(memory, flags);
+        self.flags.i = true;
+        self.regs.pc = memory.word(Cpu::IRQ_VECTOR);
+    }
+
+    pub fn irq(&mut self, memory: &mut Memory) {
+        self.general_irq(memory, self.regs.pc, self.flags.to_byte());
+    }
+
+    pub fn exec_brk(&mut self, _: &mut Env, memory: &mut Memory) {
+        self.general_irq(memory, self.regs.pc + 1, self.flags.to_byte() | Flags::BM_BREAK);
+    }
 
     pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
         let opcode = memory[self.regs.pc];
         let entry = self.decode_table[opcode as usize];
-        let mut env = Env::new(self.regs.pc + 1, entry.cycles);
+        let mut env = Env::with(self.regs.pc + 1, entry.cycles);
         (entry.prep_handler)(&mut env, memory, &mut self.regs);
         (entry.exec_handler)(self, &mut env, memory);
         self.regs.pc = self.regs.pc + entry.size as u16;
@@ -248,25 +270,18 @@ impl Cpu {
     }
 
     pub fn exec_jsr(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.push_word(env, memory, self.regs.pc + 1);
+        self.push_word(memory, self.regs.pc + 1);
         self.regs.pc = env.addr;
     }
 
-    pub fn exec_brk(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.push_word(env, memory, self.regs.pc + 1);
-        self.push(env, memory, self.flags.to_byte() | Flags::BM_BREAK);
-        self.flags.i = true;
-        self.regs.pc = memory.word(Cpu::IRQ_VECTOR);
-    }
-
     pub fn exec_rti(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.flags = Flags::from_byte(self.pull(env, memory));
-        self.regs.pc = self.pull_word(env, memory);
+        self.flags = Flags::from_byte(self.pull(memory));
+        self.regs.pc = self.pull_word(memory);
         self.flags.i = false;
     }
 
     pub fn exec_rts(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.regs.pc = self.pull_word(env, memory) + 1;
+        self.regs.pc = self.pull_word(memory) + 1;
     }
 
     pub fn exec_lda(&mut self, env: &mut Env, _: &mut Memory) {
@@ -328,20 +343,20 @@ impl Cpu {
     }
 
     pub fn exec_pla(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.regs.a = self.pull(env, memory);
+        self.regs.a = self.pull(memory);
         self.flags.compute_nz(self.regs.a as u16);
     }
 
     pub fn exec_plp(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.flags = Flags::from_byte(self.pull(env, memory));
+        self.flags = Flags::from_byte(self.pull(memory));
     }
 
     pub fn exec_pha(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.push(env, memory, self.regs.a);
+        self.push(memory, self.regs.a);
     }
 
     pub fn exec_php(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.push(env, memory, self.flags.to_byte());
+        self.push(memory, self.flags.to_byte());
     }
 
     pub fn exec_nop(&mut self, _: &mut Env, _: &mut Memory) {}
@@ -357,26 +372,26 @@ impl Cpu {
     }
 
     #[inline]
-    fn push(&mut self, env: &mut Env, memory: &mut Memory, b: u8) {
+    fn push(&mut self, memory: &mut Memory, b: u8) {
         memory[self.regs.sp_address()] = b;
         self.regs.sp = self.regs.sp - 1;
     }
 
     #[inline]
-    fn push_word(&mut self, env: &mut Env, memory: &mut Memory, word: u16) {
-        self.push(env, memory, (word >> 8) as u8);
-        self.push(env, memory, word as u8);
+    fn push_word(&mut self, memory: &mut Memory, word: u16) {
+        self.push(memory, (word >> 8) as u8);
+        self.push(memory, word as u8);
     }
 
     #[inline]
-    fn pull(&mut self, env: &mut Env, memory: &mut Memory) -> u8 {
+    fn pull(&mut self, memory: &Memory) -> u8 {
         self.regs.sp = self.regs.sp - 1;
         memory[self.regs.sp_address()]
     }
 
     #[inline]
-    fn pull_word(&mut self, env: &mut Env, memory: &mut Memory) -> u16 {
-        self.pull(env, memory) as u16 | (self.pull(env, memory) as u16) << 8
+    fn pull_word(&mut self, memory: &Memory) -> u16 {
+        self.pull(memory) as u16 | (self.pull(memory) as u16) << 8
     }
 }
 #[inline]

@@ -10,7 +10,7 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn new(pc: u16, cycles: u8) -> Self {
+    pub fn with(pc: u16, cycles: u8) -> Self {
         Self {
             pc,
             addr: 0,
@@ -114,7 +114,7 @@ mod tests {
     use super::*;
 
     fn setup() -> (Env, Memory, Registers) {
-        (Env::new(1000, 2), Memory::new(), Registers::new(1000, 0xfd))
+        (Env::with(1000, 2), Memory::new(), Registers::with(1000, 0xfd))
     }
 
     #[test]

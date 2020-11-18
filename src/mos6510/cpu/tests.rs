@@ -10,7 +10,7 @@ impl Ctx {
     fn new() -> Self {
         Self {
             memory: Memory::new(),
-            cpu: Cpu::new(1000),
+            cpu: Cpu::new(),
         }
     }
 
@@ -43,11 +43,13 @@ impl Ctx {
 }
 
 #[test]
-fn test_init() {
-    let memory = Memory::new();
-    let pc = memory.word(super::Cpu::RESET_VECTOR);
-    let cpu = Cpu::new(pc);
-    assert_eq!(cpu.regs.pc, pc);
+fn test_reset() {
+    let mut memory = Memory::new();
+    memory.set_word(super::Cpu::RESET_VECTOR, 0x234a);
+    let mut cpu = Cpu::new();
+    cpu.reset(&memory);
+    assert_eq!(cpu.regs.pc, 0x234a);
+    assert_eq!(cpu.regs.sp, Cpu::SP_INIT);
 }
 
 #[test]
