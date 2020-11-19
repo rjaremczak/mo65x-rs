@@ -7,12 +7,16 @@ struct Ctx {
 }
 
 impl Ctx {
+    const PC_INIT: u16 = 0x1000;
+    const MEM_ADR: u16 = 0x2000;
+
     fn new() -> Self {
         let mut ctx = Self {
             memory: Memory::new(),
             cpu: Cpu::new(),
         };
-        ctx.cpu.regs.sp = 0xff;
+        ctx.cpu.regs.sp = Cpu::SP_INIT;
+        ctx.cpu.regs.pc = Self::PC_INIT;
         ctx
     }
 
@@ -20,7 +24,7 @@ impl Ctx {
         let mut ctx = Self::new();
         ctx.cpu.flags.c = c != 0;
         ctx.cpu.regs.a = a;
-        ctx.memory[0x2000] = m;
+        ctx.memory[Self::MEM_ADR] = m;
         ctx
     }
 
@@ -34,56 +38,93 @@ impl Ctx {
         assert_eq!(c, cycles, "wrong number of cycles");
     }
 
-    fn assert_nzcv(&self, n: u8, z: u8, c: u8, v: u8) {
+    fn assert_nz(&self, n: u8, z: u8) {
         assert_eq!(self.cpu.flags.n, n != 0, "flag n");
         assert_eq!(self.cpu.flags.z, z != 0, "flag z");
+    }
+
+    fn assert_nzc(&self, n: u8, z: u8, c: u8) {
+        self.assert_nz(n, z);
         assert_eq!(self.cpu.flags.c, c != 0, "flag c");
+    }
+
+    fn assert_v(&self, v: u8) {
         assert_eq!(self.cpu.flags.v, v != 0, "flag v");
     }
 
-    fn assert_anzcv(&self, a: u8, n: u8, z: u8, c: u8, v: u8) {
+    fn assert_nzcv(&self, n: u8, z: u8, c: u8, v: u8) {
+        self.assert_nzc(n, z, c);
+        self.assert_v(v);
+    }
+
+    fn assert_anzc(&self, a: u8, n: u8, z: u8, c: u8) {
         assert_eq!(self.cpu.regs.a, a, "reg a");
-        self.assert_nzcv(n, z, c, v);
+        self.assert_nzc(n, z, c);
+    }
+
+    fn assert_anzcv(&self, a: u8, n: u8, z: u8, c: u8, v: u8) {
+        self.assert_anzc(a, n, z, c);
+        assert_eq!(self.cpu.flags.v, v != 0, "flag v");
+    }
+
+    fn assert_xnzc(&self, x: u8, n: u8, z: u8, c: u8) {
+        assert_eq!(self.cpu.regs.x, x, "reg x");
+        self.assert_nzc(n, z, c);
+    }
+
+    fn assert_ynzc(&self, y: u8, n: u8, z: u8, c: u8) {
+        assert_eq!(self.cpu.regs.y, y, "reg y");
+        self.assert_nzc(n, z, c);
+    }
+
+    fn assert_memnz(&self, addr: u16, m: u8, n: u8, z: u8) {
+        assert_eq!(self.memory[addr], m);
+        self.assert_nz(n, z);
+    }
+
+    fn assert_branch_taken(&self, offset: i8) {
+        assert_eq!(self.cpu.regs.pc, (Ctx::PC_INIT as i32 + 2 + offset as i32) as u16);
+    }
+
+    fn assert_branch_not_taken(&self) {
+        assert_eq!(self.cpu.regs.pc, (Ctx::PC_INIT as i32 + 2) as u16);
     }
 }
 
 #[test]
 fn test_reset() {
-    let mut memory = Memory::new();
-    memory.set_word(super::Cpu::RESET_VECTOR, 0x234a);
-    let mut cpu = Cpu::new();
-    cpu.reset(&memory);
-    assert_eq!(cpu.regs.pc, 0x234a);
-    assert_eq!(cpu.regs.sp, Cpu::SP_INIT);
+    let mut ctx = Ctx::new();
+    ctx.memory.set_word(super::Cpu::RESET_VECTOR, 0x234a);
+    ctx.cpu.reset(&ctx.memory);
+    assert_eq!(ctx.cpu.regs.pc, 0x234a);
+    assert_eq!(ctx.cpu.regs.sp, Cpu::SP_INIT);
 }
 
 #[test]
 fn test_irq() {
-    let mut memory = Memory::new();
-    memory.set_word(super::Cpu::IRQ_VECTOR, 0xabcd);
-    let mut cpu = Cpu::new();
-    cpu.reset(&memory);
-    cpu.flags = Flags::from_byte(0b11001111);
-    let sp0 = cpu.regs.sp_address();
-    let pc0 = cpu.regs.pc;
-    cpu.irq(&mut memory);
-    assert!(cpu.flags.i);
-    assert_eq!(memory[cpu.regs.sp_address() + 1], 0b11001111);
-    assert_eq!(memory[cpu.regs.sp_address() + 2], pc0 as u8);
-    assert_eq!(memory[cpu.regs.sp_address() + 3], (pc0 >> 8) as u8);
-    assert_eq!(cpu.regs.sp_address(), sp0 - 3);
-    assert_eq!(cpu.regs.pc, 0xabcd);
+    let mut ctx = Ctx::new();
+    ctx.memory.set_word(super::Cpu::IRQ_VECTOR, 0xabcd);
+    ctx.cpu.reset(&ctx.memory);
+    ctx.cpu.flags = Flags::from_byte(0b11001111);
+    let sp0 = ctx.cpu.regs.sp_address();
+    let pc0 = ctx.cpu.regs.pc;
+    ctx.cpu.irq(&mut ctx.memory);
+    assert!(ctx.cpu.flags.i);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 1], 0b11001111);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 2], pc0 as u8);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 3], (pc0 >> 8) as u8);
+    assert_eq!(ctx.cpu.regs.sp_address(), sp0 - 3);
+    assert_eq!(ctx.cpu.regs.pc, 0xabcd);
 }
 
 #[test]
 fn test_nmi() {
-    let mut memory = Memory::new();
-    memory.set_word(super::Cpu::NMI_VECTOR, 0xbcfa);
-    let mut cpu = Cpu::new();
-    cpu.reset(&memory);
-    cpu.nmi(&mut memory);
-    assert!(cpu.flags.i);
-    assert_eq!(cpu.regs.pc, 0xbcfa);
+    let mut ctx = Ctx::new();
+    ctx.memory.set_word(super::Cpu::NMI_VECTOR, 0xbcfa);
+    ctx.cpu.reset(&ctx.memory);
+    ctx.cpu.nmi(&mut ctx.memory);
+    assert!(ctx.cpu.flags.i);
+    assert_eq!(ctx.cpu.regs.pc, 0xbcfa);
 }
 
 #[test]
@@ -100,7 +141,7 @@ fn test_sbc() {
     ctx.assert_anzcv(-2i8 as u8, 1, 0, 0, 0);
 
     let mut ctx = Ctx::with_cam(1, 0x04, 0x04);
-    assert_eq!(ctx.memory[0x2000], 0x04);
+    assert_eq!(ctx.memory[Ctx::MEM_ADR], 0x04);
     ctx.assert_inst("SBC $2000", 4);
     ctx.assert_anzcv(0, 0, 1, 1, 0);
 }
@@ -163,12 +204,12 @@ fn test_cmp() {
     ctx.assert_anzcv(0x01, 0, 1, 1, 0);
 
     ctx.cpu.regs.a = -100i8 as u8;
-    ctx.memory[0x2000] = -110i8 as u8;
+    ctx.memory[Ctx::MEM_ADR] = -110i8 as u8;
     ctx.assert_inst("CMP $2000", 4);
     ctx.assert_anzcv(-100i8 as u8, 0, 0, 1, 0);
 
     ctx.cpu.regs.a = 150;
-    ctx.memory[0x2000] = 120;
+    ctx.memory[Ctx::MEM_ADR] = 120;
     ctx.assert_inst("CMP $2000", 4);
     ctx.assert_anzcv(150, 0, 0, 1, 0);
 }
@@ -177,7 +218,7 @@ fn test_cmp() {
 fn test_cpx() {
     let mut ctx = Ctx::new();
     ctx.cpu.regs.x = -100i8 as u8;
-    ctx.memory[0x2000] = -110i8 as u8;
+    ctx.memory[Ctx::MEM_ADR] = -110i8 as u8;
     ctx.assert_inst("CPX $2000", 4);
     ctx.assert_nzcv(0, 0, 1, 0);
     assert_eq!(ctx.cpu.regs.x, -100i8 as u8);
@@ -198,68 +239,296 @@ fn test_cpy() {
     assert_eq!(ctx.cpu.regs.y, 0x71);
 
     ctx.cpu.regs.y = -100i8 as u8;
-    ctx.memory[0x2000] = -110i8 as u8;
+    ctx.memory[Ctx::MEM_ADR] = -110i8 as u8;
     ctx.assert_inst("CPY $2000", 4);
     ctx.assert_nzcv(0, 0, 1, 0);
     assert_eq!(ctx.cpu.regs.y, -100i8 as u8);
 }
 
 #[test]
-fn test_asl() {}
+fn test_asl() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0b11000001;
+    ctx.assert_inst("ASL", 2);
+    ctx.assert_anzcv(0b10000010, 1, 0, 1, 0);
+
+    ctx.memory[0xf002] = 0b01000001;
+    ctx.cpu.regs.x = 0x12;
+    ctx.assert_inst("ASL $eff0,X", 7);
+    ctx.assert_anzcv(0b10000010, 1, 0, 0, 0);
+}
 
 #[test]
-fn test_lsr() {}
+fn test_lsr() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0b11000001;
+    ctx.assert_inst("LSR", 2);
+    ctx.assert_anzcv(0b01100000, 0, 0, 1, 0);
+
+    ctx.memory[0xf002] = 0b10000010;
+    ctx.assert_inst("LSR $f002", 6);
+    assert_eq!(ctx.memory[0xf002], 0b01000001);
+    ctx.assert_nzcv(0, 0, 0, 0);
+
+    ctx.memory[0xf0] = 1;
+    ctx.assert_inst("LSR $f0", 5);
+    assert_eq!(ctx.memory[0xf0], 0);
+    ctx.assert_nzcv(0, 1, 1, 0);
+}
 
 #[test]
-fn test_rol() {}
+fn test_rol() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = true;
+    ctx.cpu.regs.a = 0b11000001;
+    ctx.assert_inst("ROL", 2);
+    ctx.assert_anzcv(0b10000011, 1, 0, 1, 0);
+
+    ctx.cpu.flags.c = false;
+    ctx.cpu.regs.a = 0b01000001;
+    ctx.assert_inst("ROL", 2);
+    ctx.assert_anzcv(0b10000010, 1, 0, 0, 0);
+
+    ctx.cpu.flags.c = false;
+    ctx.cpu.regs.a = 0b10000000;
+    ctx.assert_inst("ROL", 2);
+    ctx.assert_anzcv(0, 0, 1, 1, 0);
+}
 
 #[test]
-fn test_ror() {}
+fn test_ror() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = true;
+    ctx.cpu.regs.a = 0b11000001;
+    ctx.assert_inst("ROR", 2);
+    ctx.assert_anzcv(0b11100000, 1, 0, 1, 0);
+
+    ctx.cpu.flags.c = false;
+    ctx.cpu.regs.a = 0b01000000;
+    ctx.assert_inst("ROR", 2);
+    ctx.assert_anzcv(0b00100000, 0, 0, 0, 0);
+
+    ctx.cpu.flags.c = false;
+    ctx.cpu.regs.a = 1;
+    ctx.assert_inst("ROR", 2);
+    ctx.assert_anzcv(0, 0, 1, 1, 0);
+}
 
 #[test]
-fn test_bit() {}
+fn test_bit() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0x81;
+    ctx.memory[0x2001] = 0x41;
+    ctx.assert_inst("BIT $2001", 4);
+    ctx.assert_anzcv(0x81, 0, 0, 0, 1);
+
+    ctx.cpu.regs.a = 0x41;
+    ctx.memory[0x20] = 0x02;
+    ctx.assert_inst("BIT $20", 3);
+    ctx.assert_anzcv(0x41, 0, 1, 0, 0);
+}
 
 #[test]
-fn test_inc() {}
+fn test_inc() {
+    let mut ctx = Ctx::new();
+    ctx.memory[0x3102] = 0xff;
+    ctx.cpu.regs.x = 0x82;
+    ctx.assert_inst("INC $3080,X", 7);
+    ctx.assert_memnz(0x3102, 0x0, 0, 1);
+
+    ctx.memory[0x31] = 0x7f;
+    ctx.assert_inst("INC $31", 5);
+    ctx.assert_memnz(0x31, 0x80, 1, 0);
+}
 
 #[test]
-fn test_inx() {}
+fn test_inx() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = 0xff;
+    ctx.assert_inst("INX", 2);
+    ctx.assert_xnzc(0, 0, 1, 0);
+
+    ctx.cpu.regs.x = 0x7f;
+    ctx.assert_inst("INX", 2);
+    ctx.assert_xnzc(0x80, 1, 0, 0);
+}
 
 #[test]
-fn test_iny() {}
+fn test_iny() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.y = 0xff;
+    ctx.assert_inst("INY", 2);
+    ctx.assert_ynzc(0, 0, 1, 0);
+
+    ctx.cpu.regs.y = 0x9f;
+    ctx.assert_inst("INY", 2);
+    ctx.assert_ynzc(0xa0, 1, 0, 0);
+}
 
 #[test]
-fn test_dec() {}
+fn test_dec() {
+    let mut ctx = Ctx::new();
+    ctx.memory[0x3102] = 0x00;
+    ctx.cpu.regs.x = 0x82;
+    ctx.assert_inst("DEC $3080,X", 7);
+    ctx.assert_memnz(0x3102, 0xff, 1, 0);
+
+    ctx.memory[0x31] = 0x01;
+    ctx.assert_inst("DEC $31", 5);
+    ctx.assert_memnz(0x31, 0x00, 0, 1);
+}
 
 #[test]
-fn test_dex() {}
+fn test_dex() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = 0;
+    ctx.assert_inst("DEX", 2);
+    ctx.assert_xnzc(0xff, 1, 0, 0);
+
+    ctx.cpu.regs.x = 1;
+    ctx.assert_inst("DEX", 2);
+    ctx.assert_xnzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_dey() {}
+fn test_dey() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.y = 0;
+    ctx.assert_inst("DEY", 2);
+    ctx.assert_ynzc(0xff, 1, 0, 0);
+
+    ctx.cpu.regs.y = 1;
+    ctx.assert_inst("DEY", 2);
+    ctx.assert_ynzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_bcc() {}
+fn test_bcc_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = false;
+    ctx.assert_inst("BCC +3", 3);
+    ctx.assert_branch_taken(3);
+}
 
 #[test]
-fn test_bcs() {}
+fn test_bcc_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = true;
+    ctx.assert_inst("BCC +13", 2);
+    ctx.assert_branch_not_taken();
+}
 
 #[test]
-fn test_beq() {}
+fn test_bcs_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = true;
+    ctx.assert_inst("BCS +33", 3);
+    ctx.assert_branch_taken(33);
+}
 
 #[test]
-fn test_bmi() {}
+fn test_bcs_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.c = false;
+    ctx.assert_inst("BCS +13", 2);
+    ctx.assert_branch_not_taken();
+}
 
 #[test]
-fn test_bne() {}
+fn test_beq_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.z = true;
+    ctx.assert_inst("BEQ +103", 3);
+    ctx.assert_branch_taken(103);
+}
 
 #[test]
-fn test_bpl() {}
+fn test_beq_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.z = false;
+    ctx.assert_inst("BEQ -2", 2);
+    ctx.assert_branch_not_taken();
+}
 
 #[test]
-fn test_bvc() {}
+fn test_bne_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.z = false;
+    ctx.assert_inst("BNE +43", 3);
+    ctx.assert_branch_taken(43);
+}
 
 #[test]
-fn test_bvs() {}
+fn test_bne_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.z = true;
+    ctx.assert_inst("BNE -27", 2);
+    ctx.assert_branch_not_taken();
+}
+
+#[test]
+fn test_bmi_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.n = true;
+    ctx.assert_inst("BMI -3", 4);
+    ctx.assert_branch_taken(-3);
+}
+
+#[test]
+fn test_bmi_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.n = false;
+    ctx.assert_inst("BMI -42", 2);
+    ctx.assert_branch_not_taken();
+}
+
+#[test]
+fn test_bpl_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.n = false;
+    ctx.assert_inst("BPL +2", 3);
+    ctx.assert_branch_taken(2);
+}
+
+#[test]
+fn test_bpl_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.n = true;
+    ctx.assert_inst("BPL -82", 2);
+    ctx.assert_branch_not_taken();
+}
+
+#[test]
+fn test_bvc_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.v = false;
+    ctx.assert_inst("BVC +29", 3);
+    ctx.assert_branch_taken(29);
+}
+
+#[test]
+fn test_bvc_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.v = true;
+    ctx.assert_inst("BVC +29", 2);
+    ctx.assert_branch_not_taken();
+}
+
+#[test]
+fn test_bvs_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.v = true;
+    ctx.assert_inst("BVS +29", 3);
+    ctx.assert_branch_taken(29);
+}
+
+#[test]
+fn test_bvs_not_taken() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.v = false;
+    ctx.assert_inst("BVS +29", 2);
+    ctx.assert_branch_not_taken();
+}
 
 #[test]
 fn test_clc() {
@@ -330,52 +599,200 @@ fn test_jmp() {
 }
 
 #[test]
-fn test_jsr() {}
+fn test_jsr() {
+    let mut ctx = Ctx::new();
+    let sp0 = ctx.cpu.regs.sp_address();
+    let pc0 = ctx.cpu.regs.pc + 2;
+    ctx.assert_inst("JSR $f000", 6);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 1], pc0 as u8);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 2], (pc0 >> 8) as u8);
+    assert_eq!(ctx.cpu.regs.sp_address(), sp0 - 2);
+}
 
 #[test]
-fn test_brk() {}
+fn test_brk() {
+    let mut ctx = Ctx::new();
+    ctx.memory.set_word(Cpu::IRQ_VECTOR, 0xabcd);
+    ctx.cpu.flags = Flags::from_byte(0b11001111);
+    let sp0 = ctx.cpu.regs.sp_address();
+    let pc0 = ctx.cpu.regs.pc + 2;
+    ctx.assert_inst("BRK", 7);
+    assert_eq!(ctx.cpu.flags.i, true);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 1], 0b11011111);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 2], pc0 as u8);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 3], (pc0 >> 8) as u8);
+    assert_eq!(ctx.cpu.regs.sp_address(), sp0 - 3);
+    assert_eq!(ctx.cpu.regs.pc, 0xabcd);
+}
 
 #[test]
-fn test_rti() {}
+fn test_rti() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.flags.i = true;
+    ctx.cpu.push_word(&mut ctx.memory, 0x8003);
+    ctx.cpu.push(&mut ctx.memory, 0b11010011);
+    ctx.assert_inst("RTI", 6);
+    assert_eq!(ctx.cpu.flags.i, false);
+    assert_eq!(ctx.cpu.regs.pc, 0x8003);
+    assert_eq!(ctx.cpu.flags.to_byte(), 0b11000011);
+}
 
 #[test]
-fn test_rts() {}
+fn test_rts() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.push_word(&mut ctx.memory, 0x8002);
+    ctx.assert_inst("RTS", 6);
+    assert_eq!(ctx.cpu.regs.pc, 0x8003);
+}
 
 #[test]
-fn test_lda() {}
+fn test_lda() {
+    let mut ctx = Ctx::new();
+    ctx.assert_inst("LDA #$23", 2);
+    ctx.assert_anzc(0x23, 0, 0, 0);
+
+    ctx.memory.set_word(0xf0, 0x2080);
+    ctx.cpu.regs.y = 0x92;
+    ctx.memory[0x2112] = 0xf4;
+    ctx.assert_inst("LDA ($f0),Y", 6);
+    ctx.assert_anzc(0xf4, 1, 0, 0);
+}
 
 #[test]
-fn test_ldx() {}
+fn test_ldx() {
+    let mut ctx = Ctx::new();
+    ctx.assert_inst("LDX #$23", 2);
+    ctx.assert_xnzc(0x23, 0, 0, 0);
+
+    ctx.memory[0x2112] = 0xf4;
+    ctx.cpu.regs.y = 0x13;
+    ctx.assert_inst("LDX $20ff,Y", 5);
+    ctx.assert_xnzc(0xf4, 1, 0, 0);
+}
 
 #[test]
-fn test_ldy() {}
+fn test_ldy() {
+    let mut ctx = Ctx::new();
+    ctx.assert_inst("LDY #$23", 2);
+    ctx.assert_ynzc(0x23, 0, 0, 0);
+
+    ctx.memory[0xeaf0] = 0xf4;
+    ctx.cpu.regs.x = 0xf0;
+    ctx.assert_inst("LDY $EA00,X", 4);
+    ctx.assert_ynzc(0xf4, 1, 0, 0);
+}
 
 #[test]
-fn test_sta() {}
+fn test_sta() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0x8a;
+    ctx.assert_inst("STA $2300", 4);
+    ctx.assert_memnz(0x2300, 0x8a, 0, 0);
+
+    ctx.cpu.regs.a = 0x00;
+    ctx.assert_inst("STA $2300", 4);
+    ctx.assert_memnz(0x2300, 0x00, 0, 0);
+}
 
 #[test]
-fn test_stx() {}
+fn test_stx() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = 0x8a;
+    ctx.assert_inst("STX $3300", 4);
+    ctx.assert_memnz(0x3300, 0x8a, 0, 0);
+
+    ctx.cpu.regs.x = 0x00;
+    ctx.assert_inst("STX $3300", 4);
+    ctx.assert_memnz(0x3300, 0x00, 0, 0);
+}
 
 #[test]
-fn test_sty() {}
+fn test_sty() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.y = 0x8a;
+    ctx.assert_inst("STY $3300", 4);
+    ctx.assert_memnz(0x3300, 0x8a, 0, 0);
+
+    ctx.cpu.regs.y = 0x00;
+    ctx.assert_inst("STY $3300", 4);
+    ctx.assert_memnz(0x3300, 0x00, 0, 0);
+}
 
 #[test]
-fn test_tax() {}
+fn test_tax() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0xcf;
+    ctx.assert_inst("TAX", 2);
+    ctx.assert_xnzc(0xcf, 1, 0, 0);
+
+    ctx.cpu.regs.a = 0;
+    ctx.assert_inst("TAX", 2);
+    ctx.assert_xnzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_tay() {}
+fn test_tay() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.a = 0xcf;
+    ctx.assert_inst("TAY", 2);
+    ctx.assert_ynzc(0xcf, 1, 0, 0);
+
+    ctx.cpu.regs.a = 0;
+    ctx.assert_inst("TAY", 2);
+    ctx.assert_ynzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_tsx() {}
+fn test_tsx() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.sp = 0x8f;
+    ctx.assert_inst("TSX", 2);
+    ctx.assert_xnzc(0x8f, 1, 0, 0);
+
+    ctx.cpu.regs.sp = 0x00;
+    ctx.assert_inst("TSX", 2);
+    ctx.assert_xnzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_txa() {}
+fn test_txa() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = 0xcf;
+    ctx.assert_inst("TXA", 2);
+    ctx.assert_anzc(0xcf, 1, 0, 0);
+
+    ctx.cpu.regs.x = 0;
+    ctx.assert_inst("TXA", 2);
+    ctx.assert_anzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_tya() {}
+fn test_tya() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.y = 0xcf;
+    ctx.assert_inst("TYA", 2);
+    ctx.assert_anzc(0xcf, 1, 0, 0);
+
+    ctx.cpu.regs.y = 0;
+    ctx.assert_inst("TYA", 2);
+    ctx.assert_anzc(0, 0, 1, 0);
+}
 
 #[test]
-fn test_txs() {}
+fn test_txs() {
+    let mut ctx = Ctx::new();
+    ctx.cpu.regs.x = 0x81;
+    ctx.assert_inst("TXS", 2);
+    assert_eq!(ctx.cpu.regs.sp, 0x81);
+    assert_eq!(ctx.cpu.flags.n, false);
+    assert_eq!(ctx.cpu.flags.z, false);
+
+    ctx.cpu.regs.x = 0;
+    ctx.assert_inst("TXS", 2);
+    assert_eq!(ctx.cpu.regs.sp, 0);
+    assert_eq!(ctx.cpu.flags.n, false);
+    assert_eq!(ctx.cpu.flags.z, false);
+}
 
 #[test]
 fn test_pla() {
@@ -419,7 +836,13 @@ fn test_php() {
 }
 
 #[test]
-fn test_nop() {}
+fn test_nop() {
+    let mut ctx = Ctx::new();
+    ctx.assert_inst("NOP", 2);
+}
 
 #[test]
-fn test_kil() {}
+fn test_kil() {
+    let mut ctx = Ctx::new();
+    ctx.assert_inst("KIL", 0);
+}

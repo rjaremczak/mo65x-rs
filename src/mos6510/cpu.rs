@@ -153,43 +153,43 @@ impl Cpu {
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_cpx(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_cpx(&mut self, env: &mut Env, _: &mut Memory) {
         self.flags.compute_nzc(self.regs.x as u16 + (env.arg() as u16 ^ 0xff) + 1);
     }
 
-    pub fn exec_cpy(&mut self, env: &mut Env, memory: &mut Memory) {
+    pub fn exec_cpy(&mut self, env: &mut Env, _: &mut Memory) {
         self.flags.compute_nzc(self.regs.y as u16 + (env.arg() as u16 ^ 0xff) + 1);
     }
 
     pub fn exec_inc(&mut self, env: &mut Env, _: &mut Memory) {
-        let result = env.arg() + 1;
+        let result = env.arg().wrapping_add(1);
         env.set_arg(result);
         self.flags.compute_nz(result as u16);
     }
 
     pub fn exec_inx(&mut self, _: &mut Env, _: &mut Memory) {
-        self.regs.x = self.regs.x + 1;
+        self.regs.x = self.regs.x.wrapping_add(1);
         self.flags.compute_nz(self.regs.x as u16);
     }
 
     pub fn exec_iny(&mut self, _: &mut Env, _: &mut Memory) {
-        self.regs.y = self.regs.y + 1;
+        self.regs.y = self.regs.y.wrapping_add(1);
         self.flags.compute_nz(self.regs.y as u16);
     }
 
     pub fn exec_dec(&mut self, env: &mut Env, _: &mut Memory) {
-        let result = env.arg() - 1;
+        let result = env.arg().wrapping_sub(1);
         env.set_arg(result);
         self.flags.compute_nz(result as u16);
     }
 
     pub fn exec_dex(&mut self, _: &mut Env, _: &mut Memory) {
-        self.regs.x = self.regs.x - 1;
+        self.regs.x = self.regs.x.wrapping_sub(1);
         self.flags.compute_nz(self.regs.x as u16);
     }
 
     pub fn exec_dey(&mut self, _: &mut Env, _: &mut Memory) {
-        self.regs.y = self.regs.y - 1;
+        self.regs.y = self.regs.y.wrapping_sub(1);
         self.flags.compute_nz(self.regs.y as u16);
     }
 
@@ -274,7 +274,7 @@ impl Cpu {
     }
 
     pub fn exec_jsr(&mut self, env: &mut Env, memory: &mut Memory) {
-        self.push_word(memory, self.regs.pc + 1);
+        self.push_word(memory, self.regs.pc.wrapping_sub(1));
         self.regs.pc = env.addr;
     }
 

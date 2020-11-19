@@ -42,8 +42,8 @@ impl Env {
         self.arg_ptr = &mut regs.a as *mut u8;
     }
 
-    pub fn prep_branch(&mut self, _: &mut Memory, _: &mut Registers) {
-        // all handled by branch instructions
+    pub fn prep_branch(&mut self, memory: &mut Memory, _: &mut Registers) {
+        self.arg_ptr = &mut memory[self.pc] as *mut u8;
     }
 
     pub fn prep_immediate(&mut self, memory: &mut Memory, _: &mut Registers) {
