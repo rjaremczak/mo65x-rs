@@ -53,10 +53,6 @@ impl Cpu {
         self.general_irq(memory, self.regs.pc, self.flags.to_byte(), Cpu::NMI_VECTOR);
     }
 
-    pub fn exec_brk(&mut self, _: &mut Env, memory: &mut Memory) {
-        self.general_irq(memory, self.regs.pc + 1, self.flags.to_byte() | Flags::BM_BREAK, Cpu::IRQ_VECTOR);
-    }
-
     pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
         let opcode = memory[self.regs.pc];
         let entry = self.decode_table[opcode as usize];
@@ -67,7 +63,11 @@ impl Cpu {
         env.cycles
     }
 
-    pub fn exec_adc(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_brk(&mut self, _: &mut Env, memory: &mut Memory) {
+        self.general_irq(memory, self.regs.pc + 1, self.flags.to_byte() | Flags::BM_BREAK, Cpu::IRQ_VECTOR);
+    }
+
+    fn exec_adc(&mut self, env: &mut Env, _: &mut Memory) {
         let mut result = self.regs.a as u16 + env.arg() as u16 + self.flags.c as u16;
         if self.flags.d {
             self.flags.c = decimal_correction(&mut result);
@@ -80,7 +80,7 @@ impl Cpu {
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_sbc(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_sbc(&mut self, env: &mut Env, _: &mut Memory) {
         let op = env.arg() as u16 ^ 0x00ff;
         let mut result = self.regs.a as u16 + op + self.flags.c as u16;
         if self.flags.d {
@@ -95,31 +95,31 @@ impl Cpu {
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_and(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_and(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.a &= env.arg();
         self.flags.compute_nz(self.regs.a as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_ora(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_ora(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.a |= env.arg();
         self.flags.compute_nz(self.regs.a as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_eor(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_eor(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.a ^= env.arg();
         self.flags.compute_nz(self.regs.a as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_asl(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_asl(&mut self, env: &mut Env, _: &mut Memory) {
         let tmp = (env.arg() as u16) << 1;
         self.flags.compute_nzc(tmp);
         env.set_arg(tmp as u8);
     }
 
-    pub fn exec_lsr(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_lsr(&mut self, env: &mut Env, _: &mut Memory) {
         let mut tmp = env.arg();
         self.flags.c = tmp & 0x01 != 0;
         tmp >>= 1;
@@ -127,13 +127,13 @@ impl Cpu {
         env.set_arg(tmp);
     }
 
-    pub fn exec_rol(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_rol(&mut self, env: &mut Env, _: &mut Memory) {
         let tmp = (env.arg() as u16) << 1 | self.flags.c as u16;
         self.flags.compute_nzc(tmp);
         env.set_arg(tmp as u8);
     }
 
-    pub fn exec_ror(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_ror(&mut self, env: &mut Env, _: &mut Memory) {
         let mut tmp = env.arg() as u16 | if self.flags.c { 0x100 } else { 0 };
         self.flags.c = tmp & 0x01 != 0;
         tmp >>= 1;
@@ -141,230 +141,230 @@ impl Cpu {
         env.set_arg(tmp as u8);
     }
 
-    pub fn exec_bit(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bit(&mut self, env: &mut Env, _: &mut Memory) {
         let tmp = env.arg();
         self.flags.z = (self.regs.a & tmp) == 0;
         self.flags.n = tmp & 0x80 != 0;
         self.flags.v = tmp & 0x40 != 0;
     }
 
-    pub fn exec_cmp(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_cmp(&mut self, env: &mut Env, _: &mut Memory) {
         self.flags.compute_nzc(self.regs.a as u16 + (env.arg() as u16 ^ 0xff) + 1);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_cpx(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_cpx(&mut self, env: &mut Env, _: &mut Memory) {
         self.flags.compute_nzc(self.regs.x as u16 + (env.arg() as u16 ^ 0xff) + 1);
     }
 
-    pub fn exec_cpy(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_cpy(&mut self, env: &mut Env, _: &mut Memory) {
         self.flags.compute_nzc(self.regs.y as u16 + (env.arg() as u16 ^ 0xff) + 1);
     }
 
-    pub fn exec_inc(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_inc(&mut self, env: &mut Env, _: &mut Memory) {
         let result = env.arg().wrapping_add(1);
         env.set_arg(result);
         self.flags.compute_nz(result as u16);
     }
 
-    pub fn exec_inx(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_inx(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.x = self.regs.x.wrapping_add(1);
         self.flags.compute_nz(self.regs.x as u16);
     }
 
-    pub fn exec_iny(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_iny(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.y = self.regs.y.wrapping_add(1);
         self.flags.compute_nz(self.regs.y as u16);
     }
 
-    pub fn exec_dec(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_dec(&mut self, env: &mut Env, _: &mut Memory) {
         let result = env.arg().wrapping_sub(1);
         env.set_arg(result);
         self.flags.compute_nz(result as u16);
     }
 
-    pub fn exec_dex(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_dex(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.x = self.regs.x.wrapping_sub(1);
         self.flags.compute_nz(self.regs.x as u16);
     }
 
-    pub fn exec_dey(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_dey(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.y = self.regs.y.wrapping_sub(1);
         self.flags.compute_nz(self.regs.y as u16);
     }
 
-    pub fn exec_bcc(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bcc(&mut self, env: &mut Env, _: &mut Memory) {
         if !self.flags.c {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bcs(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bcs(&mut self, env: &mut Env, _: &mut Memory) {
         if self.flags.c {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_beq(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_beq(&mut self, env: &mut Env, _: &mut Memory) {
         if self.flags.z {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bmi(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bmi(&mut self, env: &mut Env, _: &mut Memory) {
         if self.flags.n {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bne(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bne(&mut self, env: &mut Env, _: &mut Memory) {
         if !self.flags.z {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bpl(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bpl(&mut self, env: &mut Env, _: &mut Memory) {
         if !self.flags.n {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bvc(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bvc(&mut self, env: &mut Env, _: &mut Memory) {
         if !self.flags.v {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_bvs(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_bvs(&mut self, env: &mut Env, _: &mut Memory) {
         if self.flags.v {
             self.exec_branch(env)
         }
     }
 
-    pub fn exec_clc(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_clc(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.c = false;
     }
 
-    pub fn exec_cld(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_cld(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.d = false;
     }
 
-    pub fn exec_cli(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_cli(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.i = false;
     }
 
-    pub fn exec_clv(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_clv(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.v = false;
     }
 
-    pub fn exec_sec(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_sec(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.c = true;
     }
 
-    pub fn exec_sed(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_sed(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.d = true;
     }
 
-    pub fn exec_sei(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_sei(&mut self, _: &mut Env, _: &mut Memory) {
         self.flags.i = true;
     }
 
-    pub fn exec_jmp(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_jmp(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.pc = env.addr;
     }
 
-    pub fn exec_jsr(&mut self, env: &mut Env, memory: &mut Memory) {
+    fn exec_jsr(&mut self, env: &mut Env, memory: &mut Memory) {
         self.push_word(memory, self.regs.pc.wrapping_sub(1));
         self.regs.pc = env.addr;
     }
 
-    pub fn exec_rti(&mut self, env: &mut Env, memory: &mut Memory) {
+    fn exec_rti(&mut self, _: &mut Env, memory: &mut Memory) {
         self.flags = Flags::from_byte(self.pull(memory));
         self.regs.pc = self.pull_word(memory);
         self.flags.i = false;
     }
 
-    pub fn exec_rts(&mut self, env: &mut Env, memory: &mut Memory) {
+    fn exec_rts(&mut self, _: &mut Env, memory: &mut Memory) {
         self.regs.pc = self.pull_word(memory) + 1;
     }
 
-    pub fn exec_lda(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_lda(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.a = env.arg();
         self.flags.compute_nz(self.regs.a as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_ldx(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_ldx(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.x = env.arg();
         self.flags.compute_nz(self.regs.x as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_ldy(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_ldy(&mut self, env: &mut Env, _: &mut Memory) {
         self.regs.y = env.arg();
         self.flags.compute_nz(self.regs.y as u16);
         env.add_cycle_when_page_crossed();
     }
 
-    pub fn exec_sta(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_sta(&mut self, env: &mut Env, _: &mut Memory) {
         env.set_arg(self.regs.a);
     }
 
-    pub fn exec_stx(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_stx(&mut self, env: &mut Env, _: &mut Memory) {
         env.set_arg(self.regs.x);
     }
 
-    pub fn exec_sty(&mut self, env: &mut Env, _: &mut Memory) {
+    fn exec_sty(&mut self, env: &mut Env, _: &mut Memory) {
         env.set_arg(self.regs.y);
     }
 
-    pub fn exec_tax(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_tax(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.x = self.regs.a;
         self.flags.compute_nz(self.regs.x as u16);
     }
 
-    pub fn exec_txa(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_txa(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.a = self.regs.x;
         self.flags.compute_nz(self.regs.a as u16);
     }
 
-    pub fn exec_tay(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_tay(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.y = self.regs.a;
         self.flags.compute_nz(self.regs.y as u16);
     }
-    pub fn exec_tya(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_tya(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.a = self.regs.y;
         self.flags.compute_nz(self.regs.a as u16);
     }
 
-    pub fn exec_tsx(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_tsx(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.x = self.regs.sp;
         self.flags.compute_nz(self.regs.x as u16);
     }
 
-    pub fn exec_txs(&mut self, _: &mut Env, _: &mut Memory) {
+    fn exec_txs(&mut self, _: &mut Env, _: &mut Memory) {
         self.regs.sp = self.regs.x;
     }
 
-    pub fn exec_pla(&mut self, _: &mut Env, memory: &mut Memory) {
+    fn exec_pla(&mut self, _: &mut Env, memory: &mut Memory) {
         self.regs.a = self.pull(memory);
         self.flags.compute_nz(self.regs.a as u16);
     }
 
-    pub fn exec_plp(&mut self, _: &mut Env, memory: &mut Memory) {
+    fn exec_plp(&mut self, _: &mut Env, memory: &mut Memory) {
         self.flags = Flags::from_byte(self.pull(memory));
     }
 
-    pub fn exec_pha(&mut self, _: &mut Env, memory: &mut Memory) {
+    fn exec_pha(&mut self, _: &mut Env, memory: &mut Memory) {
         self.push(memory, self.regs.a);
     }
 
-    pub fn exec_php(&mut self, _: &mut Env, memory: &mut Memory) {
+    fn exec_php(&mut self, _: &mut Env, memory: &mut Memory) {
         self.push(memory, self.flags.to_byte());
     }
 
-    pub fn exec_nop(&mut self, _: &mut Env, _: &mut Memory) {}
-    pub fn exec_kil(&mut self, _: &mut Env, _: &mut Memory) {}
+    fn exec_nop(&mut self, _: &mut Env, _: &mut Memory) {}
+    fn exec_kil(&mut self, _: &mut Env, _: &mut Memory) {}
 
     #[inline]
     fn exec_branch(&mut self, env: &mut Env) {

@@ -172,8 +172,4 @@ mod tests {
         assert_ok(">label_1", 0x2f);
         assert_err("labeloza", AsmError::SymbolNotDefined);
     }
-
-    fn list() {
-        // assert_ok!("")
-    }
 }
