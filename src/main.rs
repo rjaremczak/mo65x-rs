@@ -1,11 +1,12 @@
+mod emulator;
 mod gui_iced;
 mod mos6510;
 
+use emulator::Emulator;
+
 fn main() {
+    let mut emulator = Emulator::new();
     let mut assembler = mos6510::assembler::Assembler::new(0);
-    let mut memory = mos6510::memory::Memory::new();
-    let mut cpu = mos6510::cpu::Cpu::new();
-    cpu.reset(&memory);
-    cpu.exec_inst(&mut memory);
+    emulator.init();
     gui_iced::run();
 }

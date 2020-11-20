@@ -845,4 +845,5 @@ fn test_nop() {
 fn test_kil() {
     let mut ctx = Ctx::new();
     ctx.assert_inst("KIL", 0);
+    assert_eq!(ctx.cpu.regs.pc, Ctx::PC_INIT);
 }

@@ -363,8 +363,11 @@ impl Cpu {
         self.push(memory, self.flags.to_byte());
     }
 
+    fn exec_kil(&mut self, _: &mut Env, _: &mut Memory) {
+        self.regs.pc = self.regs.pc.wrapping_sub(1);
+    }
+
     fn exec_nop(&mut self, _: &mut Env, _: &mut Memory) {}
-    fn exec_kil(&mut self, _: &mut Env, _: &mut Memory) {}
 
     #[inline]
     fn exec_branch(&mut self, env: &mut Env) {
