@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 regex = "1"
-iced = "0.1.1"
+# iced = "0.1.1"
 # druid = "0.6.0"

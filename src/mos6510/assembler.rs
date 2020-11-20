@@ -7,6 +7,8 @@ mod tokens;
 #[cfg(test)]
 mod assembler_tests;
 
+use std::io;
+
 use super::{addr, addrmode::*, instruction::InstructionDef, opcode::OpCode};
 use error::AsmError;
 use operand::OperandParser;
@@ -245,7 +247,7 @@ impl Assembler {
     }
 }
 
-pub fn process_lines() -> Result<(u16, Vec<u8>), AsmError> {
+pub fn process_lines<R>(reader: io::BufReader<R>) -> Result<(u16, Vec<u8>), AsmError> {
     let asm = Assembler::new();
     Ok((asm.origin(), asm.code().to_vec()))
 }
