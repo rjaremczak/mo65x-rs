@@ -3,29 +3,29 @@ use super::*;
 fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
     let r = asm.process_line(line);
     assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
-    assert!(asm.object_code().data.len() >= expected.len(), "line \"{}\" : code too short", line);
-    let generated = &asm.object_code().data[(asm.object_code().data.len() - expected.len())..];
+    assert!(asm.code.len() >= expected.len(), "line \"{}\" : code too short", line);
+    let generated = &asm.code[(asm.code.len() - expected.len())..];
     assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
 }
 
 fn assert_asm<'a>(line: &str, code: &[u8]) -> Assembler {
-    let mut asm = Assembler::new(0);
-    asm.generate_code(true);
+    let mut asm = Assembler::new();
+    asm.set_generate_code(true);
     assert_next(&mut asm, line, code);
     asm
 }
 
 #[test]
 fn init() {
-    let asm = Assembler::new(0);
-    assert_eq!(asm.object_code_builder.write_enabled, false);
-    assert_eq!(asm.object_code_builder.location_counter, 0);
+    let asm = Assembler::new();
+    assert_eq!(asm.generate_code, false);
+    assert_eq!(asm.location_counter, 0);
     assert_eq!(asm.operand_parser.symbols().count(), 0);
 }
 
 #[test]
 fn test_list_separator() {
-    let asm = Assembler::new(0);
+    let asm = Assembler::new();
     let sl: Vec<&str> = asm.op_list_separator.split("20 30 40").collect();
     assert_eq!(sl.as_slice(), &["20", "30", "40"]);
     let sl: Vec<&str> = asm.op_list_separator.split("18").collect();
@@ -109,12 +109,14 @@ fn relative_mode() {
 #[test]
 fn set_location_counter() {
     let mut asm = assert_asm("  .ORG $3000 ;origin", &[]);
-    assert_eq!(asm.object_code_builder.location_counter, 0x3000);
+    assert_eq!(asm.origin.unwrap(), 0x3000);
+    assert_eq!(asm.location_counter, 0x3000);
     assert_next(&mut asm, "  .ORG $4000 ;origin", &[]);
-    assert_eq!(asm.object_code_builder.location_counter, 0x4000);
-    assert_eq!(asm.object_code().data.len(), 0x4000);
+    assert_eq!(asm.location_counter, 0x4000);
+    assert_eq!(asm.code.len(), 0x1000);
     assert_next(&mut asm, "  *= $5000 ;origin", &[]);
-    assert_eq!(asm.object_code_builder.location_counter, 0x5000);
+    assert_eq!(asm.location_counter, 0x5000);
+    assert_eq!(asm.code.len(), 0x2000);
 }
 
 #[test]
@@ -136,15 +138,16 @@ fn test_label() {
 
 #[test]
 fn test_symbols() {
-    let mut asm = Assembler::new(1000);
-    asm.generate_code(true);
+    let mut asm = Assembler::new();
+    asm.set_location_counter(1000);
+    asm.set_generate_code(true);
     asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
     assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);
     assert_eq!(asm.operand_parser.get_symbol("TestLabel_01").unwrap(), 1000);
     assert_eq!(asm.operand_parser.get_symbol("TestLabel_02"), None);
-    assert_eq!(asm.object_code().data.len(), 4);
-    assert_eq!(asm.object_code_builder.location_counter, 1004);
+    assert_eq!(asm.code.len(), 4);
+    assert_eq!(asm.location_counter, 1004);
 }
 
 #[test]
@@ -189,5 +192,5 @@ fn define_symbol() {
     let mut asm = assert_asm(".org $1000", &[]);
     asm.operand_parser.define_symbol("init", 0x1234);
     assert_next(&mut asm, "lda init", &[0xad, 0x34, 0x12]);
-    assert_eq!(asm.object_code_builder.location_counter, 0x1003);
+    assert_eq!(asm.location_counter, 0x1003);
 }

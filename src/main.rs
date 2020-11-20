@@ -6,7 +6,7 @@ use emulator::Emulator;
 
 fn main() {
     let mut emulator = Emulator::new();
-    let mut assembler = mos6510::assembler::Assembler::new(0);
+    let mut assembler = mos6510::assembler::Assembler::new();
     emulator.init();
     gui_iced::run();
 }

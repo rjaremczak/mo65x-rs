@@ -3,6 +3,9 @@ mod env;
 mod flags;
 mod registers;
 
+#[cfg(test)]
+mod cpu_tests;
+
 use self::{env::Env, flags::Flags, registers::Registers};
 use super::memory::Memory;
 use decoder::*;
@@ -412,6 +415,3 @@ fn decimal_correction(result: &mut u16) -> bool {
     }
     return false;
 }
-
-#[cfg(test)]
-mod tests;

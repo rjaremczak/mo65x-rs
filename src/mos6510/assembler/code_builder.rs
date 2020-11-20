@@ -1,21 +1,18 @@
-use crate::mos6510::error::AsmError;
+use super::error::AsmError;
 
-pub struct ObjectCode {
+pub struct CodeBuilder {
     pub origin: u16,
-    pub data: Vec<u8>,
-}
-
-pub struct ObjectCodeBuilder {
+    pub code: Vec<u8>,
     pub write_enabled: bool,
     pub location_counter: u16,
-    pub object_code: ObjectCode,
 }
 
-impl ObjectCodeBuilder {
-    pub fn new(origin: u16) -> Self {
+impl CodeBuilder {
+    pub fn new() -> Self {
         Self {
-            object_code: ObjectCode { origin, data: Vec::new() },
-            location_counter: origin,
+            code: Vec::new(),
+            origin: 0,
+            location_counter: 0,
             write_enabled: false,
         }
     }
@@ -23,7 +20,7 @@ impl ObjectCodeBuilder {
     pub fn emit_byte(&mut self, byte: u8) {
         self.location_counter += 1;
         if self.write_enabled {
-            self.object_code.data.push(byte);
+            self.code.push(byte);
         }
     }
 
@@ -38,7 +35,7 @@ impl ObjectCodeBuilder {
             self.location_counter = addr;
             if self.write_enabled {
                 for _ in lc..self.location_counter {
-                    self.object_code.data.push(0)
+                    self.code.push(0)
                 }
             }
             AsmError::Ok

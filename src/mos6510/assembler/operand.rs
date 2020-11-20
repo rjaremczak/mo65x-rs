@@ -1,6 +1,5 @@
+use super::error::AsmError;
 use std::collections::HashMap;
-
-use crate::mos6510::error::AsmError;
 
 pub const LO_BYTE_MODIFIER: char = '<';
 pub const HI_BYTE_MODIFIER: char = '>';

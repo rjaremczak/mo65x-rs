@@ -1,14 +1,14 @@
-mod object_code;
+pub mod error;
+
 mod operand;
 mod patterns;
 mod tokens;
 
 #[cfg(test)]
-mod tests;
+mod assembler_tests;
 
-use super::{addr, addrmode::*, error::AsmError, instruction::InstructionDef, opcode::OpCode};
-use object_code::ObjectCode;
-use object_code::ObjectCodeBuilder;
+use super::{addr, addrmode::*, instruction::InstructionDef, opcode::OpCode};
+use error::AsmError;
 use operand::OperandParser;
 use regex::Regex;
 use tokens::Tokens;
@@ -18,15 +18,21 @@ type Handler = fn(&mut Assembler, tokens: Tokens) -> AsmError;
 pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
     operand_parser: OperandParser,
-    object_code_builder: ObjectCodeBuilder,
+    origin: Option<u16>,
+    code: Vec<u8>,
+    generate_code: bool,
+    location_counter: u16,
     op_list_separator: Regex,
 }
 
 impl Assembler {
-    pub fn new(origin: u16) -> Assembler {
+    pub fn new() -> Assembler {
         Assembler {
+            code: Vec::new(),
+            origin: None,
+            location_counter: 0,
+            generate_code: false,
             operand_parser: OperandParser::new(),
-            object_code_builder: ObjectCodeBuilder::new(origin),
             op_list_separator: Regex::new("(?:\\s*,\\s*)|(?:\\s+)").unwrap(),
             handlers: {
                 let p = patterns::AsmPatterns::new();
@@ -49,17 +55,12 @@ impl Assembler {
         }
     }
 
-    pub fn object_code(&self) -> &ObjectCode {
-        &self.object_code_builder.object_code
-    }
-
     pub fn process_line(&mut self, line: &str) -> AsmError {
         for (regex, handler) in self.handlers.iter() {
             if let Some(captures) = regex.captures(&line) {
                 let tokens = Tokens::new(captures);
                 if let Some(label) = tokens.label() {
-                    self.operand_parser
-                        .define_symbol(label, self.object_code_builder.location_counter as i32);
+                    self.operand_parser.define_symbol(label, self.location_counter as i32);
                 };
                 return handler(self, tokens);
             }
@@ -114,11 +115,11 @@ impl Assembler {
             Some(operation) => match InstructionDef::by_mnemonic(operation) {
                 Some(instruction_def) => match OpCode::find(instruction_def.id, addrmode_def.id) {
                     Some(opcode) => {
-                        self.object_code_builder.emit_byte(opcode.code);
+                        self.emit_byte(opcode.code);
                         if addrmode_def.op_size == 1 {
-                            self.object_code_builder.emit_byte(opvalue as u8);
+                            self.emit_byte(opvalue as u8);
                         } else if addrmode_def.op_size == 2 {
-                            self.object_code_builder.emit_word(opvalue as u16);
+                            self.emit_word(opvalue as u16);
                         }
                         AsmError::Ok
                     }
@@ -130,8 +131,16 @@ impl Assembler {
         }
     }
 
-    pub fn generate_code(&mut self, on: bool) {
-        self.object_code_builder.write_enabled = on;
+    pub fn set_generate_code(&mut self, on: bool) {
+        self.generate_code = on;
+    }
+
+    pub fn code(&self) -> &Vec<u8> {
+        &self.code
+    }
+
+    pub fn origin(&self) -> u16 {
+        self.origin.unwrap_or(self.location_counter)
     }
 
     pub fn handle_empty_line(&mut self, _: Tokens) -> AsmError {
@@ -141,7 +150,7 @@ impl Assembler {
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> AsmError {
         match tokens.operand() {
             Some(opstr) => match self.operand_parser.resolve(opstr) {
-                Ok(val) => self.object_code_builder.set_location_counter(val as u16),
+                Ok(val) => self.set_location_counter(val as u16),
                 Err(err) => err,
             },
             None => AsmError::MissingOperand,
@@ -151,7 +160,7 @@ impl Assembler {
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> AsmError {
         match self.parse_operand_list(tokens.operand()) {
             Ok(values) => {
-                values.iter().for_each(|v| self.object_code_builder.emit_byte(*v as u8));
+                values.iter().for_each(|v| self.emit_byte(*v as u8));
                 AsmError::Ok
             }
             Err(err) => err,
@@ -161,7 +170,7 @@ impl Assembler {
     pub fn handle_emit_words(&mut self, tokens: Tokens) -> AsmError {
         match self.parse_operand_list(tokens.operand()) {
             Ok(values) => {
-                values.iter().for_each(|v| self.object_code_builder.emit_word(*v as u16));
+                values.iter().for_each(|v| self.emit_word(*v as u16));
                 AsmError::Ok
             }
             Err(err) => err,
@@ -203,4 +212,40 @@ impl Assembler {
     pub fn handle_indirect_indexed_y(&mut self, tokens: Tokens) -> AsmError {
         self.assemble(AddrMode::IndirectIndexedY, tokens)
     }
+
+    pub fn emit_byte(&mut self, byte: u8) {
+        self.location_counter += 1;
+        if self.generate_code {
+            self.code.push(byte);
+        }
+    }
+
+    pub fn emit_word(&mut self, word: u16) {
+        self.emit_byte(word as u8);
+        self.emit_byte((word >> 8) as u8);
+    }
+
+    pub fn set_location_counter(&mut self, addr: u16) -> AsmError {
+        if self.origin.is_none() {
+            self.origin = Some(addr);
+            self.location_counter = addr;
+            AsmError::Ok
+        } else if addr >= self.location_counter {
+            let lc = self.location_counter;
+            self.location_counter = addr;
+            if self.generate_code {
+                for _ in lc..self.location_counter {
+                    self.code.push(0)
+                }
+            }
+            AsmError::Ok
+        } else {
+            AsmError::ValueOutOfRange
+        }
+    }
+}
+
+pub fn process_lines() -> Result<(u16, Vec<u8>), AsmError> {
+    let asm = Assembler::new();
+    Ok((asm.origin(), asm.code().to_vec()))
 }

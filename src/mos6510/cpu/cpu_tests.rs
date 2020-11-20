@@ -1,5 +1,5 @@
 use super::*;
-use crate::mos6510::{assembler::Assembler, error::AsmError};
+use crate::mos6510::assembler::{error::AsmError, Assembler};
 
 struct Ctx {
     cpu: Cpu,
@@ -29,11 +29,12 @@ impl Ctx {
     }
 
     fn assert_inst(&mut self, line: &str, cycles: u8) {
-        let mut asm = Assembler::new(self.cpu.regs.pc);
-        asm.generate_code(true);
+        let mut asm = Assembler::new();
+        asm.set_location_counter(self.cpu.regs.pc);
+        asm.set_generate_code(true);
         let r = asm.process_line(line);
         assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
-        self.memory.set_bytes(asm.object_code().origin, &asm.object_code().data);
+        self.memory.set_block(asm.origin(), asm.code());
         let c = self.cpu.exec_inst(&mut self.memory);
         assert_eq!(c, cycles, "wrong number of cycles");
     }
