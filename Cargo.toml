@@ -3,10 +3,12 @@ name = "mo65x-rs"
 version = "0.1.0"
 authors = ["Robert Jaremczak <robert@mindpart.com>"]
 edition = "2018"
+description = "My Own 65xx emulator, assembler and monitor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 regex = "1"
+structopt = "0.3.20"
 # iced = "0.1.1"
 # druid = "0.6.0"
