@@ -2,7 +2,8 @@ mod emulator;
 mod mos6510;
 
 use emulator::Emulator;
-use std::path::PathBuf;
+use std::io::{self, Read};
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -75,8 +76,12 @@ fn disassemble(origin: u16, bin: PathBuf) {
 fn run(origin: u16, bin: PathBuf, freq_khz: u32) {
     let mut emulator = Emulator::new();
     emulator.init();
-    println!("running...");
-    loop {}
+    emulator.run();
+    println!("Emulator is running, press enter to quit");
+    std::thread::sleep(Duration::from_secs(1));
+    io::stdin().read_line(&mut String::new());
+    emulator.stop();
+    println!("stop");
 }
 
 fn console() {
