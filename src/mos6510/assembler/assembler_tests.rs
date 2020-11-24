@@ -2,7 +2,7 @@ use super::*;
 
 fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
     let r = asm.process_line(line);
-    assert!(matches!(r, AsmError::Ok), "line \"{}\" : {:?}", line, r);
+    assert!(r.is_ok(), "line \"{}\" : {:?}", line, r);
     assert!(asm.code.len() >= expected.len(), "line \"{}\" : code too short", line);
     let generated = &asm.code[(asm.code.len() - expected.len())..];
     assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
@@ -139,7 +139,7 @@ fn test_label() {
 #[test]
 fn test_symbols() {
     let mut asm = Assembler::new();
-    asm.set_location_counter(1000);
+    assert!(asm.set_location_counter(1000).is_ok());
     asm.set_generate_code(true);
     asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);

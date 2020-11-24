@@ -1,6 +1,5 @@
 #[derive(Debug)]
 pub enum AsmError {
-    Ok,
     SymbolNotDefined,
     MissingOperand,
     SyntaxError,
