@@ -25,7 +25,7 @@ enum Mode {
         src: PathBuf,
         /// Binary file path
         #[structopt(short, parse(from_os_str))]
-        bin: PathBuf,
+        bin: Option<PathBuf>,
     },
     /// Disassemble machine code
     Dis {
@@ -67,10 +67,16 @@ fn main() {
     };
 }
 
-fn assemble(src: PathBuf, bin: PathBuf) -> Result<(), AppError> {
+fn assemble(src: PathBuf, bin: Option<PathBuf>) -> Result<(), AppError> {
     print!("assembling file {:#?} ... ", src);
-    let (origin, code) = assembler::assemble_file(src)?;
+    let (origin, code) = assembler::assemble_file(&src)?;
     println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
+    let bin = bin.unwrap_or({
+        let mut path = src.clone();
+        path.set_extension("bin");
+        path
+    });
+    println!("output file: {:#?}", bin);
     Ok(())
 }
 
