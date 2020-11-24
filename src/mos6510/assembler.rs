@@ -227,6 +227,7 @@ pub fn assemble_file<F: AsRef<Path>>(fname: F) -> Result<(u16, Vec<u8>), AppErro
     let file = File::open(fname).map_err(|e| AppError::IoError(e))?;
     let reader = io::BufReader::new(file);
     let mut asm = Assembler::new();
+    asm.set_generate_code(true);
     for line in reader.lines() {
         asm.process_line(&line.unwrap())?;
     }

@@ -67,10 +67,10 @@ fn main() {
     };
 }
 
-fn assemble(src: PathBuf, bin_path: PathBuf) -> Result<(), AppError> {
+fn assemble(src: PathBuf, bin: PathBuf) -> Result<(), AppError> {
     print!("assembling file {:#?} ... ", src);
     let (origin, code) = assembler::assemble_file(src)?;
-    println!("ok");
+    println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     Ok(())
 }
 
