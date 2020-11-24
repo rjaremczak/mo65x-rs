@@ -1,5 +1,5 @@
 use super::*;
-use crate::mos6510::assembler::{error::AsmError, Assembler};
+use crate::mos6510::assembler::Assembler;
 
 struct Ctx {
     cpu: Cpu,

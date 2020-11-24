@@ -1,4 +1,4 @@
-use super::error::AsmError;
+use crate::mos6510::error::AppError;
 use std::collections::HashMap;
 
 pub const LO_BYTE_MODIFIER: char = '<';
@@ -49,7 +49,7 @@ impl OperandParser {
         Self { symbols: HashMap::new() }
     }
 
-    pub fn resolve(&self, txt: &str) -> Result<i32, AsmError> {
+    pub fn resolve(&self, txt: &str) -> Result<i32, AppError> {
         let modifier = Modifier::from(txt);
         let rest = &txt[modifier.len()..];
         self.resolve_raw(rest).and_then(|num| Ok(modifier.apply(num)))
@@ -67,7 +67,7 @@ impl OperandParser {
         self.symbols.iter()
     }
 
-    fn resolve_raw(&self, raw: &str) -> Result<i32, AsmError> {
+    fn resolve_raw(&self, raw: &str) -> Result<i32, AppError> {
         match raw.chars().next() {
             Some(c) => match c {
                 HEX_PREFIX => parse_int(&raw[1..], 16),
@@ -78,19 +78,19 @@ impl OperandParser {
                     } else if let Some(num) = self.symbols.get(raw) {
                         Ok(*num)
                     } else {
-                        Err(AsmError::SymbolNotDefined)
+                        Err(AppError::SymbolNotDefined)
                     }
                 }
             },
-            None => Err(AsmError::MissingOperand),
+            None => Err(AppError::MissingOperand),
         }
     }
 }
 
-fn parse_int(str: &str, radix: u32) -> Result<i32, AsmError> {
+fn parse_int(str: &str, radix: u32) -> Result<i32, AppError> {
     match i32::from_str_radix(str, radix) {
         Ok(num) => Ok(num),
-        Err(perr) => Err(AsmError::MalformedOperand(String::from(str), perr)),
+        Err(perr) => Err(AppError::ParseIntError(String::from(str), perr)),
     }
 }
 
@@ -105,7 +105,7 @@ mod tests {
         op
     }
 
-    fn assert_err(txt: &str, experr: AsmError) {
+    fn assert_err(txt: &str, experr: AppError) {
         match operand_parser().resolve(txt) {
             Ok(_) => assert!(false),
             Err(err) => assert!(matches!(err, experr)),
@@ -169,6 +169,6 @@ mod tests {
         assert_ok("label_2", 0xac02);
         assert_ok("<label_1", 0xfe);
         assert_ok(">label_1", 0x2f);
-        assert_err("labeloza", AsmError::SymbolNotDefined);
+        assert_err("labeloza", AppError::SymbolNotDefined);
     }
 }
