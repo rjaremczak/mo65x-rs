@@ -27,11 +27,14 @@ enum Mode {
     /// Assemble source to machine code
     Asm {
         /// Source file path
-        #[structopt(short, parse(from_os_str))]
+        #[structopt(parse(from_os_str))]
         src: PathBuf,
         /// Binary file path
-        #[structopt(short, parse(from_os_str))]
+        #[structopt(short = "o", parse(from_os_str))]
         bin: Option<PathBuf>,
+        /// Dump symbol table
+        #[structopt(short = "s")]
+        dump_symbols: bool,
     },
     /// Disassemble machine code
     Dis {
@@ -61,8 +64,8 @@ enum Mode {
 fn main() {
     let cliopt = CliOpt::from_args();
     println!("cliopt: {:#?}", cliopt);
-    let _ = match cliopt.mode {
-        Mode::Asm { src, bin } => assemble(src, bin),
+    let result = match cliopt.mode {
+        Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dis { addr: origin, bin } => disassemble(origin, bin),
         Mode::Run {
             addr: origin,
@@ -71,6 +74,9 @@ fn main() {
         } => run(origin, bin, freq_khz),
         Mode::Con => console(),
     };
+    if result.is_err() {
+        eprintln!("exit result: {:?}", result.err().unwrap())
+    }
 }
 
 fn wait_for_any_key() {
@@ -84,9 +90,9 @@ fn wait_for_any_key() {
     disable_raw_mode().unwrap();
 }
 
-fn assemble(src: PathBuf, bin: Option<PathBuf>) -> Result<(), AppError> {
+fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<(), AppError> {
     print!("assembling file {:#?} ... ", src);
-    let (origin, code) = assembler::assemble_file(&src)?;
+    let (origin, code, symbols) = assembler::assemble_file(&src)?;
     println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     let bin = bin.unwrap_or({
         let mut path = src.clone();
@@ -94,6 +100,12 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>) -> Result<(), AppError> {
         path
     });
     println!("output file: {:#?}", bin);
+
+    if dump_symbols {
+        println!("symbol table ({} items):", symbols.len());
+        symbols.iter().for_each(|(k, v)| println!("\"{}\" = {}", *k, *v));
+    }
+
     Ok(())
 }
 

@@ -10,7 +10,7 @@ fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
 
 fn assert_asm<'a>(line: &str, code: &[u8]) -> Assembler {
     let mut asm = Assembler::new();
-    asm.set_generate_code(true);
+    asm.reset_phase(true);
     assert_next(&mut asm, line, code);
     asm
 }
@@ -20,7 +20,7 @@ fn init() {
     let asm = Assembler::new();
     assert_eq!(asm.generate_code, false);
     assert_eq!(asm.location_counter, 0);
-    assert_eq!(asm.operand_parser.symbols().count(), 0);
+    assert_eq!(asm.operand_parser.symbols().len(), 0);
 }
 
 #[test]
@@ -140,7 +140,7 @@ fn test_label() {
 fn test_symbols() {
     let mut asm = Assembler::new();
     assert!(asm.set_location_counter(1000).is_ok());
-    asm.set_generate_code(true);
+    asm.reset_phase(true);
     asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
     assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);

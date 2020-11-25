@@ -5,13 +5,19 @@ mod tokens;
 #[cfg(test)]
 mod assembler_tests;
 
-use super::{addr, addrmode::*, instruction::InstructionDef, opcode::OpCode};
+use super::{
+    addr,
+    addrmode::*,
+    instruction::{Instruction, InstructionDef},
+    opcode::OpCode,
+};
 use crate::mos6510::error::AppError;
 use operand::OperandParser;
 use regex::Regex;
 use std::{
+    collections::HashMap,
     fs::File,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead},
     path::Path,
 };
 use tokens::Tokens;
@@ -71,9 +77,10 @@ impl Assembler {
         Err(AppError::SyntaxError)
     }
 
-    fn preprocess(addrmode: AddrMode, opt_opval: Option<i32>) -> (&'static AddrModeDef, i32) {
+    fn preprocess(instruction: Instruction, addrmode: AddrMode, opt_opval: Option<i32>) -> (&'static AddrModeDef, i32) {
+        let jmp = instruction == Instruction::Jsr || instruction == Instruction::Jmp;
         let addrmode_def = addrmode.def();
-        match addrmode_def.zp_mode {
+        match addrmode_def.zp_mode.and_then(|o| if jmp { None } else { Some(o) }) {
             Some(zp_mode) => match opt_opval {
                 Some(opval) => match addr::is_zero_page(opval) {
                     true => (zp_mode.def(), opval),
@@ -90,7 +97,7 @@ impl Assembler {
             Some(oplist) => {
                 let mut values: Vec<i32> = Vec::new();
                 for opstr in self.op_list_separator.split(oplist) {
-                    match self.operand_parser.resolve(opstr) {
+                    match self.operand_parser.resolve(opstr, self.generate_code) {
                         Ok(opval) => values.push(opval),
                         Err(err) => return Err(err),
                     }
@@ -106,12 +113,13 @@ impl Assembler {
             None
         } else {
             let str = tokens.operand().ok_or(AppError::MissingOperand)?;
-            Some(self.operand_parser.resolve(str)?)
+            Some(self.operand_parser.resolve(str, self.generate_code)?)
         };
-        let (addrmode_def, opvalue) = Self::preprocess(addrmode, operand);
         let operation = tokens.operation().ok_or(AppError::SyntaxError)?;
-        let instruction_def = InstructionDef::by_mnemonic(operation).ok_or(AppError::InvalidMnemonic)?;
-        let opcode = OpCode::find(instruction_def.id, addrmode_def.id).ok_or(AppError::MissingOperation)?;
+        let instruction_def = InstructionDef::by_mnemonic(operation).ok_or(AppError::InvalidMnemonic(String::from(operation)))?;
+        let (addrmode_def, opvalue) = Self::preprocess(instruction_def.id, addrmode, operand);
+        let opcode =
+            OpCode::find(instruction_def.id, addrmode_def.id).ok_or(AppError::OpcodeNotFound(instruction_def.id, addrmode_def.id))?;
         self.emit_byte(opcode.code);
         if addrmode_def.op_size == 1 {
             self.emit_byte(opvalue as u8);
@@ -121,12 +129,19 @@ impl Assembler {
         Ok(())
     }
 
-    pub fn set_generate_code(&mut self, on: bool) {
-        self.generate_code = on;
+    pub fn reset_phase(&mut self, generate_code: bool) {
+        self.generate_code = generate_code;
+        self.origin = None;
+        self.location_counter = 0;
+        self.code.clear();
     }
 
     pub fn code(&self) -> &Vec<u8> {
         &self.code
+    }
+
+    pub fn symbols(&self) -> &HashMap<String, i32> {
+        self.operand_parser.symbols()
     }
 
     pub fn origin(&self) -> u16 {
@@ -139,7 +154,7 @@ impl Assembler {
 
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
-        let addr = self.operand_parser.resolve(str)?;
+        let addr = self.operand_parser.resolve(str, false)?;
         self.set_location_counter(addr as u16)
     }
 
@@ -218,18 +233,24 @@ impl Assembler {
             }
             Ok(())
         } else {
-            Err(AppError::ValueOutOfRange)
+            Err(AppError::AddrOutOfRange(addr, self.location_counter))
         }
+    }
+
+    fn process_file<F: AsRef<Path>>(&mut self, generate_code: bool, fname: F) -> Result<(), AppError> {
+        let file = File::open(&fname).map_err(|e| AppError::IoError(e))?;
+        let reader = io::BufReader::new(file);
+        self.reset_phase(generate_code);
+        for line in reader.lines() {
+            self.process_line(&line.unwrap())?;
+        }
+        Ok(())
     }
 }
 
-pub fn assemble_file<F: AsRef<Path>>(fname: F) -> Result<(u16, Vec<u8>), AppError> {
-    let file = File::open(fname).map_err(|e| AppError::IoError(e))?;
-    let reader = io::BufReader::new(file);
+pub fn assemble_file<F: AsRef<Path>>(fname: F) -> Result<(u16, Vec<u8>, HashMap<String, i32>), AppError> {
     let mut asm = Assembler::new();
-    asm.set_generate_code(true);
-    for line in reader.lines() {
-        asm.process_line(&line.unwrap())?;
-    }
-    Ok((asm.origin(), asm.code().to_vec()))
+    asm.process_file(false, &fname)?;
+    asm.process_file(true, &fname)?;
+    Ok((asm.origin(), asm.code().to_vec(), asm.symbols().clone()))
 }

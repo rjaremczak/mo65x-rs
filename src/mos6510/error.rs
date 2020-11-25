@@ -1,11 +1,13 @@
+use super::{addrmode::AddrMode, instruction::Instruction};
+
 #[derive(Debug)]
 pub enum AppError {
-    SymbolNotDefined,
+    UndefinedSymbol(String),
     MissingOperand,
-    MissingOperation,
+    OpcodeNotFound(Instruction, AddrMode),
     SyntaxError,
-    ValueOutOfRange,
-    InvalidMnemonic,
+    AddrOutOfRange(u16, u16),
+    InvalidMnemonic(String),
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
 }
