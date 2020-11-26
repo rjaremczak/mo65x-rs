@@ -139,9 +139,9 @@ fn test_label() {
 #[test]
 fn test_symbols() {
     let mut asm = Assembler::new();
-    assert!(asm.set_location_counter(1000).is_ok());
-    asm.reset_phase(true);
     asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
+    asm.reset_phase(true);
+    assert!(asm.set_location_counter(1000).is_ok());
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
     assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);
     assert_eq!(asm.operand_parser.get_symbol("TestLabel_01").unwrap(), 1000);

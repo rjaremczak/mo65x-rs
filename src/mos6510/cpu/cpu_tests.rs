@@ -30,8 +30,8 @@ impl Ctx {
 
     fn assert_inst(&mut self, line: &str, cycles: u8) {
         let mut asm = Assembler::new();
-        assert!(asm.set_location_counter(self.cpu.regs.pc).is_ok());
         asm.reset_phase(true);
+        assert!(asm.set_location_counter(self.cpu.regs.pc).is_ok());
         let r = asm.process_line(line);
         assert!(r.is_ok(), "line \"{}\" : {:?}", line, r);
         self.memory.set_block(asm.origin(), asm.code());
