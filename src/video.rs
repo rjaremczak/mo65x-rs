@@ -1,3 +1,5 @@
+use std::time;
+
 use minifb::{Window, WindowOptions};
 
 pub struct Video {
@@ -30,5 +32,12 @@ impl Video {
         }
     }
 
-    pub fn update_fb(&mut self, vmem: &[u8; Self::WIDTH * Self::HEIGHT]) {}
+    pub fn init(&mut self) {
+        self.buffer.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
+        self.window.update_with_buffer(&mut self.buffer, Self::WIDTH, Self::HEIGHT);
+    }
+
+    pub fn update_fb(&mut self, vmem: &[u8; Self::WIDTH * Self::HEIGHT]) {
+        self.window.update_with_buffer(&mut self.buffer, Self::WIDTH, Self::HEIGHT);
+    }
 }

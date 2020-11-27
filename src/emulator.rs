@@ -30,6 +30,7 @@ impl Emulator {
     pub fn init(&mut self) {
         self.cpu.reset(&self.memory);
         self.cpu.exec_inst(&mut self.memory);
+        self.video.init();
     }
 
     pub fn run(&mut self) {
