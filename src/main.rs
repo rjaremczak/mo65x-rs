@@ -1,18 +1,13 @@
 mod emulator;
 mod mos6510;
+mod video;
 
+use crossterm::event::{read, Event};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use emulator::Emulator;
 use mos6510::{assembler, error::AppError};
-use std::io;
 use std::path::PathBuf;
-use std::time::Duration;
 use structopt::StructOpt;
-
-use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
-use crossterm::style::Print;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType};
-use crossterm::{cursor, execute};
-use std::io::{stdout, Write};
 
 #[derive(Debug, StructOpt)]
 #[structopt(author, about = "My Own 65xx emulator and more...")]
@@ -47,12 +42,12 @@ enum Mode {
     },
     /// Run machine code
     Run {
-        /// Start address
-        #[structopt(short)]
-        addr: u16,
         /// Binary file path
-        #[structopt(short, parse(from_os_str))]
+        #[structopt(parse(from_os_str))]
         bin: PathBuf,
+        /// Start address
+        #[structopt()]
+        addr: u16,
         /// Frequency of CPU clock in kHz
         #[structopt(short, default_value = "1000")]
         freq_khz: u32,

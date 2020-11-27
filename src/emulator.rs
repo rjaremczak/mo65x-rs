@@ -1,9 +1,13 @@
-use crate::mos6510::{cpu::Cpu, memory::Memory};
+use crate::{
+    mos6510::{cpu::Cpu, memory::Memory},
+    video::Video,
+};
 
 pub struct Emulator {
+    state: State,
     cpu: Cpu,
     memory: Memory,
-    state: State,
+    video: Video,
 }
 
 #[derive(PartialEq)]
@@ -19,6 +23,7 @@ impl Emulator {
             state: State::Stopped,
             cpu: Cpu::new(),
             memory: Memory::new(),
+            video: Video::new(),
         }
     }
 
