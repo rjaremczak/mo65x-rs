@@ -33,6 +33,11 @@ impl Memory {
         self.set_byte(address, value as u8);
         self.set_byte(address.wrapping_add(1), (value >> 8) as u8);
     }
+
+    #[inline]
+    pub fn view(&mut self, first: u16, len: u16) -> &[u8] {
+        &self.data[first as usize..(first + len) as usize]
+    }
 }
 
 impl std::ops::Index<u16> for Memory {

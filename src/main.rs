@@ -1,6 +1,6 @@
 mod emulator;
+mod gui;
 mod mos6510;
-mod video;
 
 use crossterm::event::{read, Event};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
