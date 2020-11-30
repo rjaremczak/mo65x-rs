@@ -11,15 +11,10 @@ use super::{
     instruction::{Instruction, InstructionDef},
     opcode::OpCode,
 };
-use crate::mos6510::error::AppError;
+use crate::{mos6510::error::AppError, utils::read_file_to_string};
 use operand::OperandParser;
 use regex::Regex;
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, BufRead},
-    path::Path,
-};
+use std::{collections::HashMap, path::Path};
 use tokens::Tokens;
 
 type Handler = fn(&mut Assembler, tokens: Tokens) -> Result<(), AppError>;
@@ -237,20 +232,19 @@ impl Assembler {
         }
     }
 
-    fn process_file<F: AsRef<Path>>(&mut self, generate_code: bool, fname: F) -> Result<(), AppError> {
-        let file = File::open(&fname).map_err(|e| AppError::IoError(e))?;
-        let reader = io::BufReader::new(file);
+    fn process_file(&mut self, generate_code: bool, strbuf: &String) -> Result<(), AppError> {
         self.reset_phase(generate_code);
-        for line in reader.lines() {
-            self.process_line(&line.unwrap())?;
+        for line in strbuf.lines() {
+            self.process_line(line)?;
         }
         Ok(())
     }
 }
 
 pub fn assemble_file<F: AsRef<Path>>(fname: F) -> Result<(u16, Vec<u8>, HashMap<String, i32>), AppError> {
+    let mut src = read_file_to_string(fname)?;
     let mut asm = Assembler::new();
-    asm.process_file(false, &fname)?;
-    asm.process_file(true, &fname)?;
+    asm.process_file(false, &src)?;
+    asm.process_file(true, &src)?;
     Ok((asm.origin(), asm.code().to_vec(), asm.symbols().clone()))
 }

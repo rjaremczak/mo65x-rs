@@ -1,6 +1,7 @@
 mod emulator;
 mod gui;
 mod mos6510;
+mod utils;
 
 use crossterm::event::{read, Event};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -8,6 +9,7 @@ use emulator::Emulator;
 use mos6510::{assembler, error::AppError};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use utils::write_string_to_file;
 
 #[derive(Debug, StructOpt)]
 #[structopt(author, about = "My Own 65xx emulator and more...")]
@@ -90,11 +92,14 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
     println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     let bin = bin.unwrap_or({
-        let mut path = src.clone();
+        let mut path = PathBuf::new();
+        path.set_file_name(src.file_name().unwrap());
         path.set_extension("bin");
         path
     });
-    println!("output file: {:#?}", bin);
+    print!("writting file: {:#?} ... ", bin);
+    write_string_to_file(&code, &bin)?;
+    println!("ok");
 
     if dump_symbols {
         println!("symbol table ({} items):", symbols.len());
@@ -112,6 +117,7 @@ fn disassemble(origin: u16, bin: PathBuf) -> Result<(), AppError> {
 fn run(origin: u16, bin: PathBuf, freq_khz: u32) -> Result<(), AppError> {
     let mut emulator = Emulator::new();
     emulator.init();
+    // emulator.load
     emulator.run();
     println!("Emulator is running, press any key to quit");
     wait_for_any_key();

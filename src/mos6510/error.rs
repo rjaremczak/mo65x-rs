@@ -11,3 +11,9 @@ pub enum AppError {
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
 }
+
+impl AppError {
+    pub fn from_io(ioerr: std::io::Error) -> Self {
+        Self::IoError(ioerr)
+    }
+}
