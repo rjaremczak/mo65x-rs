@@ -10,6 +10,7 @@ pub struct Emulator {
     cpu: Cpu,
     memory: Memory,
     gui: Gui,
+    fb_addr: u16,
 }
 
 #[derive(PartialEq)]
@@ -26,6 +27,7 @@ impl Emulator {
             cpu: Cpu::new(),
             memory: Memory::new(),
             gui: Gui::new(),
+            fb_addr: 0x200,
         }
     }
 
@@ -38,7 +40,7 @@ impl Emulator {
     pub fn run(&mut self) {
         self.state = State::Running;
         while self.gui.is_window_open() && !self.gui.is_key_down(Key::Escape) {
-            self.gui.update_fb(&self.memory.view(0x100, 0x400));
+            self.gui.update_fb(&self.memory.view(self.fb_addr, 0x400));
         }
     }
 

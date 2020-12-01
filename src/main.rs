@@ -7,7 +7,7 @@ use crossterm::event::{read, Event};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use emulator::Emulator;
 use mos6510::{assembler, error::AppError};
-use std::path::PathBuf;
+use std::{num::ParseIntError, path::PathBuf};
 use structopt::StructOpt;
 use utils::write_string_to_file;
 
@@ -47,8 +47,8 @@ enum Mode {
         /// Binary file path
         #[structopt(parse(from_os_str))]
         bin: PathBuf,
-        /// Start address
-        #[structopt()]
+        /// Start address in hex
+        #[structopt(parse(try_from_str = parse_hex))]
         addr: u16,
         /// Frequency of CPU clock in kHz
         #[structopt(short, default_value = "1000")]
@@ -56,6 +56,10 @@ enum Mode {
     },
     /// Interactive console
     Con,
+}
+
+fn parse_hex(hex: &str) -> Result<u16, ParseIntError> {
+    u16::from_str_radix(hex, 16)
 }
 
 fn main() {

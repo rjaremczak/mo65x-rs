@@ -38,6 +38,9 @@ impl Gui {
     }
 
     pub fn update_fb(&mut self, vmem: &[u8]) {
+        for i in 0..vmem.len() {
+            self.buffer[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
+        }
         self.window.update_with_buffer(&mut self.buffer, Self::WIDTH, Self::HEIGHT);
     }
 
@@ -51,3 +54,8 @@ impl Gui {
         self.window.is_key_down(key)
     }
 }
+
+const C64_PALETTE: [u32; 16] = [
+    0xFF000000, 0xFFFFFFFF, 0xFF880000, 0xFFAAFFEE, 0xFFCC44CC, 0xFF00CC55, 0xFF0000AA, 0xFFEEEE77, 0xFFDD8855, 0xFF664400, 0xFFFF7777,
+    0xFF333333, 0xFF777777, 0xFFAAFF66, 0xFF0088FF, 0xFFBBBBBB,
+];
