@@ -1,4 +1,10 @@
-use std::path::PathBuf;
+use std::{
+    fs::File,
+    io::Read,
+    path::PathBuf,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use minifb::Key;
 
@@ -42,19 +48,33 @@ impl Emulator {
         }
     }
 
-    pub fn upload(&mut self, origin: u16, bin: PathBuf) -> Result<(), AppError> {
+    pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {
         if self.is_running() {
             return Err(AppError::EmulatorIsRunning);
         }
-
-        Ok(())
+        let mut buf = Vec::new();
+        let size = File::open(&fpath)?.read_to_end(&mut buf)?;
+        self.memory.set_block(addr, &buf);
+        Ok(size)
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, addr: u16, period: Duration) {
+        self.cpu.regs.pc = addr;
         self.state = State::Running;
         while self.gui.is_window_open() && !self.gui.is_key_down(Key::Escape) {
-            self.gui.update_fb(&self.memory.view(self.fb_addr, Gui::FB_LEN));
+            let t0 = Instant::now();
+            let cycles = self.cpu.exec_inst(&mut self.memory);
+            if cycles == 0 {
+                let opcode = &super::mos6510::opcode::OPCODES[self.memory[self.cpu.regs.pc] as usize];
+                println!("stopped at {:04X} opcode: {:#?}", self.cpu.regs.pc, opcode);
+                break;
+            }
+            let dt = period * cycles as u32;
+            // sleep(dt - t0.elapsed());
+            sleep(Duration::from_millis(1));
+            self.gui.update_fb(self.memory.view(self.fb_addr, Gui::FB_LEN));
         }
+        self.state = State::Stopped;
     }
 
     pub fn stop(&mut self) {

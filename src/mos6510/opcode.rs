@@ -1,6 +1,7 @@
 use super::addrmode::{AddrMode, AddrMode::*};
 use super::instruction::Instruction::{self, *};
 
+#[derive(Debug)]
 pub struct OpCode {
     pub code: u8,
     pub instruction: Instruction,

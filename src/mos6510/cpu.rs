@@ -11,8 +11,8 @@ use super::memory::Memory;
 use decoder::*;
 
 pub struct Cpu {
-    regs: Registers,
-    flags: Flags,
+    pub regs: Registers,
+    pub flags: Flags,
     decode_table: OpCodeTable,
 }
 

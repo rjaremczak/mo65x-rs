@@ -5,6 +5,7 @@ mod mos6510;
 use emulator::Emulator;
 use mos6510::{assembler, error::AppError};
 use std::io::Write;
+use std::time::Duration;
 use std::{fs::File, num::ParseIntError, path::PathBuf};
 use structopt::StructOpt;
 
@@ -78,7 +79,7 @@ fn main() {
 }
 
 fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<(), AppError> {
-    print!("assembling file {:#?} ... ", src);
+    print!("assembling file {:?} ... ", src);
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
     println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     let bin = bin.unwrap_or({
@@ -104,14 +105,18 @@ fn disassemble(origin: u16, bin: PathBuf) -> Result<(), AppError> {
     Ok(())
 }
 
-fn run(origin: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
+fn run(addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
     let mut emulator = Emulator::new();
     emulator.init();
-    emulator.upload(origin, fname)?;
-    emulator.run();
-    println!("Emulator is running, press any key to quit");
+    print!("uploading file {:?} ... ", fname);
+    let size = emulator.upload(addr, fname)?;
+    println!("ok, {} B [${:04X} - ${:04X}]", size, addr, addr + size as u16 - 1);
+    println!("clock speed: {} kHz", freq_khz);
+    println!("start address: {:04X})", addr);
+    println!("running, press a key to stop...");
+    emulator.run(addr, Duration::from_secs(1) / (freq_khz * 1000));
     emulator.stop();
-    println!("stop");
+    println!("stopped");
     Ok(())
 }
 
