@@ -6,7 +6,6 @@ mod tokens;
 mod assembler_tests;
 
 use super::{
-    addr,
     addrmode::*,
     instruction::{Instruction, InstructionDef},
     opcode::OpCode,
@@ -78,7 +77,7 @@ impl Assembler {
         let addrmode_def = addrmode.def();
         match addrmode_def.zp_mode.and_then(|o| if jmp { None } else { Some(o) }) {
             Some(zp_mode) => match opt_opval {
-                Some(opval) => match addr::is_zero_page(opval) {
+                Some(opval) => match is_zero_page(opval) {
                     true => (zp_mode.def(), opval),
                     false => (addrmode_def, opval),
                 },

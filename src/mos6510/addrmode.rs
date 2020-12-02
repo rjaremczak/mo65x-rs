@@ -32,6 +32,11 @@ impl AddrModeDef {
     }
 }
 
+#[inline]
+pub fn is_zero_page(num: i32) -> bool {
+    num >= 0 && num <= 256
+}
+
 use AddrMode::*;
 
 pub static ADDR_MODE_DEFS: [AddrModeDef; 12] = [
