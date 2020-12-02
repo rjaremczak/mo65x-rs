@@ -3,17 +3,18 @@ use std::time;
 use minifb::{Key, Window, WindowOptions};
 
 pub struct Gui {
-    buffer: Vec<u32>,
+    fb: Vec<u32>,
     window: Window,
 }
 
 impl Gui {
     pub const WIDTH: usize = 32;
     pub const HEIGHT: usize = 32;
+    pub const FB_LEN: usize = Self::WIDTH * Self::HEIGHT;
 
     pub fn new() -> Self {
         Self {
-            buffer: vec![0; Self::WIDTH * Self::HEIGHT],
+            fb: vec![0; Self::FB_LEN],
             window: Window::new(
                 "Frame Buffer",
                 Self::WIDTH,
@@ -33,15 +34,14 @@ impl Gui {
     }
 
     pub fn init(&mut self) {
-        self.buffer.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
-        self.window.update_with_buffer(&mut self.buffer, Self::WIDTH, Self::HEIGHT);
+        self.fb.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
     }
 
     pub fn update_fb(&mut self, vmem: &[u8]) {
-        for i in 0..vmem.len() {
-            self.buffer[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
+        for i in 0..Self::FB_LEN {
+            self.fb[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
         }
-        self.window.update_with_buffer(&mut self.buffer, Self::WIDTH, Self::HEIGHT);
+        self.window.update_with_buffer(&mut self.fb, Self::WIDTH, Self::HEIGHT).unwrap();
     }
 
     #[inline]

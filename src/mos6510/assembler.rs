@@ -11,10 +11,11 @@ use super::{
     instruction::{Instruction, InstructionDef},
     opcode::OpCode,
 };
-use crate::{mos6510::error::AppError, utils::read_file_to_string};
+use crate::mos6510::error::AppError;
 use operand::OperandParser;
 use regex::Regex;
-use std::{collections::HashMap, path::Path};
+use std::io::Read;
+use std::{collections::HashMap, fs::File, path::Path};
 use tokens::Tokens;
 
 type Handler = fn(&mut Assembler, tokens: Tokens) -> Result<(), AppError>;
@@ -242,7 +243,8 @@ impl Assembler {
 }
 
 pub fn assemble_file<F: AsRef<Path>>(fname: F) -> Result<(u16, Vec<u8>, HashMap<String, i32>), AppError> {
-    let mut src = read_file_to_string(fname)?;
+    let mut src = String::new();
+    File::open(&fname)?.read_to_string(&mut src)?;
     let mut asm = Assembler::new();
     asm.process_file(false, &src)?;
     asm.process_file(true, &src)?;
