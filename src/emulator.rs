@@ -10,7 +10,7 @@ use minifb::Key;
 
 use crate::{
     gui::Gui,
-    mos6510::{cpu::Cpu, error::AppError, memory::Memory},
+    mos6510::{cpu::Cpu, error::AppError, memory::Memory, operation::Operation},
 };
 
 pub struct Emulator {
@@ -65,8 +65,8 @@ impl Emulator {
             let t0 = Instant::now();
             let cycles = self.cpu.exec_inst(&mut self.memory);
             if cycles == 0 {
-                let opcode = &super::mos6510::opcode::OPCODES[self.memory[self.cpu.regs.pc] as usize];
-                println!("stopped at {:04X} opcode: {:#?}", self.cpu.regs.pc, opcode);
+                let operation = Operation::get(self.memory[self.cpu.regs.pc]);
+                println!("stopped at {:04X} opcode: {:#?}", self.cpu.regs.pc, operation);
                 break;
             }
             let dt = period * cycles as u32;

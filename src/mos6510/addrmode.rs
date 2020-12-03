@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AddrMode {
     Implied,
-    Branch,
+    Relative,
     Immediate,
     ZeroPage,
     ZeroPageX,
@@ -41,7 +41,7 @@ use AddrMode::*;
 
 pub static ADDR_MODE_DEFS: [AddrModeDef; 12] = [
     AddrModeDef::new(Implied, 0, None),
-    AddrModeDef::new(Branch, 1, None),
+    AddrModeDef::new(Relative, 1, None),
     AddrModeDef::new(Immediate, 1, None),
     AddrModeDef::new(ZeroPage, 1, None),
     AddrModeDef::new(ZeroPageX, 1, None),

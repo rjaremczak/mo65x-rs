@@ -8,7 +8,7 @@ use super::{addrmode::AddrMode, instruction::Instruction};
 pub enum AppError {
     UndefinedSymbol(String),
     MissingOperand,
-    OpcodeNotFound(Instruction, AddrMode),
+    NoOpCode(Instruction, AddrMode),
     SyntaxError,
     AddrOutOfRange(u16, u16),
     InvalidMnemonic(String),

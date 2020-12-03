@@ -1,5 +1,5 @@
 use super::{env::Env, registers::Registers, Cpu};
-use crate::mos6510::{addrmode::AddrMode, instruction::Instruction, memory::Memory, opcode::OPCODES};
+use crate::mos6510::{addrmode::AddrMode, instruction::Instruction, memory::Memory, operation::Operation};
 
 pub type PrepAddrModeFn = fn(&mut Env, &mut Memory, &mut Registers);
 pub type ExecInstFn = fn(&mut Cpu, &mut Env, &mut Memory);
@@ -25,7 +25,7 @@ impl OpCodeEntry {
     fn resolve_prep_handler(addrmode: AddrMode) -> PrepAddrModeFn {
         match addrmode {
             AddrMode::Implied => Env::prep_implied,
-            AddrMode::Branch => Env::prep_branch,
+            AddrMode::Relative => Env::prep_branch,
             AddrMode::Immediate => Env::prep_immediate,
             AddrMode::ZeroPage => Env::prep_zero_page,
             AddrMode::ZeroPageX => Env::prep_zero_page_x,
@@ -106,9 +106,10 @@ pub type OpCodeTable = [OpCodeEntry; 256];
 
 pub fn generate_opcode_table() -> OpCodeTable {
     let mut oct: OpCodeTable = [OpCodeEntry::from(Instruction::Kil, AddrMode::Implied, 0); 256];
-    for oc in &OPCODES {
-        if oc.instruction != Instruction::Kil {
-            oct[oc.code as usize] = OpCodeEntry::from(oc.instruction, oc.addrmode, oc.cycles);
+    for code in u8::MIN..u8::MAX {
+        let operation = Operation::get(code);
+        if operation.instruction != Instruction::Kil {
+            oct[code as usize] = OpCodeEntry::from(operation.instruction, operation.addrmode, operation.cycles);
         }
     }
     oct

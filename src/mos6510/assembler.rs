@@ -5,11 +5,7 @@ mod tokens;
 #[cfg(test)]
 mod assembler_tests;
 
-use super::{
-    addrmode::*,
-    instruction::{Instruction, InstructionDef},
-    opcode::OpCode,
-};
+use super::{addrmode::*, instruction::Instruction, operation::Operation};
 use crate::mos6510::error::AppError;
 use operand::OperandParser;
 use regex::Regex;
@@ -110,12 +106,11 @@ impl Assembler {
             let str = tokens.operand().ok_or(AppError::MissingOperand)?;
             Some(self.operand_parser.resolve(str, self.generate_code)?)
         };
-        let operation = tokens.operation().ok_or(AppError::SyntaxError)?;
-        let instruction_def = InstructionDef::by_mnemonic(operation).ok_or(AppError::InvalidMnemonic(String::from(operation)))?;
-        let (addrmode_def, opvalue) = Self::preprocess(instruction_def.id, addrmode, operand);
-        let opcode =
-            OpCode::find(instruction_def.id, addrmode_def.id).ok_or(AppError::OpcodeNotFound(instruction_def.id, addrmode_def.id))?;
-        self.emit_byte(opcode.code);
+        let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
+        let instruction = Instruction::parse(mnemonic).ok_or(AppError::InvalidMnemonic(String::from(mnemonic)))?;
+        let (addrmode_def, opvalue) = Self::preprocess(instruction, addrmode, operand);
+        let (opcode, _) = Operation::find(instruction, addrmode_def.id).ok_or(AppError::NoOpCode(instruction, addrmode_def.id))?;
+        self.emit_byte(opcode);
         if addrmode_def.op_size == 1 {
             self.emit_byte(opvalue as u8);
         } else if addrmode_def.op_size == 2 {
@@ -174,7 +169,7 @@ impl Assembler {
     }
 
     pub fn handle_branch(&mut self, tokens: Tokens) -> Result<(), AppError> {
-        self.assemble(AddrMode::Branch, tokens)
+        self.assemble(AddrMode::Relative, tokens)
     }
 
     pub fn handle_absolute(&mut self, tokens: Tokens) -> Result<(), AppError> {

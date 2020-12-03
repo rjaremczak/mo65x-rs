@@ -1,4 +1,7 @@
-#[derive(Debug, PartialEq, Copy, Clone)]
+use std::collections::BTreeMap;
+use Instruction::*;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Instruction {
     Adc,
     Sbc,
@@ -59,108 +62,101 @@ pub enum Instruction {
     Kil,
 }
 
-pub struct InstructionDef {
-    pub id: Instruction,
-    pub mnemonic: &'static str,
-}
-
-impl InstructionDef {
-    const fn new(id: Instruction, mnemonic: &'static str) -> Self {
-        Self { id, mnemonic }
+impl Instruction {
+    pub fn mnemonic(&self) -> &'static str {
+        MNEMONICS.get(self).unwrap()
     }
 
-    pub fn by_mnemonic(mnemonic: &str) -> Option<&InstructionDef> {
+    pub fn parse(mnemonic: &str) -> Option<Instruction> {
         let m = &mnemonic.to_uppercase();
-        INSTRUCTIONS.iter().find(|e| e.mnemonic == m)
-    }
-
-    pub fn find(id: Instruction) -> Option<&'static InstructionDef> {
-        INSTRUCTIONS.iter().find(|e| e.id == id)
+        MNEMONICS.iter().find(|kv| kv.1 == m).map(|kv| *kv.0)
     }
 }
 
-use Instruction::*;
-
-pub static INSTRUCTIONS: [InstructionDef; 57] = [
-    InstructionDef::new(Kil, "KIL"),
-    InstructionDef::new(Adc, "ADC"),
-    InstructionDef::new(Sbc, "SBC"),
-    InstructionDef::new(And, "AND"),
-    InstructionDef::new(Ora, "ORA"),
-    InstructionDef::new(Asl, "ASL"),
-    InstructionDef::new(Lsr, "LSR"),
-    InstructionDef::new(Eor, "EOR"),
-    InstructionDef::new(Rol, "ROL"),
-    InstructionDef::new(Ror, "ROR"),
-    InstructionDef::new(Bit, "BIT"),
-    InstructionDef::new(Cmp, "CMP"),
-    InstructionDef::new(Cpx, "CPX"),
-    InstructionDef::new(Cpy, "CPY"),
-    InstructionDef::new(Inc, "INC"),
-    InstructionDef::new(Inx, "INX"),
-    InstructionDef::new(Iny, "INY"),
-    InstructionDef::new(Dec, "DEC"),
-    InstructionDef::new(Dex, "DEX"),
-    InstructionDef::new(Dey, "DEY"),
-    InstructionDef::new(Bcc, "BCC"),
-    InstructionDef::new(Bcs, "BCS"),
-    InstructionDef::new(Beq, "BEQ"),
-    InstructionDef::new(Bmi, "BMI"),
-    InstructionDef::new(Bne, "BNE"),
-    InstructionDef::new(Bpl, "BPL"),
-    InstructionDef::new(Bvc, "BVC"),
-    InstructionDef::new(Bvs, "BVS"),
-    InstructionDef::new(Clc, "CLC"),
-    InstructionDef::new(Cld, "CLD"),
-    InstructionDef::new(Cli, "CLI"),
-    InstructionDef::new(Clv, "CLV"),
-    InstructionDef::new(Sec, "SEC"),
-    InstructionDef::new(Sed, "SED"),
-    InstructionDef::new(Sei, "SEI"),
-    InstructionDef::new(Jmp, "JMP"),
-    InstructionDef::new(Jsr, "JSR"),
-    InstructionDef::new(Brk, "BRK"),
-    InstructionDef::new(Rti, "RTI"),
-    InstructionDef::new(Rts, "RTS"),
-    InstructionDef::new(Lda, "LDA"),
-    InstructionDef::new(Ldx, "LDX"),
-    InstructionDef::new(Ldy, "LDY"),
-    InstructionDef::new(Sta, "STA"),
-    InstructionDef::new(Stx, "STX"),
-    InstructionDef::new(Sty, "STY"),
-    InstructionDef::new(Tax, "TAX"),
-    InstructionDef::new(Tay, "TAY"),
-    InstructionDef::new(Tsx, "TSX"),
-    InstructionDef::new(Txa, "TXA"),
-    InstructionDef::new(Tya, "TYA"),
-    InstructionDef::new(Txs, "TXS"),
-    InstructionDef::new(Pha, "PHA"),
-    InstructionDef::new(Php, "PHP"),
-    InstructionDef::new(Pla, "PLA"),
-    InstructionDef::new(Plp, "PLP"),
-    InstructionDef::new(Nop, "NOP"),
-];
+lazy_static! {
+    static ref MNEMONICS: BTreeMap<Instruction, &'static str> = {
+        let mut m = BTreeMap::new();
+        m.insert(Kil, "KIL");
+        m.insert(Adc, "ADC");
+        m.insert(Sbc, "SBC");
+        m.insert(And, "AND");
+        m.insert(Ora, "ORA");
+        m.insert(Asl, "ASL");
+        m.insert(Lsr, "LSR");
+        m.insert(Eor, "EOR");
+        m.insert(Rol, "ROL");
+        m.insert(Ror, "ROR");
+        m.insert(Bit, "BIT");
+        m.insert(Cmp, "CMP");
+        m.insert(Cpx, "CPX");
+        m.insert(Cpy, "CPY");
+        m.insert(Inc, "INC");
+        m.insert(Inx, "INX");
+        m.insert(Iny, "INY");
+        m.insert(Dec, "DEC");
+        m.insert(Dex, "DEX");
+        m.insert(Dey, "DEY");
+        m.insert(Bcc, "BCC");
+        m.insert(Bcs, "BCS");
+        m.insert(Beq, "BEQ");
+        m.insert(Bmi, "BMI");
+        m.insert(Bne, "BNE");
+        m.insert(Bpl, "BPL");
+        m.insert(Bvc, "BVC");
+        m.insert(Bvs, "BVS");
+        m.insert(Clc, "CLC");
+        m.insert(Cld, "CLD");
+        m.insert(Cli, "CLI");
+        m.insert(Clv, "CLV");
+        m.insert(Sec, "SEC");
+        m.insert(Sed, "SED");
+        m.insert(Sei, "SEI");
+        m.insert(Jmp, "JMP");
+        m.insert(Jsr, "JSR");
+        m.insert(Brk, "BRK");
+        m.insert(Rti, "RTI");
+        m.insert(Rts, "RTS");
+        m.insert(Lda, "LDA");
+        m.insert(Ldx, "LDX");
+        m.insert(Ldy, "LDY");
+        m.insert(Sta, "STA");
+        m.insert(Stx, "STX");
+        m.insert(Sty, "STY");
+        m.insert(Tax, "TAX");
+        m.insert(Tay, "TAY");
+        m.insert(Tsx, "TSX");
+        m.insert(Txa, "TXA");
+        m.insert(Tya, "TYA");
+        m.insert(Txs, "TXS");
+        m.insert(Pha, "PHA");
+        m.insert(Php, "PHP");
+        m.insert(Pla, "PLA");
+        m.insert(Plp, "PLP");
+        m.insert(Nop, "NOP");
+        m
+    };
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn find_ok() {
-        assert!(InstructionDef::by_mnemonic("LDX").unwrap().id == Ldx);
-        assert!(InstructionDef::by_mnemonic("LDA").unwrap().id == Lda);
+    fn find_mnemonic_ok() {
+        assert!(Instruction::parse("LDX").unwrap() == Ldx);
+        assert!(Instruction::parse("LDA").unwrap() == Lda);
     }
 
     #[test]
-    fn find_failed() {
-        assert!(matches!(InstructionDef::by_mnemonic("JUH"), None));
+    fn find_mnemonic_failed() {
+        assert!(matches!(Instruction::parse("JUH"), None));
     }
 
     #[test]
-    fn find_mnemonic_by_instruction() {
-        assert_eq!(InstructionDef::find(Lda).unwrap().mnemonic, "LDA");
-        assert_eq!(InstructionDef::find(Txa).unwrap().mnemonic, "TXA");
-        assert_eq!(InstructionDef::find(Kil).unwrap().mnemonic, "KIL");
-        assert_eq!(InstructionDef::find(Jmp).unwrap().mnemonic, "JMP");
+    fn get_mnemonic() {
+        assert_eq!(Lda.mnemonic(), "LDA");
+        assert_eq!(Txa.mnemonic(), "TXA");
+        assert_eq!(Kil.mnemonic(), "KIL");
+        assert_eq!(Jmp.mnemonic(), "JMP");
     }
 }
