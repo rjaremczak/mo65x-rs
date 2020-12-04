@@ -5,13 +5,19 @@ mod tokens;
 #[cfg(test)]
 mod assembler_tests;
 
-use super::{addrmode::*, instruction::Instruction, operation::Operation};
+use super::{
+    addrmode::*,
+    instruction::Instruction,
+    operation::{find_opcode, Operation},
+};
 use crate::mos6510::error::AppError;
 use operand::OperandParser;
 use regex::Regex;
 use std::io::Read;
 use std::{collections::HashMap, fs::File, path::Path};
 use tokens::Tokens;
+use AddrMode::Implied;
+use Instruction::{Jmp, Jsr};
 
 type Handler = fn(&mut Assembler, tokens: Tokens) -> Result<(), AppError>;
 
@@ -68,18 +74,11 @@ impl Assembler {
         Err(AppError::SyntaxError)
     }
 
-    fn preprocess(instruction: Instruction, addrmode: AddrMode, opt_opval: Option<i32>) -> (&'static AddrModeDef, i32) {
-        let jmp = instruction == Instruction::Jsr || instruction == Instruction::Jmp;
-        let addrmode_def = addrmode.def();
-        match addrmode_def.zp_mode.and_then(|o| if jmp { None } else { Some(o) }) {
-            Some(zp_mode) => match opt_opval {
-                Some(opval) => match is_zero_page(opval) {
-                    true => (zp_mode.def(), opval),
-                    false => (addrmode_def, opval),
-                },
-                None => (addrmode_def, 0),
-            },
-            None => (addrmode_def, opt_opval.unwrap_or(0)),
+    fn preprocess(instruction: Instruction, addrmode: AddrMode, opvalue: i32) -> AddrMode {
+        if addrmode == Implied || instruction == Jsr || instruction == Jmp {
+            addrmode
+        } else {
+            addrmode.optimized(opvalue)
         }
     }
 
@@ -100,21 +99,21 @@ impl Assembler {
     }
 
     fn assemble<'a>(&mut self, addrmode: AddrMode, tokens: Tokens) -> Result<(), AppError> {
-        let operand = if addrmode == AddrMode::Implied {
-            None
+        let opvalue = if addrmode == AddrMode::Implied {
+            0
         } else {
-            let str = tokens.operand().ok_or(AppError::MissingOperand)?;
-            Some(self.operand_parser.resolve(str, self.generate_code)?)
+            let opstr = tokens.operand().ok_or(AppError::MissingOperand)?;
+            self.operand_parser.resolve(opstr, self.generate_code)?
         };
         let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
-        let instruction = Instruction::parse(mnemonic).ok_or(AppError::InvalidMnemonic(String::from(mnemonic)))?;
-        let (addrmode_def, opvalue) = Self::preprocess(instruction, addrmode, operand);
-        let (opcode, _) = Operation::find(instruction, addrmode_def.id).ok_or(AppError::NoOpCode(instruction, addrmode_def.id))?;
+        let instruction = Instruction::parse(mnemonic)?;
+        let addrmode = Self::preprocess(instruction, addrmode, opvalue);
+        let opcode = find_opcode(instruction, addrmode)?;
         self.emit_byte(opcode);
-        if addrmode_def.op_size == 1 {
-            self.emit_byte(opvalue as u8);
-        } else if addrmode_def.op_size == 2 {
-            self.emit_word(opvalue as u16);
+        match addrmode.len() {
+            1 => self.emit_byte(opvalue as u8),
+            2 => self.emit_word(opvalue as u16),
+            _ => {}
         }
         Ok(())
     }

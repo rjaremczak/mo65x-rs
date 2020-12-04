@@ -17,7 +17,7 @@ impl OpCodeEntry {
         Self {
             prep_handler: Self::resolve_prep_handler(addrmode),
             exec_handler: Self::resolve_exec_handler(instruction),
-            size: addrmode.def().op_size + 1,
+            size: addrmode.len() + 1,
             cycles,
         }
     }

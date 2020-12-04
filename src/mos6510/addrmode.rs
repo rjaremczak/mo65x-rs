@@ -1,3 +1,5 @@
+use AddrMode::*;
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum AddrMode {
     Implied,
@@ -15,41 +17,24 @@ pub enum AddrMode {
 }
 
 impl AddrMode {
-    pub fn def(&self) -> &'static AddrModeDef {
-        ADDR_MODE_DEFS.iter().find(|e| e.id == *self).unwrap()
+    pub fn len(&self) -> u8 {
+        match self {
+            Implied => 0,
+            Relative | Immediate | ZeroPage | ZeroPageX | ZeroPageY | IndexedIndirectX | IndirectIndexedY => 1,
+            Indirect | Absolute | AbsoluteX | AbsoluteY => 2,
+        }
+    }
+
+    pub fn optimized(&self, opvalue: i32) -> AddrMode {
+        if opvalue < 0 || opvalue > 255 {
+            *self
+        } else {
+            match self {
+                Absolute => ZeroPage,
+                AbsoluteX => ZeroPageX,
+                AbsoluteY => ZeroPageY,
+                _ => *self,
+            }
+        }
     }
 }
-
-pub struct AddrModeDef {
-    pub id: AddrMode,
-    pub op_size: u8,
-    pub zp_mode: Option<AddrMode>,
-}
-
-impl AddrModeDef {
-    const fn new(id: AddrMode, op_size: u8, zp_mode: Option<AddrMode>) -> Self {
-        Self { id, op_size, zp_mode }
-    }
-}
-
-#[inline]
-pub fn is_zero_page(num: i32) -> bool {
-    num >= 0 && num <= 256
-}
-
-use AddrMode::*;
-
-pub static ADDR_MODE_DEFS: [AddrModeDef; 12] = [
-    AddrModeDef::new(Implied, 0, None),
-    AddrModeDef::new(Relative, 1, None),
-    AddrModeDef::new(Immediate, 1, None),
-    AddrModeDef::new(ZeroPage, 1, None),
-    AddrModeDef::new(ZeroPageX, 1, None),
-    AddrModeDef::new(ZeroPageY, 1, None),
-    AddrModeDef::new(IndexedIndirectX, 1, None),
-    AddrModeDef::new(IndirectIndexedY, 1, None),
-    AddrModeDef::new(Indirect, 2, None),
-    AddrModeDef::new(Absolute, 2, Some(ZeroPage)),
-    AddrModeDef::new(AbsoluteX, 2, Some(ZeroPageX)),
-    AddrModeDef::new(AbsoluteY, 2, Some(ZeroPageY)),
-];

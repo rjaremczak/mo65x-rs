@@ -1,5 +1,8 @@
-use super::addrmode::{AddrMode, AddrMode::*};
 use super::instruction::Instruction::{self, *};
+use super::{
+    addrmode::{AddrMode, AddrMode::*},
+    error::AppError,
+};
 
 #[derive(Debug)]
 pub struct Operation {
@@ -32,6 +35,14 @@ impl Operation {
     pub fn get(code: u8) -> &'static Operation {
         OPCODE_MAP.get(&code).unwrap_or(&OPCODE_KIL)
     }
+}
+
+pub fn find_opcode(instruction: Instruction, addrmode: AddrMode) -> Result<u8, AppError> {
+    OPCODE_MAP
+        .iter()
+        .find(|kv| kv.1.matches(instruction, addrmode))
+        .map(|kv| *kv.0)
+        .ok_or(AppError::NoOpCode(instruction, addrmode))
 }
 
 use std::collections::BTreeMap;

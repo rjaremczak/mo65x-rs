@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use Instruction::*;
 
+use super::error::AppError;
+
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Instruction {
     Adc,
@@ -67,9 +69,13 @@ impl Instruction {
         MNEMONICS.get(self).unwrap()
     }
 
-    pub fn parse(mnemonic: &str) -> Option<Instruction> {
+    pub fn parse(mnemonic: &str) -> Result<Instruction, AppError> {
         let m = &mnemonic.to_uppercase();
-        MNEMONICS.iter().find(|kv| kv.1 == m).map(|kv| *kv.0)
+        MNEMONICS
+            .iter()
+            .find(|kv| kv.1 == m)
+            .map(|kv| *kv.0)
+            .ok_or(AppError::InvalidMnemonic(String::from(mnemonic)))
     }
 }
 
