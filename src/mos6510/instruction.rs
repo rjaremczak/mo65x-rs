@@ -155,7 +155,8 @@ mod tests {
 
     #[test]
     fn find_mnemonic_failed() {
-        assert!(matches!(Instruction::parse("JUH"), Err(AppError::MissingOperand)));
+        let s = String::from("JUH");
+        assert!(matches!(Instruction::parse("JUH"), Err(AppError::InvalidMnemonic(s))));
     }
 
     #[test]
