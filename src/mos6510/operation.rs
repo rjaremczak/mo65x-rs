@@ -35,6 +35,11 @@ impl Operation {
     pub fn get(code: u8) -> &'static Operation {
         OPCODE_MAP.get(&code).unwrap_or(&OPCODE_KIL)
     }
+
+    #[inline]
+    pub fn len(&self) -> u8 {
+        self.addrmode.len() + 1
+    }
 }
 
 pub fn find_opcode(instruction: Instruction, addrmode: AddrMode) -> Result<u8, AppError> {

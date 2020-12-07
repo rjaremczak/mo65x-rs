@@ -149,13 +149,13 @@ mod tests {
 
     #[test]
     fn find_mnemonic_ok() {
-        assert!(Instruction::parse("LDX").unwrap() == Ldx);
-        assert!(Instruction::parse("LDA").unwrap() == Lda);
+        assert_eq!(Instruction::parse("LDX").unwrap(), Ldx);
+        assert_eq!(Instruction::parse("LDA").unwrap(), Lda);
     }
 
     #[test]
     fn find_mnemonic_failed() {
-        assert!(matches!(Instruction::parse("JUH"), None));
+        assert!(matches!(Instruction::parse("JUH"), Err(AppError::MissingOperand)));
     }
 
     #[test]
