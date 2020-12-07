@@ -49,10 +49,10 @@ impl OperandParser {
         Self { symbols: HashMap::new() }
     }
 
-    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<i32, AppError> {
+    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<(i32, bool), AppError> {
         let modifier = Modifier::from(txt);
         let rest = &txt[modifier.len()..];
-        self.resolve_raw(rest, no_symbol_fail).and_then(|num| Ok(modifier.apply(num)))
+        self.resolve_raw(rest, no_symbol_fail).and_then(|(v, s)| Ok((modifier.apply(v), s)))
     }
 
     pub fn define_symbol(&mut self, key: &str, val: i32) {
@@ -67,20 +67,20 @@ impl OperandParser {
         &self.symbols
     }
 
-    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<i32, AppError> {
+    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<(i32, bool), AppError> {
         match raw.chars().next() {
             Some(c) => match c {
-                HEX_PREFIX => parse_int(&raw[1..], 16),
-                BIN_PREFIX => parse_int(&raw[1..], 2),
+                HEX_PREFIX => parse_int(&raw[1..], 16).map(|r| (r, false)),
+                BIN_PREFIX => parse_int(&raw[1..], 2).map(|r| (r, false)),
                 _ => {
                     if c.is_ascii_digit() || c == '+' || c == '-' {
-                        parse_int(&raw, 10)
+                        parse_int(&raw, 10).map(|r| (r, false))
                     } else if let Some(num) = self.symbols.get(raw) {
-                        Ok(*num)
+                        Ok((*num, true))
                     } else if no_symbol_fail {
                         Err(AppError::UndefinedSymbol(raw.to_string()))
                     } else {
-                        Ok(0)
+                        Ok((0, false))
                     }
                 }
             },
@@ -116,7 +116,7 @@ mod tests {
 
     fn assert_ok(txt: &str, val: i32) {
         match operand_parser().resolve(txt, true) {
-            Ok(num) => assert_eq!(num, val),
+            Ok((num, sym)) => assert_eq!(num, val),
             Err(_) => assert!(false, "txt: {}", txt),
         }
     }

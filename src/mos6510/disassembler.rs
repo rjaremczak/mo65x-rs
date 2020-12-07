@@ -1,6 +1,8 @@
-use super::{addrmode::AddrMode, memory::Memory, operation::Operation};
+use std::{fs::File, io::Read, path::Path};
 
-pub fn disassemble_instr(memory: &Memory, pc: &mut u16) -> String {
+use super::{addrmode::AddrMode, error::AppError, memory::Memory, operation::Operation};
+
+pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     let mut buf = format!("{:04X} ", pc);
     let opcode = memory[*pc];
     let operation = Operation::get(opcode);
@@ -9,14 +11,14 @@ pub fn disassemble_instr(memory: &Memory, pc: &mut u16) -> String {
         if i < opsize {
             buf.push_str(&format!("{:02X} ", memory[*pc + i]));
         } else {
-            buf.push_str("  ");
+            buf.push_str("   ");
         }
     }
     buf.push_str(&format!(" {} ", operation.instruction.mnemonic()));
     let opaddr = *pc + 1;
     buf.push_str(&match operation.addrmode {
         AddrMode::Implied => String::from(""),
-        AddrMode::Relative => format!("{}", memory[opaddr] as i8),
+        AddrMode::Relative => format!("${:04X}", opaddr as i32 + (memory[opaddr] as i8) as i32),
         AddrMode::Immediate => format!("#${:02X}", memory[opaddr]),
         AddrMode::ZeroPage => format!("${:02X}", memory[opaddr]),
         AddrMode::ZeroPageX => format!("${:02X},X", memory[opaddr]),
@@ -32,6 +34,19 @@ pub fn disassemble_instr(memory: &Memory, pc: &mut u16) -> String {
     buf
 }
 
+pub fn disassemble_file<F: AsRef<Path>>(addr: u16, fpath: F) -> Result<Vec<String>, AppError> {
+    let mut buf = Vec::new();
+    let size = File::open(&fpath)?.read_to_end(&mut buf)?;
+    let mut memory = Memory::new();
+    memory.set_block(addr, &buf);
+    let mut pc = addr;
+    let mut lines = Vec::new();
+    while pc <= addr.saturating_add(size as u16) {
+        lines.push(disassemble(&memory, &mut pc));
+    }
+    Ok(lines)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,6 +57,6 @@ mod tests {
         let mut pc: u16 = 0x1000;
         memory[pc] = 0xad;
         memory.set_word(pc + 1, 0x1234);
-        assert_eq!(disassemble_instr(&memory, &mut pc), "1000 AD 34 12  LDA $1234");
+        assert_eq!(disassemble(&memory, &mut pc), "1000 AD 34 12  LDA $1234");
     }
 }

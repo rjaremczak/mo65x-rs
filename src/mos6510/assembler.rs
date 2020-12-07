@@ -49,7 +49,7 @@ impl Assembler {
                     (p.cmd_emit_words, Assembler::handle_emit_words),
                     (p.ins_implied, Assembler::handle_implied),
                     (p.ins_immediate, Assembler::handle_immediate),
-                    (p.ins_branch, Assembler::handle_branch),
+                    (p.ins_branch, Assembler::handle_relative),
                     (p.ins_absolute, Assembler::handle_absolute),
                     (p.ins_absolute_indexed_x, Assembler::handle_absolute_indexed_x),
                     (p.ins_absolute_indexed_y, Assembler::handle_absolute_indexed_y),
@@ -88,7 +88,7 @@ impl Assembler {
                 let mut values: Vec<i32> = Vec::new();
                 for opstr in self.op_list_separator.split(oplist) {
                     match self.operand_parser.resolve(opstr, self.generate_code) {
-                        Ok(opval) => values.push(opval),
+                        Ok(opval) => values.push(opval.0),
                         Err(err) => return Err(err),
                     }
                 }
@@ -103,7 +103,11 @@ impl Assembler {
             0
         } else {
             let opstr = tokens.operand().ok_or(AppError::MissingOperand)?;
-            self.operand_parser.resolve(opstr, self.generate_code)?
+            let (mut val, is_symbol) = self.operand_parser.resolve(opstr, self.generate_code)?;
+            if addrmode == AddrMode::Relative && is_symbol {
+                val = val - self.location_counter as i32 - 2;
+            }
+            val
         };
         let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
         let instruction = Instruction::parse(mnemonic)?;
@@ -144,7 +148,7 @@ impl Assembler {
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
         let addr = self.operand_parser.resolve(str, false)?;
-        self.set_location_counter(addr as u16)
+        self.set_location_counter(addr.0 as u16)
     }
 
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
@@ -167,7 +171,7 @@ impl Assembler {
         self.assemble(AddrMode::Immediate, tokens)
     }
 
-    pub fn handle_branch(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    pub fn handle_relative(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Relative, tokens)
     }
 

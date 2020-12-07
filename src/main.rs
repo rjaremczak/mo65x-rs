@@ -6,7 +6,7 @@ mod gui;
 mod mos6510;
 
 use emulator::Emulator;
-use mos6510::{assembler, error::AppError};
+use mos6510::{assembler, disassembler::disassemble_file, error::AppError};
 use std::io::Write;
 use std::time::Duration;
 use std::{fs::File, num::ParseIntError, path::PathBuf};
@@ -36,12 +36,12 @@ enum Mode {
     },
     /// Disassemble machine code
     Dis {
-        /// Start address
-        #[structopt(short)]
-        addr: u16,
         /// Binary file path
-        #[structopt(short, parse(from_os_str))]
+        #[structopt(parse(from_os_str))]
         bin: PathBuf,
+        /// Start address
+        #[structopt(parse(try_from_str = parse_hex))]
+        addr: u16,
     },
     /// Run machine code
     Run {
@@ -103,8 +103,9 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
     Ok(())
 }
 
-fn disassemble(origin: u16, bin: PathBuf) -> Result<(), AppError> {
-    eprint!("not yet implemented");
+fn disassemble(addr: u16, bin: PathBuf) -> Result<(), AppError> {
+    println!("disassembling file {:?} uploaded at address {:04X} ...", bin, addr);
+    disassemble_file(addr, bin)?.iter().for_each(|l| println!("{}", l));
     Ok(())
 }
 
