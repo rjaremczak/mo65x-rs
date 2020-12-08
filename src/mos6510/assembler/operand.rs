@@ -6,6 +6,30 @@ pub const HI_BYTE_MODIFIER: char = '>';
 pub const HEX_PREFIX: char = '$';
 pub const BIN_PREFIX: char = '%';
 
+pub struct Operand {
+    pub value: i32,
+    pub is_symbol: bool,
+}
+
+impl Operand {
+    pub fn literal(value: i32) -> Self {
+        Self { value, is_symbol: false }
+    }
+    pub fn symbol(value: i32) -> Self {
+        Self { value, is_symbol: true }
+    }
+    pub fn modified(&self, modifier: Modifier) -> Self {
+        Self {
+            value: match modifier {
+                Modifier::None => self.value,
+                Modifier::LoByte => self.value & 0x00ff,
+                Modifier::HiByte => self.value >> 8,
+            },
+            is_symbol: self.is_symbol,
+        }
+    }
+}
+
 enum Modifier {
     None,
     LoByte,
@@ -30,14 +54,6 @@ impl Modifier {
             Modifier::HiByte => 1,
         }
     }
-
-    pub fn apply(&self, val: i32) -> i32 {
-        match self {
-            Modifier::None => val,
-            Modifier::LoByte => val & 0x00ff,
-            Modifier::HiByte => val >> 8,
-        }
-    }
 }
 
 pub struct OperandParser {
@@ -49,10 +65,10 @@ impl OperandParser {
         Self { symbols: HashMap::new() }
     }
 
-    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<(i32, bool), AppError> {
+    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
         let modifier = Modifier::from(txt);
         let rest = &txt[modifier.len()..];
-        self.resolve_raw(rest, no_symbol_fail).and_then(|(v, s)| Ok((modifier.apply(v), s)))
+        self.resolve_raw(rest, no_symbol_fail).and_then(|op| Ok(op.modified(modifier)))
     }
 
     pub fn define_symbol(&mut self, key: &str, val: i32) {
@@ -67,20 +83,20 @@ impl OperandParser {
         &self.symbols
     }
 
-    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<(i32, bool), AppError> {
+    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
         match raw.chars().next() {
             Some(c) => match c {
-                HEX_PREFIX => parse_int(&raw[1..], 16).map(|r| (r, false)),
-                BIN_PREFIX => parse_int(&raw[1..], 2).map(|r| (r, false)),
+                HEX_PREFIX => parse_int(&raw[1..], 16),
+                BIN_PREFIX => parse_int(&raw[1..], 2),
                 _ => {
                     if c.is_ascii_digit() || c == '+' || c == '-' {
-                        parse_int(&raw, 10).map(|r| (r, false))
+                        parse_int(&raw, 10)
                     } else if let Some(num) = self.symbols.get(raw) {
-                        Ok((*num, true))
+                        Ok(Operand::symbol(*num))
                     } else if no_symbol_fail {
                         Err(AppError::UndefinedSymbol(raw.to_string()))
                     } else {
-                        Ok((0, false))
+                        Ok(Operand::literal(0))
                     }
                 }
             },
@@ -89,9 +105,9 @@ impl OperandParser {
     }
 }
 
-fn parse_int(str: &str, radix: u32) -> Result<i32, AppError> {
+fn parse_int(str: &str, radix: u32) -> Result<Operand, AppError> {
     match i32::from_str_radix(str, radix) {
-        Ok(num) => Ok(num),
+        Ok(num) => Ok(Operand::literal(num)),
         Err(perr) => Err(AppError::ParseIntError(String::from(str), perr)),
     }
 }
@@ -116,7 +132,7 @@ mod tests {
 
     fn assert_ok(txt: &str, val: i32) {
         match operand_parser().resolve(txt, true) {
-            Ok((num, sym)) => assert_eq!(num, val),
+            Ok(operand) => assert_eq!(operand.value, val),
             Err(_) => assert!(false, "txt: {}", txt),
         }
     }

@@ -42,6 +42,9 @@ enum Mode {
         /// Start address
         #[structopt(parse(try_from_str = parse_hex))]
         addr: u16,
+        /// End address
+        #[structopt(parse(try_from_str = parse_hex))]
+        len: Option<u16>,
     },
     /// Run machine code
     Run {
@@ -68,7 +71,7 @@ fn main() {
     println!("cliopt: {:#?}", cliopt);
     let result = match cliopt.mode {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
-        Mode::Dis { addr: origin, bin } => disassemble(origin, bin),
+        Mode::Dis { addr, len, bin } => disassemble(addr, len, bin),
         Mode::Run {
             addr: origin,
             bin,
@@ -97,15 +100,19 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
 
     if dump_symbols {
         println!("symbol table ({} items):", symbols.len());
-        symbols.iter().for_each(|(k, v)| println!("\"{}\" = {}", *k, *v));
+        symbols.iter().for_each(|(k, v)| println!("\"{}\" = {:04X}", *k, *v as u16));
     }
 
     Ok(())
 }
 
-fn disassemble(addr: u16, bin: PathBuf) -> Result<(), AppError> {
-    println!("disassembling file {:?} uploaded at address {:04X} ...", bin, addr);
-    disassemble_file(addr, bin)?.iter().for_each(|l| println!("{}", l));
+fn disassemble(addr: u16, len: Option<u16>, bin: PathBuf) -> Result<(), AppError> {
+    print!("disassembling file {:?} from address {:04X} ", bin, addr);
+    match len {
+        Some(len) => println!("to {:04X} ...", addr.saturating_add(len)),
+        None => println!("..."),
+    }
+    disassemble_file(addr, len, bin)?.iter().for_each(|l| println!("{}", l));
     Ok(())
 }
 

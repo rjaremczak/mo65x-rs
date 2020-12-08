@@ -18,7 +18,7 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     let opaddr = *pc + 1;
     buf.push_str(&match operation.addrmode {
         AddrMode::Implied => String::from(""),
-        AddrMode::Relative => format!("${:04X}", opaddr as i32 + (memory[opaddr] as i8) as i32),
+        AddrMode::Relative => format!("${:04X}", opaddr as i32 + (memory[opaddr] as i8 + 2) as i32),
         AddrMode::Immediate => format!("#${:02X}", memory[opaddr]),
         AddrMode::ZeroPage => format!("${:02X}", memory[opaddr]),
         AddrMode::ZeroPageX => format!("${:02X},X", memory[opaddr]),
@@ -34,14 +34,18 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     buf
 }
 
-pub fn disassemble_file<F: AsRef<Path>>(addr: u16, fpath: F) -> Result<Vec<String>, AppError> {
+pub fn disassemble_file<F: AsRef<Path>>(addr: u16, len: Option<u16>, fpath: F) -> Result<Vec<String>, AppError> {
     let mut buf = Vec::new();
-    let size = File::open(&fpath)?.read_to_end(&mut buf)?;
+    let fsize = File::open(&fpath)?.read_to_end(&mut buf)?;
+    let end_addr = addr.saturating_add(match len {
+        Some(len) => len,
+        None => fsize as u16,
+    });
     let mut memory = Memory::new();
     memory.set_block(addr, &buf);
     let mut pc = addr;
     let mut lines = Vec::new();
-    while pc <= addr.saturating_add(size as u16) {
+    while pc < end_addr {
         lines.push(disassemble(&memory, &mut pc));
     }
     Ok(lines)

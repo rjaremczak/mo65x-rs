@@ -5,6 +5,8 @@ mod tokens;
 #[cfg(test)]
 mod assembler_tests;
 
+use self::operand::Operand;
+
 use super::{
     addrmode::*,
     instruction::Instruction,
@@ -74,21 +76,13 @@ impl Assembler {
         Err(AppError::SyntaxError)
     }
 
-    fn preprocess(instruction: Instruction, addrmode: AddrMode, opvalue: i32) -> AddrMode {
-        if addrmode == Implied || instruction == Jsr || instruction == Jmp {
-            addrmode
-        } else {
-            addrmode.optimized(opvalue)
-        }
-    }
-
     fn parse_operand_list(&self, oplist: Option<&str>) -> Result<Vec<i32>, AppError> {
         match oplist {
             Some(oplist) => {
                 let mut values: Vec<i32> = Vec::new();
                 for opstr in self.op_list_separator.split(oplist) {
                     match self.operand_parser.resolve(opstr, self.generate_code) {
-                        Ok(opval) => values.push(opval.0),
+                        Ok(operand) => values.push(operand.value),
                         Err(err) => return Err(err),
                     }
                 }
@@ -98,25 +92,29 @@ impl Assembler {
         }
     }
 
-    fn assemble<'a>(&mut self, addrmode: AddrMode, tokens: Tokens) -> Result<(), AppError> {
-        let opvalue = if addrmode == AddrMode::Implied {
-            0
+    fn prepare_operand(&mut self, addrmode: AddrMode, opstr: Option<&str>) -> Result<Operand, AppError> {
+        if addrmode == AddrMode::Implied {
+            Ok(Operand::literal(0))
         } else {
-            let opstr = tokens.operand().ok_or(AppError::MissingOperand)?;
-            let (mut val, is_symbol) = self.operand_parser.resolve(opstr, self.generate_code)?;
-            if addrmode == AddrMode::Relative && is_symbol {
-                val = val - self.location_counter as i32 - 2;
+            let opstr = opstr.ok_or(AppError::MissingOperand)?;
+            let mut operand = self.operand_parser.resolve(opstr, self.generate_code)?;
+            if addrmode == AddrMode::Relative && operand.is_symbol {
+                operand.value = operand.value - self.location_counter as i32 - 2;
             }
-            val
-        };
+            Ok(operand)
+        }
+    }
+
+    fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> Result<(), AppError> {
+        let operand = self.prepare_operand(addrmode, tokens.operand())?;
         let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
         let instruction = Instruction::parse(mnemonic)?;
-        let addrmode = Self::preprocess(instruction, addrmode, opvalue);
+        let addrmode = optimize_addrmode(instruction, addrmode, operand.value);
         let opcode = find_opcode(instruction, addrmode)?;
         self.emit_byte(opcode);
         match addrmode.len() {
-            1 => self.emit_byte(opvalue as u8),
-            2 => self.emit_word(opvalue as u16),
+            1 => self.emit_byte(operand.value as u8),
+            2 => self.emit_word(operand.value as u16),
             _ => {}
         }
         Ok(())
@@ -147,8 +145,8 @@ impl Assembler {
 
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
-        let addr = self.operand_parser.resolve(str, false)?;
-        self.set_location_counter(addr.0 as u16)
+        let operand = self.operand_parser.resolve(str, false)?;
+        self.set_location_counter(operand.value as u16)
     }
 
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
@@ -236,6 +234,14 @@ impl Assembler {
             self.process_line(line)?;
         }
         Ok(())
+    }
+}
+
+fn optimize_addrmode(instruction: Instruction, addrmode: AddrMode, opvalue: i32) -> AddrMode {
+    if addrmode == Implied || instruction == Jsr || instruction == Jmp {
+        addrmode
+    } else {
+        addrmode.optimized(opvalue)
     }
 }
 
