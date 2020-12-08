@@ -34,16 +34,13 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     buf
 }
 
-pub fn disassemble_file<F: AsRef<Path>>(addr: u16, len: Option<u16>, fpath: F) -> Result<Vec<String>, AppError> {
+pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, fpath: F) -> Result<Vec<String>, AppError> {
     let mut buf = Vec::new();
     let fsize = File::open(&fpath)?.read_to_end(&mut buf)?;
-    let end_addr = addr.saturating_add(match len {
-        Some(len) => len,
-        None => fsize as u16,
-    });
+    let end_addr = end_addr.unwrap_or(start_addr.saturating_add(fsize as u16));
     let mut memory = Memory::new();
-    memory.set_block(addr, &buf);
-    let mut pc = addr;
+    memory.set_block(start_addr, &buf);
+    let mut pc = start_addr;
     let mut lines = Vec::new();
     while pc < end_addr {
         lines.push(disassemble(&memory, &mut pc));

@@ -41,10 +41,10 @@ enum Mode {
         bin: PathBuf,
         /// Start address
         #[structopt(parse(try_from_str = parse_hex))]
-        addr: u16,
+        start_addr: u16,
         /// End address
         #[structopt(parse(try_from_str = parse_hex))]
-        len: Option<u16>,
+        end_addr: Option<u16>,
     },
     /// Run machine code
     Run {
@@ -53,7 +53,7 @@ enum Mode {
         bin: PathBuf,
         /// Start address in hex
         #[structopt(parse(try_from_str = parse_hex))]
-        addr: u16,
+        start_addr: u16,
         /// Frequency of CPU clock in kHz
         #[structopt(short, default_value = "1000")]
         freq_khz: u32,
@@ -71,12 +71,8 @@ fn main() {
     println!("cliopt: {:#?}", cliopt);
     let result = match cliopt.mode {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
-        Mode::Dis { addr, len, bin } => disassemble(addr, len, bin),
-        Mode::Run {
-            addr: origin,
-            bin,
-            freq_khz,
-        } => run(origin, bin, freq_khz),
+        Mode::Dis { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
+        Mode::Run { start_addr, bin, freq_khz } => run(start_addr, bin, freq_khz),
         Mode::Con => console(),
     };
     if result.is_err() {
@@ -87,7 +83,7 @@ fn main() {
 fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<(), AppError> {
     print!("assembling file {:?} ... ", src);
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
-    println!("ok, {} B [${:04X} - ${:04X}]", code.len(), origin, origin as usize + code.len() - 1);
+    println!("ok, {} B [{:04X}-{:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     let bin = bin.unwrap_or({
         let mut path = PathBuf::new();
         path.set_file_name(src.file_name().unwrap());
@@ -106,26 +102,26 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
     Ok(())
 }
 
-fn disassemble(addr: u16, len: Option<u16>, bin: PathBuf) -> Result<(), AppError> {
-    print!("disassembling file {:?} from address {:04X} ", bin, addr);
-    match len {
-        Some(len) => println!("to {:04X} ...", addr.saturating_add(len)),
+fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(), AppError> {
+    print!("disassembling file {:?} from address {:04X} ", bin, start_addr);
+    match end_addr {
+        Some(addr) => println!("to {:04X} ...", addr),
         None => println!("..."),
     }
-    disassemble_file(addr, len, bin)?.iter().for_each(|l| println!("{}", l));
+    disassemble_file(start_addr, end_addr, bin)?.iter().for_each(|l| println!("{}", l));
     Ok(())
 }
 
-fn run(addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
+fn run(start_addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
     let mut emulator = Emulator::new();
     emulator.init();
     print!("uploading file {:?} ... ", fname);
-    let size = emulator.upload(addr, fname)?;
-    println!("ok, {} B [${:04X} - ${:04X}]", size, addr, addr + size as u16 - 1);
+    let size = emulator.upload(start_addr, fname)?;
+    println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
     println!("clock speed: {} kHz", freq_khz);
-    println!("start address: {:04X})", addr);
+    println!("start address: {:04X})", start_addr);
     println!("running, press a key to stop...");
-    emulator.run(addr, Duration::from_secs(1) / (freq_khz * 1000));
+    emulator.run(start_addr, Duration::from_secs(1) / (freq_khz * 1000));
     emulator.stop();
     println!("stopped");
     Ok(())
