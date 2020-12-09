@@ -6,6 +6,7 @@ pub const HI_BYTE_MODIFIER: char = '>';
 pub const HEX_PREFIX: char = '$';
 pub const BIN_PREFIX: char = '%';
 
+#[derive(Copy, Clone)]
 pub struct Operand {
     pub value: i32,
     pub is_symbol: bool,
@@ -30,7 +31,7 @@ impl Operand {
     }
 }
 
-enum Modifier {
+pub enum Modifier {
     None,
     LoByte,
     HiByte,
@@ -56,11 +57,11 @@ impl Modifier {
     }
 }
 
-pub struct OperandParser {
+pub struct Resolver {
     symbols: HashMap<String, i32>,
 }
 
-impl OperandParser {
+impl Resolver {
     pub fn new() -> Self {
         Self { symbols: HashMap::new() }
     }
@@ -71,12 +72,20 @@ impl OperandParser {
         self.resolve_raw(rest, no_symbol_fail).and_then(|op| Ok(op.modified(modifier)))
     }
 
-    pub fn define_symbol(&mut self, key: &str, val: i32) {
-        self.symbols.insert(String::from(key), val);
-    }
-
-    pub fn get_symbol(&self, key: &str) -> Option<i32> {
-        self.symbols.get(key).map(|v| *v)
+    pub fn define_symbol(&mut self, key: &str, val: i32) -> Result<(), AppError> {
+        match self.symbols.insert(String::from(key), val) {
+            Some(old) => {
+                if old != val {
+                    Err(AppError::GeneralError(format!(
+                        "symbol {} redefinition, was {} changed to {}",
+                        key, old, val
+                    )))
+                } else {
+                    Ok(())
+                }
+            }
+            None => Ok(()),
+        }
     }
 
     pub fn symbols(&self) -> &HashMap<String, i32> {
@@ -96,7 +105,7 @@ impl OperandParser {
                     } else if no_symbol_fail {
                         Err(AppError::UndefinedSymbol(raw.to_string()))
                     } else {
-                        Ok(Operand::literal(0))
+                        Ok(Operand::symbol(0))
                     }
                 }
             },
@@ -116,8 +125,8 @@ fn parse_int(str: &str, radix: u32) -> Result<Operand, AppError> {
 mod tests {
     use super::*;
 
-    fn operand_parser() -> OperandParser {
-        let mut op = OperandParser::new();
+    fn operand_parser() -> Resolver {
+        let mut op = Resolver::new();
         op.define_symbol("label_1", 0x2ffe);
         op.define_symbol("label_2", 0xac02);
         op

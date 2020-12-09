@@ -18,7 +18,7 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     let opaddr = *pc + 1;
     buf.push_str(&match operation.addrmode {
         AddrMode::Implied => String::from(""),
-        AddrMode::Relative => format!("${:04X}", opaddr as i32 + (memory[opaddr] as i8 + 2) as i32),
+        AddrMode::Relative => format!("${:04X}", *pc as i32 + (memory[opaddr] as i8) as i32 + 2),
         AddrMode::Immediate => format!("#${:02X}", memory[opaddr]),
         AddrMode::ZeroPage => format!("${:02X}", memory[opaddr]),
         AddrMode::ZeroPageX => format!("${:02X},X", memory[opaddr]),

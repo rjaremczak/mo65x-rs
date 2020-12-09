@@ -6,15 +6,11 @@ mod tokens;
 mod assembler_tests;
 
 use self::operand::Operand;
-
-use super::{
-    addrmode::*,
-    instruction::Instruction,
-    operation::{find_opcode, Operation},
-};
+use super::{addrmode::*, instruction::Instruction, operation::find_opcode};
 use crate::mos6510::error::AppError;
-use operand::OperandParser;
+use operand::Resolver;
 use regex::Regex;
+use std::convert::TryFrom;
 use std::io::Read;
 use std::{collections::HashMap, fs::File, path::Path};
 use tokens::Tokens;
@@ -25,7 +21,7 @@ type Handler = fn(&mut Assembler, tokens: Tokens) -> Result<(), AppError>;
 
 pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
-    operand_parser: OperandParser,
+    resolver: Resolver,
     origin: Option<u16>,
     code: Vec<u8>,
     generate_code: bool,
@@ -40,7 +36,7 @@ impl Assembler {
             origin: None,
             location_counter: 0,
             generate_code: false,
-            operand_parser: OperandParser::new(),
+            resolver: Resolver::new(),
             op_list_separator: Regex::new("(?:\\s*,\\s*)|(?:\\s+)").unwrap(),
             handlers: {
                 let p = patterns::AsmPatterns::new();
@@ -68,7 +64,7 @@ impl Assembler {
             if let Some(captures) = regex.captures(&line) {
                 let tokens = Tokens::new(captures);
                 if let Some(label) = tokens.label() {
-                    self.operand_parser.define_symbol(label, self.location_counter as i32);
+                    self.resolver.define_symbol(label, self.location_counter as i32)?;
                 };
                 return handler(self, tokens);
             }
@@ -81,7 +77,7 @@ impl Assembler {
             Some(oplist) => {
                 let mut values: Vec<i32> = Vec::new();
                 for opstr in self.op_list_separator.split(oplist) {
-                    match self.operand_parser.resolve(opstr, self.generate_code) {
+                    match self.resolver.resolve(opstr, self.generate_code) {
                         Ok(operand) => values.push(operand.value),
                         Err(err) => return Err(err),
                     }
@@ -97,9 +93,17 @@ impl Assembler {
             Ok(Operand::literal(0))
         } else {
             let opstr = opstr.ok_or(AppError::MissingOperand)?;
-            let mut operand = self.operand_parser.resolve(opstr, self.generate_code)?;
-            if addrmode == AddrMode::Relative && operand.is_symbol {
-                operand.value = operand.value - self.location_counter as i32 - 2;
+            let mut operand = self.resolver.resolve(opstr, self.generate_code)?;
+            if self.generate_code && addrmode == AddrMode::Relative && operand.is_symbol {
+                println!(
+                    "rel: {:04X} - {:04X} - 2 = {}",
+                    operand.value as u16,
+                    self.location_counter as u16,
+                    operand.value - self.location_counter as i32 - 2
+                );
+                let disp =
+                    i8::try_from(operand.value - self.location_counter as i32 - 2).map_err(|e| AppError::GeneralError(e.to_string()))?;
+                operand.value = disp as i32;
             }
             Ok(operand)
         }
@@ -109,7 +113,7 @@ impl Assembler {
         let operand = self.prepare_operand(addrmode, tokens.operand())?;
         let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
         let instruction = Instruction::parse(mnemonic)?;
-        let addrmode = optimize_addrmode(instruction, addrmode, operand.value);
+        let addrmode = optimize_addrmode(instruction, addrmode, operand);
         let opcode = find_opcode(instruction, addrmode)?;
         self.emit_byte(opcode);
         match addrmode.len() {
@@ -132,7 +136,7 @@ impl Assembler {
     }
 
     pub fn symbols(&self) -> &HashMap<String, i32> {
-        self.operand_parser.symbols()
+        self.resolver.symbols()
     }
 
     pub fn origin(&self) -> u16 {
@@ -145,7 +149,7 @@ impl Assembler {
 
     pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
-        let operand = self.operand_parser.resolve(str, false)?;
+        let operand = self.resolver.resolve(str, false)?;
         self.set_location_counter(operand.value as u16)
     }
 
@@ -198,10 +202,10 @@ impl Assembler {
     }
 
     pub fn emit_byte(&mut self, byte: u8) {
-        self.location_counter = self.location_counter.wrapping_add(1);
         if self.generate_code {
             self.code.push(byte);
         }
+        self.location_counter = self.location_counter.wrapping_add(1);
     }
 
     pub fn emit_word(&mut self, word: u16) {
@@ -237,11 +241,11 @@ impl Assembler {
     }
 }
 
-fn optimize_addrmode(instruction: Instruction, addrmode: AddrMode, opvalue: i32) -> AddrMode {
-    if addrmode == Implied || instruction == Jsr || instruction == Jmp {
+fn optimize_addrmode(instruction: Instruction, addrmode: AddrMode, operand: Operand) -> AddrMode {
+    if addrmode == Implied || instruction == Jsr || instruction == Jmp || operand.is_symbol {
         addrmode
     } else {
-        addrmode.optimized(opvalue)
+        addrmode.optimized(operand.value)
     }
 }
 

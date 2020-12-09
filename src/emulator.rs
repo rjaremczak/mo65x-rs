@@ -64,7 +64,7 @@ impl Emulator {
         while self.gui.is_window_open() && !self.gui.is_key_down(Key::Escape) {
             let t0 = Instant::now();
             let mut pc = self.cpu.regs.pc;
-            println!("{}", disassemble(&self.memory, &mut pc));
+            // println!("{}", disassemble(&self.memory, &mut pc));
             let cycles = self.cpu.exec_inst(&mut self.memory);
             if cycles == 0 {
                 let operation = Operation::get(self.memory[self.cpu.regs.pc]);
@@ -73,7 +73,7 @@ impl Emulator {
             }
             let dt = period * cycles as u32;
             // sleep(dt - t0.elapsed());
-            sleep(Duration::from_millis(10));
+            //sleep(Duration::from_millis(10));
             self.gui.update_fb(self.memory.view(self.fb_addr, Gui::FB_LEN));
         }
         self.state = State::Stopped;

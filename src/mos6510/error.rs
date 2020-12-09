@@ -1,4 +1,4 @@
-use std::error;
+use std::error::{self, Error};
 
 use structopt::clap::App;
 
@@ -15,6 +15,7 @@ pub enum AppError {
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
     EmulatorIsRunning,
+    GeneralError(String),
 }
 
 impl From<std::io::Error> for AppError {

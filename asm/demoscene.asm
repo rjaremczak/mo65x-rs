@@ -4,6 +4,7 @@ start:
   ldx #0
 c:lda bottombar,x
   cmp #$ff
+tl0:
   beq init
   sta $4e0,x
   sta $5e0,x

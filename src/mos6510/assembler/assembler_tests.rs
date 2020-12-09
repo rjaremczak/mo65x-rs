@@ -8,7 +8,7 @@ fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
     assert_eq!(generated, expected, "generated code {:?} differs from {:?}", generated, expected);
 }
 
-fn assert_asm<'a>(line: &str, code: &[u8]) -> Assembler {
+fn assert_asm(line: &str, code: &[u8]) -> Assembler {
     let mut asm = Assembler::new();
     asm.reset_phase(true);
     assert_next(&mut asm, line, code);
@@ -20,7 +20,16 @@ fn init() {
     let asm = Assembler::new();
     assert_eq!(asm.generate_code, false);
     assert_eq!(asm.location_counter, 0);
-    assert_eq!(asm.operand_parser.symbols().len(), 0);
+    assert_eq!(asm.resolver.symbols().len(), 0);
+}
+
+#[test]
+fn tokenize() {
+    let patterns = patterns::AsmPatterns::new();
+    let captures = patterns.ins_absolute_indexed_x.captures("LDA etykieta,X").unwrap();
+    let tokens = Tokens::new(captures);
+    assert_eq!(tokens.operation(), Some("LDA"));
+    assert_eq!(tokens.operand(), Some("etykieta"));
 }
 
 #[test]
@@ -71,13 +80,21 @@ fn zero_page_y_mode() {
 fn absolute_mode() {
     let mut asm = assert_asm("ROR $3400", &[0x6e, 0x00, 0x34]);
     assert_next(&mut asm, "jmp $2000", &[0x4c, 0x00, 0x20]);
-    asm.operand_parser.define_symbol("c", 0xfab0);
+    assert!(asm.resolver.define_symbol("c", 0xfab0).is_ok());
     assert_next(&mut asm, "jmp c", &[0x4c, 0xb0, 0xfa]);
 }
 
 #[test]
 fn absolute_mode_x() {
     assert_asm("LSR $35f0,X", &[0x5e, 0xf0, 0x35]);
+}
+
+#[test]
+fn scanning_phase_addmode_optimization_for_undefined_symbols() {
+    let mut asm = Assembler::new();
+    assert!(!asm.generate_code);
+    assert!(asm.process_line("LDA etykieta,X").is_ok());
+    assert_eq!(asm.location_counter, 3);
 }
 
 #[test]
@@ -108,14 +125,14 @@ fn relative_mode() {
 
 #[test]
 fn relative_mode_with_label() {
-    let mut asm = assert_asm(".org $1000", &[]);
-    asm.operand_parser.define_symbol("before", 0x0ff0);
-    asm.operand_parser.define_symbol("after", 0x100f);
-    assert_eq!(asm.location_counter, 0x1000);
-    assert_next(&mut asm, "BCC before", &[0x90, u8::from_ne_bytes((-18 as i8).to_ne_bytes())]);
-    assert_eq!(asm.location_counter, 0x1002);
-    assert_next(&mut asm, "BVS after", &[0x70, 11]);
-    assert_eq!(asm.location_counter, 0x1004);
+    let mut asm = assert_asm(".org $0607", &[]);
+    assert!(asm.resolver.define_symbol("before", 0x0600).is_ok());
+    assert!(asm.resolver.define_symbol("after", 0x0613).is_ok());
+    assert_eq!(asm.location_counter, 0x607);
+    assert_next(&mut asm, "BEQ after", &[0xF0, 0x0A]);
+    assert_eq!(asm.location_counter, 0x0609);
+    assert_next(&mut asm, "BCC before", &[0x90, u8::from_ne_bytes((-11 as i8).to_ne_bytes())]);
+    assert_eq!(asm.location_counter, 0x060B);
 }
 
 #[test]
@@ -144,20 +161,20 @@ fn test_label() {
     let mut asm = assert_asm("Label_001:", &[]);
     assert_next(&mut asm, "LDA ($8c,X)", &[0xa1, 0x8c]);
     assert_next(&mut asm, "Label_002:", &[]);
-    assert_eq!(asm.operand_parser.get_symbol("Label_001").unwrap(), 0);
-    assert_eq!(asm.operand_parser.get_symbol("Label_002").unwrap(), 2);
+    assert_eq!(asm.resolver.symbols().get("Label_001").unwrap(), &0);
+    assert_eq!(asm.resolver.symbols().get("Label_002").unwrap(), &2);
 }
 
 #[test]
 fn test_symbols() {
     let mut asm = Assembler::new();
-    asm.operand_parser.define_symbol("dziabaDucha", 0xaf02);
+    assert!(asm.resolver.define_symbol("dziabaDucha", 0xaf02).is_ok());
     asm.reset_phase(true);
     assert!(asm.set_location_counter(1000).is_ok());
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
     assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);
-    assert_eq!(asm.operand_parser.get_symbol("TestLabel_01").unwrap(), 1000);
-    assert_eq!(asm.operand_parser.get_symbol("TestLabel_02"), None);
+    assert_eq!(asm.resolver.symbols().get("TestLabel_01").unwrap(), &1000);
+    assert_eq!(asm.resolver.symbols().get("TestLabel_02"), None);
     assert_eq!(asm.code.len(), 4);
     assert_eq!(asm.location_counter, 1004);
 }
@@ -182,7 +199,7 @@ fn emit_words() {
 #[test]
 fn lo_byte_modifier() {
     let mut asm = assert_asm("LDA #<$1afc", &[0xa9, 0xfc]);
-    asm.operand_parser.define_symbol("label", 0x2afe);
+    assert!(asm.resolver.define_symbol("label", 0x2afe).is_ok());
     assert_next(&mut asm, "LDA #<label", &[0xa9, 0xfe]);
     assert_next(&mut asm, "dcb <label, 2", &[0xfe, 2]);
 }
@@ -190,11 +207,11 @@ fn lo_byte_modifier() {
 #[test]
 fn hi_byte_modifier() {
     let mut asm = assert_asm("LDA #>$1afc", &[0xa9, 0x1a]);
-    asm.operand_parser.define_symbol("label", 0x3afe);
+    assert!(asm.resolver.define_symbol("label", 0x3afe).is_ok());
     assert_next(&mut asm, "LDA #>label", &[0xa9, 0x3a]);
     assert_next(&mut asm, "dcb >label, 2", &[0x3a, 2]);
-    asm.operand_parser.define_symbol("a", 0xfa20);
-    asm.operand_parser.define_symbol("b", 0x10a0);
+    assert!(asm.resolver.define_symbol("a", 0xfa20).is_ok());
+    assert!(asm.resolver.define_symbol("b", 0x10a0).is_ok());
     assert_next(&mut asm, "dcb >a, <b", &[0xfa, 0xa0]);
     assert_next(&mut asm, "dcb <a, >b", &[0x20, 0x10]);
 }
@@ -202,7 +219,7 @@ fn hi_byte_modifier() {
 #[test]
 fn define_symbol() {
     let mut asm = assert_asm(".org $1000", &[]);
-    asm.operand_parser.define_symbol("init", 0x1234);
+    assert!(asm.resolver.define_symbol("init", 0x1234).is_ok());
     assert_next(&mut asm, "lda init", &[0xad, 0x34, 0x12]);
     assert_eq!(asm.location_counter, 0x1003);
 }
