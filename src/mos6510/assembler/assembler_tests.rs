@@ -107,6 +107,18 @@ fn relative_mode() {
 }
 
 #[test]
+fn relative_mode_with_label() {
+    let mut asm = assert_asm(".org $1000", &[]);
+    asm.operand_parser.define_symbol("before", 0x0ff0);
+    asm.operand_parser.define_symbol("after", 0x100f);
+    assert_eq!(asm.location_counter, 0x1000);
+    assert_next(&mut asm, "BCC before", &[0x90, u8::from_ne_bytes((-18 as i8).to_ne_bytes())]);
+    assert_eq!(asm.location_counter, 0x1002);
+    assert_next(&mut asm, "BVS after", &[0x70, 11]);
+    assert_eq!(asm.location_counter, 0x1004);
+}
+
+#[test]
 fn set_location_counter() {
     let mut asm = assert_asm("  .ORG $3000 ;origin", &[]);
     assert_eq!(asm.origin.unwrap(), 0x3000);

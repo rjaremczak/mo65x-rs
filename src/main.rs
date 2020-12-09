@@ -17,7 +17,7 @@ use structopt::StructOpt;
 struct CliOpt {
     /// Execution mode
     #[structopt(subcommand)]
-    mode: Mode,
+    mode: Option<Mode>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -35,7 +35,7 @@ enum Mode {
         dump_symbols: bool,
     },
     /// Disassemble machine code
-    Dis {
+    Dasm {
         /// Binary file path
         #[structopt(parse(from_os_str))]
         bin: PathBuf,
@@ -47,7 +47,7 @@ enum Mode {
         end_addr: Option<u16>,
     },
     /// Run machine code
-    Run {
+    Exec {
         /// Binary file path
         #[structopt(parse(from_os_str))]
         bin: PathBuf,
@@ -59,7 +59,7 @@ enum Mode {
         freq_khz: u32,
     },
     /// Interactive console
-    Con,
+    Interactive,
 }
 
 fn parse_hex(hex: &str) -> Result<u16, ParseIntError> {
@@ -69,11 +69,11 @@ fn parse_hex(hex: &str) -> Result<u16, ParseIntError> {
 fn main() {
     let cliopt = CliOpt::from_args();
     println!("cliopt: {:#?}", cliopt);
-    let result = match cliopt.mode {
+    let result = match cliopt.mode.unwrap_or(Mode::Interactive) {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
-        Mode::Dis { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
-        Mode::Run { start_addr, bin, freq_khz } => run(start_addr, bin, freq_khz),
-        Mode::Con => console(),
+        Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
+        Mode::Exec { start_addr, bin, freq_khz } => run(start_addr, bin, freq_khz),
+        Mode::Interactive => interactive(),
     };
     if result.is_err() {
         eprintln!("exit result: {:?}", result.err().unwrap())
@@ -81,18 +81,17 @@ fn main() {
 }
 
 fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<(), AppError> {
-    print!("assembling file {:?} ... ", src);
+    println!("source file {:?}, assembling ...", src);
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
-    println!("ok, {} B [{:04X}-{:04X}]", code.len(), origin, origin as usize + code.len() - 1);
+    println!("code: {} B [{:04X}-{:04X}]", code.len(), origin, origin as usize + code.len() - 1);
     let bin = bin.unwrap_or({
         let mut path = PathBuf::new();
         path.set_file_name(src.file_name().unwrap());
         path.set_extension("bin");
         path
     });
-    print!("writting file: {:#?} ... ", bin);
+    println!("writing file {:#?} ...", bin);
     File::create(&bin)?.write_all(&code)?;
-    println!("ok");
 
     if dump_symbols {
         println!("symbol table ({} items):", symbols.len());
@@ -103,7 +102,7 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
 }
 
 fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(), AppError> {
-    print!("disassembling file {:?} from address {:04X} ", bin, start_addr);
+    print!("binary file {:?}, disassemble from address {:04X} ", bin, start_addr);
     match end_addr {
         Some(addr) => println!("to {:04X} ...", addr),
         None => println!("..."),
@@ -127,7 +126,7 @@ fn run(start_addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
     Ok(())
 }
 
-fn console() -> Result<(), AppError> {
+fn interactive() -> Result<(), AppError> {
     eprint!("not yet implemented");
     Ok(())
 }
