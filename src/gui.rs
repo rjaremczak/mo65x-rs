@@ -22,7 +22,7 @@ impl Gui {
                 WindowOptions {
                     scale: minifb::Scale::X8,
                     scale_mode: minifb::ScaleMode::AspectRatioStretch,
-                    title: false,
+                    title: true,
                     borderless: false,
                     resize: false,
                     topmost: false,
@@ -35,6 +35,7 @@ impl Gui {
 
     pub fn init(&mut self) {
         self.fb.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
+        self.window.limit_update_rate(None);
     }
 
     pub fn update_fb(&mut self, vmem: &[u8]) {

@@ -10,7 +10,7 @@ use minifb::Key;
 
 use crate::{
     gui::Gui,
-    mos6510::{cpu::Cpu, disassembler::disassemble, error::AppError, memory::Memory, operation::Operation},
+    mos6510::{cpu::Cpu, error::AppError, memory::Memory, operation::Operation},
 };
 
 pub struct Emulator {
@@ -61,6 +61,8 @@ impl Emulator {
     pub fn run(&mut self, addr: u16, period: Duration) {
         self.cpu.regs.pc = addr;
         self.state = State::Running;
+        let ref_period = Duration::from_millis(20);
+        let mut ref_time = Instant::now() + ref_period;
         while self.gui.is_window_open() && !self.gui.is_key_down(Key::Escape) {
             let t0 = Instant::now();
             let mut pc = self.cpu.regs.pc;
@@ -73,8 +75,12 @@ impl Emulator {
             }
             let dt = period * cycles as u32;
             // sleep(dt - t0.elapsed());
-            //sleep(Duration::from_millis(10));
-            self.gui.update_fb(self.memory.view(self.fb_addr, Gui::FB_LEN));
+            sleep(Duration::from_nanos(100));
+            let t0 = Instant::now();
+            if t0 > ref_time {
+                self.gui.update_fb(self.memory.view(self.fb_addr, Gui::FB_LEN));
+                ref_time = t0 + ref_period;
+            }
         }
         self.state = State::Stopped;
     }

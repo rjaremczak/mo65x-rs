@@ -72,7 +72,7 @@ fn main() {
     let result = match cliopt.mode.unwrap_or(Mode::Interactive) {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
-        Mode::Exec { start_addr, bin, freq_khz } => run(start_addr, bin, freq_khz),
+        Mode::Exec { start_addr, bin, freq_khz } => exec(start_addr, bin, freq_khz),
         Mode::Interactive => interactive(),
     };
     if result.is_err() {
@@ -111,14 +111,14 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
     Ok(())
 }
 
-fn run(start_addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
+fn exec(start_addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
     let mut emulator = Emulator::new();
     emulator.init();
     print!("uploading file {:?} ... ", fname);
     let size = emulator.upload(start_addr, fname)?;
     println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
     println!("clock speed: {} kHz", freq_khz);
-    println!("start address: {:04X})", start_addr);
+    println!("start address: {:04X}", start_addr);
     println!("running, press a key to stop...");
     emulator.run(start_addr, Duration::from_secs(1) / (freq_khz * 1000));
     emulator.stop();
