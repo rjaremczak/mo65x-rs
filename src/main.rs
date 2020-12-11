@@ -1,15 +1,21 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod emulator;
+mod backend;
 mod gui;
 mod mos6510;
 
-use emulator::Emulator;
+use backend::Backend;
 use mos6510::{assembler, disassembler::disassemble_file, error::AppError};
-use std::io::Write;
-use std::time::Duration;
-use std::{fs::File, num::ParseIntError, path::PathBuf};
+use std::{
+    fs::File,
+    num::ParseIntError,
+    path::PathBuf,
+    rc::Rc,
+    sync::{atomic::AtomicBool, atomic::Ordering::Relaxed, RwLock},
+};
+use std::{io::Write, thread};
+use std::{sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -56,7 +62,7 @@ enum Mode {
         start_addr: u16,
         /// Frequency of CPU clock in kHz
         #[structopt(short, default_value = "1000")]
-        freq_khz: u32,
+        freq: f64,
     },
     /// Interactive console
     Interactive,
@@ -72,7 +78,7 @@ fn main() {
     let result = match cliopt.mode.unwrap_or(Mode::Interactive) {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
-        Mode::Exec { start_addr, bin, freq_khz } => exec(start_addr, bin, freq_khz),
+        Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
         Mode::Interactive => interactive(),
     };
     if result.is_err() {
@@ -111,17 +117,23 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
     Ok(())
 }
 
-fn exec(start_addr: u16, fname: PathBuf, freq_khz: u32) -> Result<(), AppError> {
-    let mut emulator = Emulator::new();
-    emulator.init();
+fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
+    let backend = Arc::new(RwLock::new(Backend::new()));
+    backend.write().unwrap().init();
     print!("uploading file {:?} ... ", fname);
-    let size = emulator.upload(start_addr, fname)?;
+    let size = backend.write().unwrap().upload(start_addr, fname)?;
     println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
-    println!("clock speed: {} kHz", freq_khz);
+    println!("clock speed: {} kHz", freq);
     println!("start address: {:04X}", start_addr);
+    let clock_period = Duration::from_secs_f64(1.0 / freq);
+    backend.write().unwrap().set_reg_pc(start_addr);
+    let backend_2 = backend.clone();
+    let handle = thread::spawn(move || backend_2.write().unwrap().run(clock_period));
     println!("running, press a key to stop...");
-    emulator.run(start_addr, Duration::from_secs(1) / (freq_khz * 1000));
-    emulator.stop();
+    backend.read().unwrap().set_step_mode(true);
+    println!("step mode: {}", backend.read().unwrap().step_mode());
+    println!("stopping...");
+    handle.join().unwrap();
     println!("stopped");
     Ok(())
 }

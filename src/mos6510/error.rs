@@ -14,7 +14,7 @@ pub enum AppError {
     InvalidMnemonic(String),
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
-    EmulatorIsRunning,
+    EmulatorAlreadyRunning,
     GeneralError(String),
 }
 
