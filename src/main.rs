@@ -60,8 +60,8 @@ enum Mode {
         /// Start address in hex
         #[structopt(parse(try_from_str = parse_hex))]
         start_addr: u16,
-        /// Frequency of CPU clock in kHz
-        #[structopt(short, default_value = "1000")]
+        /// Frequency of CPU clock in Hz
+        #[structopt(short, default_value = "1e6")]
         freq: f64,
     },
     /// Interactive console
@@ -119,20 +119,25 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
 
 fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     let backend = Arc::new(RwLock::new(Backend::new()));
-    backend.write().unwrap().init();
-    print!("uploading file {:?} ... ", fname);
-    let size = backend.write().unwrap().upload(start_addr, fname)?;
-    println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
-    println!("clock speed: {} kHz", freq);
-    println!("start address: {:04X}", start_addr);
-    let clock_period = Duration::from_secs_f64(1.0 / freq);
-    backend.write().unwrap().set_reg_pc(start_addr);
-    let backend_2 = backend.clone();
-    let handle = thread::spawn(move || backend_2.write().unwrap().run(clock_period));
-    println!("running, press a key to stop...");
-    backend.read().unwrap().set_step_mode(true);
-    println!("step mode: {}", backend.read().unwrap().step_mode());
-    println!("stopping...");
+    {
+        let mut backend = backend.write().unwrap();
+        backend.init();
+        print!("uploading file {:?} ... ", fname);
+        let size = backend.upload(start_addr, fname)?;
+        println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
+        println!("clock speed: {} MHz", freq / 1e6);
+        println!("start address: {:04X}", start_addr);
+        backend.set_reg_pc(start_addr);
+    }
+    let lock = backend.clone();
+    let handle = thread::spawn(move || lock.write().unwrap().run(Duration::from_secs_f64(1.0 / freq)));
+    {
+        let backend = backend.read().unwrap();
+        println!("running, press a key to stop...");
+        backend.set_step_mode(true);
+        println!("step mode: {}", backend.step_mode());
+        println!("stopping...");
+    }
     handle.join().unwrap();
     println!("stopped");
     Ok(())
