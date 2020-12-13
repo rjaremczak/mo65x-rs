@@ -2,18 +2,14 @@
 extern crate lazy_static;
 
 mod backend;
+mod frontend;
 mod gui;
 mod mos6510;
 
 use backend::Backend;
+use frontend::Frontend;
 use mos6510::{assembler, disassembler::disassemble_file, error::AppError};
-use std::{
-    fs::File,
-    num::ParseIntError,
-    path::PathBuf,
-    rc::Rc,
-    sync::{atomic::AtomicBool, atomic::Ordering::Relaxed, RwLock},
-};
+use std::{fs::File, num::ParseIntError, path::PathBuf, sync::RwLock};
 use std::{io::Write, thread};
 use std::{sync::Arc, time::Duration};
 use structopt::StructOpt;
@@ -118,9 +114,9 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
 }
 
 fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
-    let backend = Arc::new(RwLock::new(Backend::new()));
+    let lock = Arc::new(RwLock::new(Backend::new()));
     {
-        let mut backend = backend.write().unwrap();
+        let mut backend = lock.write().unwrap();
         backend.init();
         print!("uploading file {:?} ... ", fname);
         let size = backend.upload(start_addr, fname)?;
@@ -129,15 +125,18 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
         println!("start address: {:04X}", start_addr);
         backend.set_reg_pc(start_addr);
     }
-    let lock = backend.clone();
-    let handle = thread::spawn(move || lock.write().unwrap().run(Duration::from_secs_f64(1.0 / freq)));
-    {
-        let backend = backend.read().unwrap();
-        println!("running, press a key to stop...");
-        backend.set_step_mode(true);
-        println!("step mode: {}", backend.step_mode());
-        println!("stopping...");
+    let thread_lock = lock.clone();
+    let handle = thread::spawn(move || thread_lock.write().unwrap().run(Duration::from_secs_f64(1.0 / freq)));
+    let backend = lock.read().unwrap();
+    let mut frontend = Frontend::new();
+    println!("running, press a key to stop...");
+    while frontend.is_running() {
+        // TODO: read and process command from UI
+        frontend.update();
+        frontend.sleep();
     }
+    backend.set_step_mode(true);
+    println!("stopping...");
     handle.join().unwrap();
     println!("stopped");
     Ok(())
