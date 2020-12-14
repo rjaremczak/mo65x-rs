@@ -1,7 +1,8 @@
+pub mod flags;
+pub mod registers;
+
 mod decoder;
 mod env;
-mod flags;
-mod registers;
 
 #[cfg(test)]
 mod cpu_tests;

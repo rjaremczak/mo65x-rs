@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy)]
 pub struct Registers {
     pub a: u8,
     pub x: u8,

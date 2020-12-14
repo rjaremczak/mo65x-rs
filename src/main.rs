@@ -7,7 +7,11 @@ mod mos6510;
 
 use backend::Backend;
 use frontend::Frontend;
-use mos6510::{assembler, disassembler::disassemble_file, error::AppError};
+use mos6510::{
+    assembler,
+    disassembler::{disassemble_file, disassemble_memory},
+    error::AppError,
+};
 use std::{fs::File, num::ParseIntError, path::PathBuf, sync::RwLock};
 use std::{io::Write, thread};
 use std::{sync::Arc, time::Duration};
@@ -76,8 +80,8 @@ fn main() {
         Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
         Mode::Interactive => interactive(),
     };
-    if result.is_err() {
-        eprintln!("exit result: {:?}", result.err().unwrap())
+    if let Err(apperr) = result {
+        println!("\napplication error: {:?}", apperr)
     }
 }
 
@@ -125,16 +129,29 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
         backend.set_reg_pc(start_addr);
     }
     let thread_lock = lock.clone();
-    let handle = thread::spawn(move || thread_lock.write().unwrap().run(Duration::from_secs_f64(1.0 / freq)));
-    let backend = lock.read().unwrap();
-    let mut frontend = Frontend::new();
-    println!("running, press a key to stop...");
-    while !frontend.quit() {
-        // TODO: read and process command from UI
-        frontend.update(backend.memory());
+    let handle = thread::spawn(move || {
+        println!("starting thread");
+        thread_lock.write().unwrap().run(Duration::from_secs_f64(1.0 / freq))
+    });
+    {
+        let backend = lock.read().unwrap();
+        let mut frontend = Frontend::new();
+        println!("running, press a key to stop...");
+        while !frontend.quit() {
+            // TODO: read and process command from UI
+            frontend.update(backend.memory());
+            println!("fb refresh");
+        }
+        // backend.set_trap(true);
+        println!("stopping...");
+        let cpuinfo = backend.cpuinfo();
+        println!("cpu info: {:#?}", cpuinfo);
+        println!("statistics: {:#?}", backend.statistics());
+        println!("short dump at PC:");
+        disassemble_memory(backend.memory(), cpuinfo.regs.pc, cpuinfo.regs.pc.saturating_add(20))
+            .iter()
+            .for_each(|s| println!("{}", s));
     }
-    backend.set_step_mode(true);
-    println!("stopping...");
     handle.join().unwrap();
     println!("stopped");
     Ok(())

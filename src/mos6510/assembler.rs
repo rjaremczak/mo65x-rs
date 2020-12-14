@@ -153,6 +153,10 @@ impl Assembler {
         self.set_location_counter(operand.value as u16)
     }
 
+    pub fn location_counter(&self) -> u16 {
+        self.location_counter
+    }
+
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let values = self.parse_operand_list(tokens.operand())?;
         values.iter().for_each(|v| self.emit_byte(*v as u8));

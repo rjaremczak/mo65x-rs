@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy)]
 pub struct Flags {
     pub n: bool,
     pub v: bool,

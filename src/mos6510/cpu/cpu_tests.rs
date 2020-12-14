@@ -37,6 +37,7 @@ impl Ctx {
         self.memory.set_block(asm.origin(), asm.code());
         let c = self.cpu.exec_inst(&mut self.memory);
         assert_eq!(c, cycles, "wrong number of cycles");
+        // assert_eq!(self.cpu.regs.pc, asm.location_counter(), "PC not incremented right");
     }
 
     fn assert_nz(&self, n: u8, z: u8) {

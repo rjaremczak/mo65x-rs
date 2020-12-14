@@ -40,12 +40,21 @@ pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, 
     let end_addr = end_addr.unwrap_or(start_addr.saturating_add(fsize as u16));
     let mut memory = Memory::new();
     memory.set_block(start_addr, &buf);
-    let mut pc = start_addr;
+    let mut lc = start_addr;
     let mut lines = Vec::new();
-    while pc < end_addr {
-        lines.push(disassemble(&memory, &mut pc));
+    while lc < end_addr {
+        lines.push(disassemble(&memory, &mut lc));
     }
     Ok(lines)
+}
+
+pub fn disassemble_memory(memory: &Memory, start_addr: u16, end_addr: u16) -> Vec<String> {
+    let mut lc = start_addr;
+    let mut lines = Vec::new();
+    while lc < end_addr {
+        lines.push(disassemble(&memory, &mut lc))
+    }
+    lines
 }
 
 #[cfg(test)]
