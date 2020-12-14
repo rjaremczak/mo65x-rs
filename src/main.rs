@@ -3,7 +3,6 @@ extern crate lazy_static;
 
 mod backend;
 mod frontend;
-mod gui;
 mod mos6510;
 
 use backend::Backend;
@@ -130,10 +129,9 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     let backend = lock.read().unwrap();
     let mut frontend = Frontend::new();
     println!("running, press a key to stop...");
-    while frontend.is_running() {
+    while !frontend.quit() {
         // TODO: read and process command from UI
-        frontend.update();
-        frontend.sleep();
+        frontend.update(backend.memory());
     }
     backend.set_step_mode(true);
     println!("stopping...");

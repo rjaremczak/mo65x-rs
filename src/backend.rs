@@ -8,15 +8,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    gui::Gui,
-    mos6510::{cpu::Cpu, error::AppError, memory::Memory},
-};
+use crate::mos6510::{cpu::Cpu, error::AppError, memory::Memory};
 
 pub struct Backend {
     cpu: Cpu,
     memory: Memory,
-    fb_addr: u16,
     step_mode: AtomicBool,
     cycles: AtomicU64,
     duration_ns: AtomicU64,
@@ -32,7 +28,6 @@ impl Backend {
         Self {
             cpu: Cpu::new(),
             memory: Memory::new(),
-            fb_addr: 0x200,
             step_mode: AtomicBool::new(false),
             cycles: AtomicU64::new(0),
             duration_ns: AtomicU64::new(0),
@@ -42,10 +37,6 @@ impl Backend {
     pub fn init(&mut self) {
         self.cpu.reset(&self.memory);
         self.cpu.exec_inst(&mut self.memory);
-        // self.gui.init();
-        for i in 0..Gui::FB_LEN {
-            self.memory[self.fb_addr + i as u16] = i as u8;
-        }
     }
 
     pub fn reset_statistics(&self) {
@@ -83,6 +74,11 @@ impl Backend {
         // if t0 > ref_time {
         // self.gui.update_fb(self.memory.view(self.fb_addr, Gui::FB_LEN));
         // ref_time = t0 + ref_period;
+    }
+
+    #[inline]
+    pub fn memory(&self) -> &Memory {
+        &self.memory
     }
 
     pub fn set_reg_pc(&mut self, pc: u16) {

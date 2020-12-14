@@ -35,7 +35,7 @@ impl Memory {
     }
 
     #[inline]
-    pub fn view(&mut self, first: u16, len: usize) -> &[u8] {
+    pub fn view(&self, first: u16, len: usize) -> &[u8] {
         &self.data[first as usize..(first as usize + len)]
     }
 }
