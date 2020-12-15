@@ -4,13 +4,11 @@ use std::{
     path::PathBuf,
     sync::atomic::AtomicBool,
     sync::atomic::{AtomicU64, Ordering::Relaxed},
-    thread::sleep,
     time::{Duration, Instant},
 };
 
 use crate::mos6510::{
     cpu::{flags::Flags, registers::Registers, Cpu},
-    disassembler::disassemble,
     error::AppError,
     memory::Memory,
 };

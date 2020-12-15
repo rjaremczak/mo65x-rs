@@ -1,8 +1,5 @@
-use std::error::{self, Error};
-
-use structopt::clap::App;
-
 use super::{addrmode::AddrMode, instruction::Instruction};
+use crossterm::ErrorKind;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -21,5 +18,11 @@ pub enum AppError {
 impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
         Self::IoError(err)
+    }
+}
+
+impl From<ErrorKind> for AppError {
+    fn from(err: ErrorKind) -> Self {
+        Self::GeneralError(err.to_string())
     }
 }

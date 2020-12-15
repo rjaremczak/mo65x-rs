@@ -127,8 +127,8 @@ mod tests {
 
     fn operand_parser() -> Resolver {
         let mut op = Resolver::new();
-        op.define_symbol("label_1", 0x2ffe);
-        op.define_symbol("label_2", 0xac02);
+        op.define_symbol("label_1", 0x2ffe).unwrap();
+        op.define_symbol("label_2", 0xac02).unwrap();
         op
     }
 

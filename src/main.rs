@@ -6,20 +6,22 @@ mod frontend;
 mod mos6510;
 
 use backend::Backend;
+use crossterm::{
+    cursor::MoveTo,
+    event::{self, Event, KeyCode, KeyEvent},
+    style::{Colorize, PrintStyledContent},
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+    ExecutableCommand, QueueableCommand,
+};
 use frontend::Frontend;
 use mos6510::{
     assembler,
     disassembler::{disassemble_file, disassemble_memory},
     error::AppError,
 };
-use std::{
-    fs::File,
-    num::ParseIntError,
-    path::PathBuf,
-    sync::{atomic::AtomicPtr, RwLock},
-};
+use std::{fs::File, num::ParseIntError, path::PathBuf, sync::atomic::AtomicPtr};
+use std::{io::stdout, time::Duration};
 use std::{io::Write, thread};
-use std::{sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -156,7 +158,26 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     Ok(())
 }
 
+fn read_char() -> char {
+    loop {
+        if let Ok(Event::Key(KeyEvent {
+            code: KeyCode::Char(c), ..
+        })) = event::read()
+        {
+            return c;
+        }
+    }
+}
+
 fn interactive() -> Result<(), AppError> {
-    eprint!("not yet implemented");
+    enable_raw_mode()?;
+    let mut stdout = stdout();
+    stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
+    stdout.flush()?;
+    let c = read_char();
+    stdout
+        .execute(MoveTo(6, 6))?
+        .execute(PrintStyledContent(format!("received {}", c).magenta()))?;
+    disable_raw_mode()?;
     Ok(())
 }
