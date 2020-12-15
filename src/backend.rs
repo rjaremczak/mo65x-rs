@@ -10,6 +10,7 @@ use std::{
 
 use crate::mos6510::{
     cpu::{flags::Flags, registers::Registers, Cpu},
+    disassembler::disassemble,
     error::AppError,
     memory::Memory,
 };
@@ -47,7 +48,6 @@ impl Backend {
 
     pub fn init(&mut self) {
         self.cpu.reset(&self.memory);
-        self.memory[0x200] = 5;
     }
 
     pub fn reset_statistics(&self) {
@@ -70,7 +70,7 @@ impl Backend {
     }
 
     pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {
-        if self.trap() {
+        if self.trap.load(Relaxed) {
             return Err(AppError::EmulatorAlreadyRunning);
         }
         let mut buf = Vec::new();
@@ -92,14 +92,12 @@ impl Backend {
         let period_ns = period.as_nanos() as u64;
         loop {
             let t0 = Instant::now();
-            println!("pc: {:04X}", self.cpu.regs.pc);
             let cycles = self.cpu.exec_inst(&mut self.memory) as u64;
-            let dt_ns = Instant::now().duration_since(t0).as_nanos() as u64;
-            // sleep(Duration::from_nanos((period_ns * cycles).saturating_sub(dt_ns)));
-            sleep(Duration::from_millis(1000));
+            let t1 = t0 + Duration::from_nanos(period_ns * cycles);
+            while Instant::now() < t1 {}
             self.cycles.fetch_add(cycles, Relaxed);
             self.duration_ns.fetch_add((Instant::now() - t0).as_nanos() as u64, Relaxed);
-            if cycles == 0 || self.trap() {
+            if cycles == 0 || self.trap.load(Relaxed) {
                 println!("run ends: {}", cycles != 0);
                 return cycles != 0;
             }

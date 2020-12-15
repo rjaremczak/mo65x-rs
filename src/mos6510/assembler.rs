@@ -95,15 +95,9 @@ impl Assembler {
             let opstr = opstr.ok_or(AppError::MissingOperand)?;
             let mut operand = self.resolver.resolve(opstr, self.generate_code)?;
             if self.generate_code && addrmode == AddrMode::Relative && operand.is_symbol {
-                println!(
-                    "rel: {:04X} - {:04X} - 2 = {}",
-                    operand.value as u16,
-                    self.location_counter as u16,
-                    operand.value - self.location_counter as i32 - 2
-                );
-                let disp =
+                let displacement =
                     i8::try_from(operand.value - self.location_counter as i32 - 2).map_err(|e| AppError::GeneralError(e.to_string()))?;
-                operand.value = disp as i32;
+                operand.value = displacement as i32;
             }
             Ok(operand)
         }
@@ -151,10 +145,6 @@ impl Assembler {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
         let operand = self.resolver.resolve(str, false)?;
         self.set_location_counter(operand.value as u16)
-    }
-
-    pub fn location_counter(&self) -> u16 {
-        self.location_counter
     }
 
     pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
