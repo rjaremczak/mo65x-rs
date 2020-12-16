@@ -7,12 +7,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::mos6510::{
-    cpu::{flags::Flags, registers::Registers, Cpu},
-    cpuinfo::CpuInfo,
-    error::AppError,
-    memory::Memory,
-    statistics::Statistics,
+use crate::{
+    mos6510::{cpu::Cpu, error::AppError, memory::Memory},
+    state::State,
 };
 
 pub struct Backend {
@@ -45,15 +42,14 @@ impl Backend {
         self.duration_ns.store(0, Relaxed);
     }
 
-    pub fn statistics(&self) -> Statistics {
-        Statistics {
+    pub fn state(&self) -> State {
+        State {
+            regs: self.cpu.regs,
+            flags: self.cpu.flags,
             cycles: self.cycles.load(Relaxed),
             duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
+            trap: self.trap.load(Relaxed),
         }
-    }
-
-    pub fn cpuinfo(&self) -> CpuInfo {
-        CpuInfo::from(&self.cpu)
     }
 
     pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {

@@ -5,6 +5,7 @@ mod backend;
 mod console;
 mod frontend;
 mod mos6510;
+mod state;
 
 use backend::Backend;
 use console::Console;
@@ -14,8 +15,8 @@ use mos6510::{
     disassembler::{disassemble_file, disassemble_memory},
     error::AppError,
 };
+use std::time::Duration;
 use std::{fs::File, num::ParseIntError, path::PathBuf, sync::atomic::AtomicPtr};
-use std::{io::stdout, time::Duration};
 use std::{io::Write, thread};
 use structopt::StructOpt;
 
@@ -135,17 +136,15 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     println!("running, press a key to stop...");
     while !frontend.quit() {
         // TODO: read and process command from UI
-        frontend.update(backend.memory());
+        frontend.update(backend.memory())?;
         //println!("fb refresh");
     }
     backend.set_trap(true);
     println!("stopping...");
     handle.join().unwrap();
-    let cpuinfo = backend.cpuinfo();
-    println!("cpu info: {:#?}", cpuinfo);
-    println!("statistics: {:#?}", backend.statistics());
-    println!("short dump at PC:");
-    disassemble_memory(backend.memory(), cpuinfo.regs.pc, cpuinfo.regs.pc.saturating_add(20))
+    let state = backend.state();
+    println!("state: {:#?}", state);
+    disassemble_memory(backend.memory(), state.regs.pc, state.regs.pc.saturating_add(20))
         .iter()
         .for_each(|s| println!("{}", s));
     println!("stopped");
@@ -157,6 +156,6 @@ fn console() -> Result<(), AppError> {
     let mut console = Console::new("".to_string())?;
     let mut frontend = Frontend::new();
     frontend.update(backend.memory())?;
-    console.update(backend.memory(), backend.statistics(), backend.cpuinfo())?;
+    console.update(backend.memory(), backend.state())?;
     console.process()
 }

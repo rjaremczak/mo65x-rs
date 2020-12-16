@@ -1,5 +1,4 @@
-use crate::mos6510::{cpuinfo::CpuInfo, error::AppError, memory::Memory, statistics::Statistics};
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use crate::mos6510::{error::AppError, memory::Memory};
 use minifb::{Key, Window, WindowOptions};
 use std::time::{Duration, Instant};
 

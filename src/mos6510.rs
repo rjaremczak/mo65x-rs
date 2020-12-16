@@ -1,10 +1,8 @@
 pub mod addrmode;
 pub mod assembler;
 pub mod cpu;
-pub mod cpuinfo;
 pub mod disassembler;
 pub mod error;
 pub mod instruction;
 pub mod memory;
 pub mod operation;
-pub mod statistics;

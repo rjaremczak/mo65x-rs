@@ -1,14 +1,16 @@
 use std::io::{stdout, Write};
 
 use crossterm::{
-    cursor::MoveTo,
     event::{self, Event, KeyCode, KeyEvent},
     style::{Colorize, PrintStyledContent},
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-    ExecutableCommand, QueueableCommand,
+    terminal::{disable_raw_mode, enable_raw_mode},
+    ExecutableCommand,
 };
 
-use crate::mos6510::{cpuinfo::CpuInfo, error::AppError, memory::Memory, statistics::Statistics};
+use crate::{
+    mos6510::{error::AppError, memory::Memory},
+    state::State,
+};
 
 pub struct Console {
     header: String,
@@ -26,7 +28,7 @@ impl Console {
         Ok(())
     }
 
-    pub fn update(&mut self, memory: &Memory, statistics: Statistics, cpuinfo: CpuInfo) -> Result<(), AppError> {
+    pub fn update(&mut self, memory: &Memory, state: State) -> Result<(), AppError> {
         Ok(())
     }
 
