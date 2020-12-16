@@ -9,8 +9,10 @@ use std::{
 
 use crate::mos6510::{
     cpu::{flags::Flags, registers::Registers, Cpu},
+    cpuinfo::CpuInfo,
     error::AppError,
     memory::Memory,
+    statistics::Statistics,
 };
 
 pub struct Backend {
@@ -21,27 +23,17 @@ pub struct Backend {
     duration_ns: AtomicU64,
 }
 
-#[derive(Debug)]
-pub struct CpuInfo {
-    pub regs: Registers,
-    pub flags: Flags,
-}
-
-#[derive(Debug)]
-pub struct Statistics {
-    pub cycles: u64,
-    pub duration: Duration,
-}
-
 impl Backend {
     pub fn new() -> Self {
-        Self {
+        let mut backend = Self {
             cpu: Cpu::new(),
             memory: Memory::new(),
             trap: AtomicBool::new(false),
             cycles: AtomicU64::new(0),
             duration_ns: AtomicU64::new(0),
-        }
+        };
+        backend.init();
+        backend
     }
 
     pub fn init(&mut self) {
@@ -61,10 +53,7 @@ impl Backend {
     }
 
     pub fn cpuinfo(&self) -> CpuInfo {
-        CpuInfo {
-            flags: self.cpu.flags,
-            regs: self.cpu.regs,
-        }
+        CpuInfo::from(&self.cpu)
     }
 
     pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {

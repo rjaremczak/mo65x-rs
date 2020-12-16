@@ -26,3 +26,9 @@ impl From<ErrorKind> for AppError {
         Self::GeneralError(err.to_string())
     }
 }
+
+impl From<minifb::Error> for AppError {
+    fn from(err: minifb::Error) -> Self {
+        Self::GeneralError(err.to_string())
+    }
+}

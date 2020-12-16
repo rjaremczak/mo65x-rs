@@ -2,17 +2,12 @@
 extern crate lazy_static;
 
 mod backend;
+mod console;
 mod frontend;
 mod mos6510;
 
 use backend::Backend;
-use crossterm::{
-    cursor::MoveTo,
-    event::{self, Event, KeyCode, KeyEvent},
-    style::{Colorize, PrintStyledContent},
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-    ExecutableCommand, QueueableCommand,
-};
+use console::Console;
 use frontend::Frontend;
 use mos6510::{
     assembler,
@@ -85,7 +80,7 @@ fn main() {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
         Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
-        Mode::Interactive => interactive(),
+        Mode::Interactive => console(),
     };
     if let Err(apperr) = result {
         println!("\napplication error: {:?}", apperr)
@@ -125,7 +120,6 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
 
 fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     let mut backend = Backend::new();
-    backend.init();
     print!("uploading file {:?} ... ", fname);
     let size = backend.upload(start_addr, fname)?;
     println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
@@ -158,26 +152,11 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     Ok(())
 }
 
-fn read_char() -> char {
-    loop {
-        if let Ok(Event::Key(KeyEvent {
-            code: KeyCode::Char(c), ..
-        })) = event::read()
-        {
-            return c;
-        }
-    }
-}
-
-fn interactive() -> Result<(), AppError> {
-    enable_raw_mode()?;
-    let mut stdout = stdout();
-    stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
-    stdout.flush()?;
-    let c = read_char();
-    stdout
-        .execute(MoveTo(6, 6))?
-        .execute(PrintStyledContent(format!("received {}", c).magenta()))?;
-    disable_raw_mode()?;
-    Ok(())
+fn console() -> Result<(), AppError> {
+    let mut backend = Backend::new();
+    let mut console = Console::new()?;
+    let mut frontend = Frontend::new();
+    frontend.update(backend.memory())?;
+    console.update(backend.memory(), backend.statistics(), backend.cpuinfo())?;
+    console.process()
 }

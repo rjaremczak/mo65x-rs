@@ -1,4 +1,5 @@
-use crate::mos6510::memory::Memory;
+use crate::mos6510::{cpuinfo::CpuInfo, error::AppError, memory::Memory, statistics::Statistics};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use minifb::{Key, Window, WindowOptions};
 use std::time::{Duration, Instant};
 
@@ -45,7 +46,7 @@ impl Frontend {
         !self.is_window_open() || self.is_key_down(Key::Escape)
     }
 
-    pub fn update(&mut self, memory: &Memory) {
+    pub fn update(&mut self, memory: &Memory) -> Result<(), AppError> {
         while Instant::now() < self.next_update {}
         self.next_update = Instant::now() + Self::UPDATE_PERIOD;
         let vmem = memory.view(self.framebuf_addr, Self::FB_LEN);
@@ -54,7 +55,7 @@ impl Frontend {
         }
         self.window
             .update_with_buffer(&mut self.framebuf, Self::WIDTH, Self::HEIGHT)
-            .unwrap();
+            .map_err(|e| AppError::from(e))
     }
 
     #[inline]
