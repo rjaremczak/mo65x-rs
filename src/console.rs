@@ -10,11 +10,13 @@ use crossterm::{
 
 use crate::mos6510::{cpuinfo::CpuInfo, error::AppError, memory::Memory, statistics::Statistics};
 
-pub struct Console {}
+pub struct Console {
+    header: String,
+}
 
 impl Console {
-    pub fn new() -> Result<Self, AppError> {
-        let mut c = Self {};
+    pub fn new(header: String) -> Result<Self, AppError> {
+        let mut c = Self { header };
         c.init()?;
         Ok(c)
     }
@@ -30,22 +32,23 @@ impl Console {
 
     pub fn process(&mut self) -> Result<(), AppError> {
         let mut stdout = stdout();
-        stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
+        //stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
         stdout.flush()?;
-        let c = self.readc();
-        stdout
-            .execute(MoveTo(6, 6))?
-            .execute(PrintStyledContent(format!("received {}", c).magenta()))?;
+        let c = self.getchar();
+        stdout.execute(PrintStyledContent(format!("received: {}", c).magenta()))?;
         Ok(())
     }
 
-    fn readc(&self) -> char {
+    fn getchar(&self) -> char {
         loop {
-            if let Ok(Event::Key(KeyEvent {
-                code: KeyCode::Char(c), ..
-            })) = event::read()
-            {
-                return c;
+            match event::read() {
+                Ok(Event::Key(KeyEvent {
+                    code: KeyCode::Char(c), ..
+                })) => {
+                    return c;
+                }
+                Ok(event) => println!("event: {:?}", event),
+                _ => {}
             }
         }
     }

@@ -20,7 +20,7 @@ use std::{io::Write, thread};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(author, about = "My Own 65xx emulator and more...")]
+#[structopt(about = "My Own 65xx emulator, assembler and disassembler")]
 struct CliOpt {
     /// Execution mode
     #[structopt(subcommand)]
@@ -154,7 +154,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
 
 fn console() -> Result<(), AppError> {
     let mut backend = Backend::new();
-    let mut console = Console::new()?;
+    let mut console = Console::new("".to_string())?;
     let mut frontend = Frontend::new();
     frontend.update(backend.memory())?;
     console.update(backend.memory(), backend.statistics(), backend.cpuinfo())?;
