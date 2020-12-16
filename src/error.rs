@@ -1,5 +1,9 @@
-use super::{addrmode::AddrMode, instruction::Instruction};
+use std::fmt::Display;
+
+use crate::mos6510::{addrmode::AddrMode, instruction::Instruction};
 use crossterm::ErrorKind;
+
+pub type Result<T> = std::result::Result<T, AppError>;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -13,6 +17,12 @@ pub enum AppError {
     IoError(std::io::Error),
     EmulatorAlreadyRunning,
     GeneralError(String),
+}
+
+impl Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", *self)
+    }
 }
 
 impl From<std::io::Error> for AppError {

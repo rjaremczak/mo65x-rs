@@ -8,7 +8,8 @@ use std::{
 };
 
 use crate::{
-    mos6510::{cpu::Cpu, error::AppError, memory::Memory},
+    error::AppError,
+    mos6510::{cpu::Cpu, memory::Memory},
     state::State,
 };
 

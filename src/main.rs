@@ -3,17 +3,18 @@ extern crate lazy_static;
 
 mod backend;
 mod console;
+mod error;
 mod frontend;
 mod mos6510;
 mod state;
 
 use backend::Backend;
 use console::Console;
+use error::{AppError, Result};
 use frontend::Frontend;
 use mos6510::{
     assembler,
     disassembler::{disassemble_file, disassemble_memory},
-    error::AppError,
 };
 use std::time::Duration;
 use std::{fs::File, num::ParseIntError, path::PathBuf, sync::atomic::AtomicPtr};
@@ -70,8 +71,8 @@ enum Mode {
     Interactive,
 }
 
-fn parse_hex(hex: &str) -> Result<u16, ParseIntError> {
-    u16::from_str_radix(hex, 16)
+fn parse_hex(hex: &str) -> Result<u16> {
+    u16::from_str_radix(hex, 16).map_err(|e| AppError::ParseIntError(String::from(hex), e))
 }
 
 fn main() {
@@ -88,7 +89,7 @@ fn main() {
     }
 }
 
-fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<(), AppError> {
+fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()> {
     println!("source file {:?}, assembling ...", src);
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
     println!("code: {} B [{:04X}-{:04X}]", code.len(), origin, origin as usize + code.len() - 1);
@@ -109,7 +110,7 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
     Ok(())
 }
 
-fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(), AppError> {
+fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<()> {
     print!("binary file {:?}, disassemble from address {:04X} ", bin, start_addr);
     match end_addr {
         Some(addr) => println!("to {:04X} ...", addr),
@@ -119,7 +120,7 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
     Ok(())
 }
 
-fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
+fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     let mut backend = Backend::new();
     print!("uploading file {:?} ... ", fname);
     let size = backend.upload(start_addr, fname)?;
@@ -151,7 +152,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<(), AppError> {
     Ok(())
 }
 
-fn console() -> Result<(), AppError> {
+fn console() -> Result<()> {
     let mut backend = Backend::new();
     let mut console = Console::new("".to_string())?;
     let mut frontend = Frontend::new();

@@ -1,7 +1,6 @@
+use crate::error::{AppError, Result};
 use std::collections::BTreeMap;
 use Instruction::*;
-
-use super::error::AppError;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Instruction {
@@ -69,7 +68,7 @@ impl Instruction {
         MNEMONICS.get(self).unwrap()
     }
 
-    pub fn parse(mnemonic: &str) -> Result<Instruction, AppError> {
+    pub fn parse(mnemonic: &str) -> Result<Instruction> {
         let m = &mnemonic.to_uppercase();
         MNEMONICS
             .iter()

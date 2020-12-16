@@ -1,8 +1,6 @@
+use super::addrmode::{AddrMode, AddrMode::*};
 use super::instruction::Instruction::{self, *};
-use super::{
-    addrmode::{AddrMode, AddrMode::*},
-    error::AppError,
-};
+use crate::error::{AppError, Result};
 
 #[derive(Debug)]
 pub struct Operation {
@@ -42,7 +40,7 @@ impl Operation {
     }
 }
 
-pub fn find_opcode(instruction: Instruction, addrmode: AddrMode) -> Result<u8, AppError> {
+pub fn find_opcode(instruction: Instruction, addrmode: AddrMode) -> Result<u8> {
     OPCODE_MAP
         .iter()
         .find(|kv| kv.1.matches(instruction, addrmode))

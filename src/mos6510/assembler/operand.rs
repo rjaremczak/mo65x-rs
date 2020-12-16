@@ -1,4 +1,4 @@
-use crate::mos6510::error::AppError;
+use crate::error::{AppError, Result};
 use std::collections::HashMap;
 
 pub const LO_BYTE_MODIFIER: char = '<';
@@ -66,13 +66,13 @@ impl Resolver {
         Self { symbols: HashMap::new() }
     }
 
-    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
+    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<Operand> {
         let modifier = Modifier::from(txt);
         let rest = &txt[modifier.len()..];
         self.resolve_raw(rest, no_symbol_fail).and_then(|op| Ok(op.modified(modifier)))
     }
 
-    pub fn define_symbol(&mut self, key: &str, val: i32) -> Result<(), AppError> {
+    pub fn define_symbol(&mut self, key: &str, val: i32) -> Result<()> {
         match self.symbols.insert(String::from(key), val) {
             Some(old) => {
                 if old != val {
@@ -92,7 +92,7 @@ impl Resolver {
         &self.symbols
     }
 
-    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
+    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<Operand> {
         match raw.chars().next() {
             Some(c) => match c {
                 HEX_PREFIX => parse_int(&raw[1..], 16),
@@ -114,7 +114,7 @@ impl Resolver {
     }
 }
 
-fn parse_int(str: &str, radix: u32) -> Result<Operand, AppError> {
+fn parse_int(str: &str, radix: u32) -> Result<Operand> {
     match i32::from_str_radix(str, radix) {
         Ok(num) => Ok(Operand::literal(num)),
         Err(perr) => Err(AppError::ParseIntError(String::from(str), perr)),

@@ -7,32 +7,29 @@ use crossterm::{
     ExecutableCommand,
 };
 
-use crate::{
-    mos6510::{error::AppError, memory::Memory},
-    state::State,
-};
+use crate::{error::Result, mos6510::memory::Memory, state::State};
 
 pub struct Console {
     header: String,
 }
 
 impl Console {
-    pub fn new(header: String) -> Result<Self, AppError> {
+    pub fn new(header: String) -> Result<Self> {
         let mut c = Self { header };
         c.init()?;
         Ok(c)
     }
 
-    fn init(&self) -> Result<(), AppError> {
+    fn init(&self) -> Result<()> {
         enable_raw_mode()?;
         Ok(())
     }
 
-    pub fn update(&mut self, memory: &Memory, state: State) -> Result<(), AppError> {
+    pub fn update(&mut self, memory: &Memory, state: State) -> Result<()> {
         Ok(())
     }
 
-    pub fn process(&mut self) -> Result<(), AppError> {
+    pub fn process(&mut self) -> Result<()> {
         let mut stdout = stdout();
         //stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
         stdout.flush()?;

@@ -7,7 +7,7 @@ mod assembler_tests;
 
 use self::operand::Operand;
 use super::{addrmode::*, instruction::Instruction, operation::find_opcode};
-use crate::mos6510::error::AppError;
+use crate::error::AppError;
 use operand::Resolver;
 use regex::Regex;
 use std::convert::TryFrom;
