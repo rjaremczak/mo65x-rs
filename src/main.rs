@@ -17,7 +17,7 @@ use mos6510::{
     disassembler::{disassemble_file, disassemble_memory},
 };
 use std::time::Duration;
-use std::{fs::File, num::ParseIntError, path::PathBuf, sync::atomic::AtomicPtr};
+use std::{fs::File, path::PathBuf, sync::atomic::AtomicPtr};
 use std::{io::Write, thread};
 use structopt::StructOpt;
 
@@ -154,9 +154,12 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
 
 fn console() -> Result<()> {
     let mut backend = Backend::new();
-    let mut console = Console::new("".to_string())?;
+    let mut console = Console::new("")?;
     let mut frontend = Frontend::new();
-    frontend.update(backend.memory())?;
-    console.update(backend.memory(), backend.state())?;
-    console.process()
+    while !frontend.quit() && console.process(&mut backend, &mut frontend)? {
+        frontend.vsync();
+        frontend.update(backend.memory())?;
+        console.update(backend.memory(), backend.state())?;
+    }
+    Ok(())
 }

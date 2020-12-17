@@ -1,42 +1,79 @@
-use std::io::{stdout, Write};
-
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent},
-    style::{Colorize, PrintStyledContent},
-    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
+use std::{
+    io::{stdout, Write},
+    time::Duration,
 };
 
-use crate::{error::Result, mos6510::memory::Memory, state::State};
+use crossterm::{
+    cursor::MoveTo,
+    event::{self, poll, Event, KeyCode, KeyEvent},
+    style::{self, style, Attribute, Color, Colorize, PrintStyledContent, StyledContent, Styler},
+    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
+    ExecutableCommand, QueueableCommand,
+};
+use style::{Attributes, ContentStyle};
+
+use crate::{backend::Backend, error::Result, frontend::Frontend, mos6510::memory::Memory, state::State};
 
 pub struct Console {
-    title: String,
-    header: String,
     cols: u16,
     rows: u16,
+    title: String,
+    header: String,
+    command: String,
+    status: String,
 }
 
 impl Console {
-    pub fn new(title: String) -> Result<Self> {
+    pub fn new(title: &str) -> Result<Self> {
         let size = size()?;
         let mut c = Self {
-            title,
-            header: String::new(),
             cols: size.0,
             rows: size.1,
+            title: String::from(title),
+            header: String::from(title),
+            command: String::new(),
+            status: String::new(),
         };
         c.init()?;
         Ok(c)
     }
 
-    fn set_size(&mut self, size: (u16, u16)) {
-        self.cols = size.0;
-        self.rows = size.1;
+    fn resize(&mut self, cols: u16, rows: u16) -> Result<()> {
+        self.cols = cols;
+        self.rows = rows;
+        stdout().queue(Clear(ClearType::All))?;
+        self.print_header()?;
+        self.print_status()?;
+        Ok(())
     }
 
     fn init(&self) -> Result<()> {
-        stdout().execute(EnterAlternateScreen)?.execute(Clear(ClearType::All))?;
         enable_raw_mode()?;
+        stdout()
+            .queue(SetTitle(&self.title))?
+            .queue(EnterAlternateScreen)?
+            .queue(Clear(ClearType::All))?
+            .flush()?;
+        Ok(())
+    }
+
+    fn print_header(&self) -> Result<()> {
+        stdout()
+            .queue(MoveTo(0, 0))?
+            .queue(PrintStyledContent(self.header.as_str().reverse()))?;
+        Ok(())
+    }
+
+    fn print_status(&self) -> Result<()> {
+        stdout()
+            .queue(MoveTo(0, self.rows - 1))?
+            .queue(PrintStyledContent(self.status.as_str().red()))?;
+        Ok(())
+    }
+
+    fn update_status(&mut self, status: String) -> Result<()> {
+        self.status = status;
+        self.print_status()?;
         Ok(())
     }
 
@@ -44,27 +81,31 @@ impl Console {
         Ok(())
     }
 
-    pub fn process(&mut self) -> Result<()> {
-        let mut stdout = stdout();
-        //stdout.queue(MoveTo(5, 5))?.queue(Clear(ClearType::All))?;
-        stdout.flush()?;
-        let c = self.getchar();
-        stdout.execute(PrintStyledContent(format!("received: {}", c).magenta()))?;
+    fn process_char(&self, c: char) -> Result<()> {
+        stdout()
+            .queue(MoveTo(0, self.rows - 1))?
+            .queue(PrintStyledContent(style(format!("received: {}", c))))?;
         Ok(())
     }
 
-    fn getchar(&self) -> char {
-        loop {
+    pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<bool> {
+        if poll(Duration::from_millis(5))? {
             match event::read() {
                 Ok(Event::Key(KeyEvent {
                     code: KeyCode::Char(c), ..
-                })) => {
-                    return c;
+                })) => self.process_char(c)?,
+                Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
+                Ok(Event::Resize(cols, rows)) => self.resize(cols, rows)?,
+                Ok(event) => {
+                    self.update_status(format!("unhandled event: {:?}", event))?;
                 }
-                Ok(event) => println!("event: {:?}", event),
-                _ => {}
+                Err(err) => {
+                    self.update_status(format!("event handling error: {:?}", err))?;
+                }
             }
+            stdout().flush()?;
         }
+        Ok(true)
     }
 }
 

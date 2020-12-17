@@ -45,9 +45,12 @@ impl Frontend {
         !self.is_window_open() || self.is_key_down(Key::Escape)
     }
 
-    pub fn update(&mut self, memory: &Memory) -> Result<()> {
+    pub fn vsync(&mut self) {
         while Instant::now() < self.next_update {}
         self.next_update = Instant::now() + Self::UPDATE_PERIOD;
+    }
+
+    pub fn update(&mut self, memory: &Memory) -> Result<()> {
         let vmem = memory.view(self.framebuf_addr, Self::FB_LEN);
         for i in 0..Self::FB_LEN {
             self.framebuf[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
