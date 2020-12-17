@@ -21,6 +21,8 @@ use std::{fs::File, path::PathBuf, sync::atomic::AtomicPtr};
 use std::{io::Write, thread};
 use structopt::StructOpt;
 
+const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
+
 #[derive(Debug, StructOpt)]
 #[structopt(about = "My Own 65xx emulator, assembler and disassembler")]
 struct CliOpt {
@@ -82,7 +84,7 @@ fn main() {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
         Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
-        Mode::Interactive => console(),
+        Mode::Interactive => console(APP_NAME),
     };
     if let Err(apperr) = result {
         println!("\napplication error: {:?}", apperr)
@@ -152,9 +154,9 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     Ok(())
 }
 
-fn console() -> Result<()> {
+fn console(title: &str) -> Result<()> {
     let mut backend = Backend::new();
-    let mut console = Console::new("")?;
+    let mut console = Console::new(title)?;
     let mut frontend = Frontend::new();
     while !frontend.quit() && console.process(&mut backend, &mut frontend)? {
         frontend.vsync();

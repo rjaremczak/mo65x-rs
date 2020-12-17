@@ -25,25 +25,26 @@ pub struct Console {
 
 impl Console {
     pub fn new(title: &str) -> Result<Self> {
-        let size = size()?;
         let mut c = Self {
-            cols: size.0,
-            rows: size.1,
+            cols: 0,
+            rows: 0,
             title: String::from(title),
             header: String::from(title),
             command: String::new(),
             status: String::new(),
         };
         c.init()?;
+        c.resize(size()?)?;
+        stdout().flush()?;
         Ok(c)
     }
 
-    fn resize(&mut self, cols: u16, rows: u16) -> Result<()> {
-        self.cols = cols;
-        self.rows = rows;
+    fn resize(&mut self, size: (u16, u16)) -> Result<()> {
+        self.cols = size.0;
+        self.rows = size.1;
         stdout().queue(Clear(ClearType::All))?;
         self.print_header()?;
-        self.print_status()?;
+        self.update_status("resize".to_string())?;
         Ok(())
     }
 
@@ -95,7 +96,7 @@ impl Console {
                     code: KeyCode::Char(c), ..
                 })) => self.process_char(c)?,
                 Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
-                Ok(Event::Resize(cols, rows)) => self.resize(cols, rows)?,
+                Ok(Event::Resize(cols, rows)) => self.resize((cols, rows))?,
                 Ok(event) => {
                     self.update_status(format!("unhandled event: {:?}", event))?;
                 }
