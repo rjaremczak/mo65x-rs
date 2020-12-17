@@ -3,24 +3,39 @@ use std::io::{stdout, Write};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent},
     style::{Colorize, PrintStyledContent},
-    terminal::{disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 
 use crate::{error::Result, mos6510::memory::Memory, state::State};
 
 pub struct Console {
+    title: String,
     header: String,
+    cols: u16,
+    rows: u16,
 }
 
 impl Console {
-    pub fn new(header: String) -> Result<Self> {
-        let mut c = Self { header };
+    pub fn new(title: String) -> Result<Self> {
+        let size = size()?;
+        let mut c = Self {
+            title,
+            header: String::new(),
+            cols: size.0,
+            rows: size.1,
+        };
         c.init()?;
         Ok(c)
     }
 
+    fn set_size(&mut self, size: (u16, u16)) {
+        self.cols = size.0;
+        self.rows = size.1;
+    }
+
     fn init(&self) -> Result<()> {
+        stdout().execute(EnterAlternateScreen)?.execute(Clear(ClearType::All))?;
         enable_raw_mode()?;
         Ok(())
     }
@@ -56,5 +71,6 @@ impl Console {
 impl Drop for Console {
     fn drop(&mut self) {
         disable_raw_mode().unwrap();
+        stdout().execute(LeaveAlternateScreen).unwrap();
     }
 }
