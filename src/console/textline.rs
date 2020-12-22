@@ -15,7 +15,7 @@ impl TextLine {
         self.rendered.unwrap()
     }
 
-    pub fn update_width(&mut self, width: u16) {
+    pub fn resize(&mut self, width: u16) {
         self.width = width;
         self.render();
     }

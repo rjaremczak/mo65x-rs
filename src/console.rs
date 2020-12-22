@@ -39,8 +39,8 @@ impl Console {
         let (cols, rows) = size()?;
         self.cols = cols;
         self.rows = rows;
-        self.header.update_width(self.cols);
-        self.status.update_width(self.cols);
+        self.header.resize(self.cols);
+        self.status.resize(self.cols);
         Ok(())
     }
 
@@ -68,7 +68,7 @@ impl Console {
     }
 
     fn set_header(&mut self, txt: &str) {
-        self.header = format!("{:width$}", txt, width = self.cols as usize).reverse();
+        self.header.text = format!("{:width$}", txt, width = self.cols as usize);
     }
 
     fn print_header(&self) -> Result<()> {
@@ -77,7 +77,7 @@ impl Console {
     }
 
     fn set_status(&mut self, txt: &str) {
-        self.status = format!("{:width$}", txt, width = self.cols as usize).red();
+        self.status = format!("{:width$}", txt, width = self.cols as usize);
     }
 
     fn print_status(&self) -> Result<()> {
