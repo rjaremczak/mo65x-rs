@@ -48,6 +48,8 @@ impl Console {
         stdout().queue(EnterAlternateScreen)?.queue(Clear(ClearType::All))?.flush()?;
         self.header.text = String::from(title);
         self.update_size();
+        self.print_all();
+        stdout().flush()?;
         Ok(())
     }
 
@@ -59,13 +61,13 @@ impl Console {
         self.status.update_width(self.cols);
     }
 
-    fn print_all(&self) {
-        self.header.print();
-        self.status.print();
-    }
-
     pub fn update(&mut self, memory: &Memory, state: State) -> Result<()> {
         Ok(())
+    }
+
+    fn print_all(&mut self) {
+        self.header.print();
+        self.status.print();
     }
 
     fn process_char(&self, c: char) -> Result<()> {
@@ -82,7 +84,10 @@ impl Console {
                     code: KeyCode::Char(c), ..
                 })) => self.process_char(c)?,
                 Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
-                Ok(Event::Resize(cols, rows)) => self.update_size(),
+                Ok(Event::Resize(_, _)) => {
+                    self.update_size();
+                    self.print_all();
+                }
                 Ok(event) => {
                     self.status.update_text(&format!("unhandled event: {:?}", event));
                     self.status.print();
@@ -92,7 +97,7 @@ impl Console {
                     self.status.print();
                 }
             }
-            stdout().flush();
+            stdout().flush()?;
         }
         Ok(true)
     }
