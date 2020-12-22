@@ -156,8 +156,9 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
 
 fn console(title: &str) -> Result<()> {
     let mut backend = Backend::new();
-    let mut console = Console::new(title)?;
     let mut frontend = Frontend::new();
+    let mut console = Console::new();
+    console.init(title)?;
     while !frontend.quit() && console.process(&mut backend, &mut frontend)? {
         frontend.vsync();
         frontend.update(backend.memory())?;

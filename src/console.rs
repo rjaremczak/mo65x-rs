@@ -8,16 +8,15 @@ use std::{
 use crossterm::{
     cursor::MoveTo,
     event::{self, poll, Event, KeyCode, KeyEvent},
-    style::{self, style, Attribute, Color, Colorize, PrintStyledContent, StyledContent, Styler},
-    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
+    style::{style, PrintStyledContent},
+    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand, QueueableCommand,
 };
-use style::{Attributes, ContentStyle};
+
 use textline::TextLine;
 
 use crate::{backend::Backend, error::Result, frontend::Frontend, mos6510::memory::Memory, state::State};
 
-#[derive(Default)]
 pub struct Console {
     cols: u16,
     rows: u16,
@@ -26,65 +25,43 @@ pub struct Console {
     status: TextLine,
 }
 
+impl Drop for Console {
+    fn drop(&mut self) {
+        disable_raw_mode().unwrap();
+        stdout().execute(LeaveAlternateScreen).unwrap();
+    }
+}
+
 impl Console {
-    pub fn new(title: &str) -> Result<Self> {
-        let mut c = Self::default();
-        enable_raw_mode()?;
-        stdout().queue(EnterAlternateScreen)?.queue(Clear(ClearType::All))?.flush()?;
-        c.update_size()?;
-        Ok(c)
+    pub fn new() -> Self {
+        Self {
+            cols: 0,
+            rows: 0,
+            header: TextLine::default(),
+            command: TextLine::default(),
+            status: TextLine::default(),
+        }
     }
 
-    fn update_size(&mut self) -> Result<()> {
-        let (cols, rows) = size()?;
+    pub fn init(&mut self, title: &str) -> Result<()> {
+        enable_raw_mode()?;
+        stdout().queue(EnterAlternateScreen)?.queue(Clear(ClearType::All))?.flush()?;
+        self.header.text = String::from(title);
+        self.update_size();
+        Ok(())
+    }
+
+    fn update_size(&mut self) {
+        let (cols, rows) = size().unwrap();
         self.cols = cols;
         self.rows = rows;
-        self.header.resize(self.cols);
-        self.status.resize(self.cols);
-        Ok(())
+        self.header.update_width(self.cols);
+        self.status.update_width(self.cols);
     }
 
-    fn set_size(&mut self, size: (u16, u16)) -> Result<()> {
-        self.cols = size.0;
-        self.rows = size.1;
-        let tit = self.title.as_str().clone();
-        self.set_header(tit);
-        stdout().queue(Clear(ClearType::All))?;
-        self.print_header()?;
-        self.set_status("resize");
-        Ok(())
-    }
-
-    fn print_all(&self) -> Result<()> {
-        self.print_header()?;
-        self.print_status()?;
-        Ok(())
-    }
-
-    fn init(&self) -> Result<()> {
-        enable_raw_mode()?;
-        stdout().queue(EnterAlternateScreen)?.queue(Clear(ClearType::All))?.flush()?;
-        Ok(())
-    }
-
-    fn set_header(&mut self, txt: &str) {
-        self.header.text = format!("{:width$}", txt, width = self.cols as usize);
-    }
-
-    fn print_header(&self) -> Result<()> {
-        stdout().queue(MoveTo(0, 0))?.queue(PrintStyledContent(self.header.clone()))?;
-        Ok(())
-    }
-
-    fn set_status(&mut self, txt: &str) {
-        self.status = format!("{:width$}", txt, width = self.cols as usize);
-    }
-
-    fn print_status(&self) -> Result<()> {
-        stdout()
-            .queue(MoveTo(0, self.rows - 1))?
-            .queue(PrintStyledContent(self.status.clone()))?;
-        Ok(())
+    fn print_all(&self) {
+        self.header.print();
+        self.status.print();
     }
 
     pub fn update(&mut self, memory: &Memory, state: State) -> Result<()> {
@@ -105,25 +82,18 @@ impl Console {
                     code: KeyCode::Char(c), ..
                 })) => self.process_char(c)?,
                 Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
-                Ok(Event::Resize(cols, rows)) => self.set_size((cols, rows))?,
+                Ok(Event::Resize(cols, rows)) => self.update_size(),
                 Ok(event) => {
-                    self.set_status(&format!("unhandled event: {:?}", event));
-                    self.print_status()?;
+                    self.status.update_text(&format!("unhandled event: {:?}", event));
+                    self.status.print();
                 }
                 Err(err) => {
-                    self.set_status(&format!("event handling error: {:?}", err));
-                    self.print_status()?;
+                    self.status.update_text(&format!("event handling error: {:?}", err));
+                    self.status.print();
                 }
             }
-            stdout().flush()?;
+            stdout().flush();
         }
         Ok(true)
-    }
-}
-
-impl Drop for Console {
-    fn drop(&mut self) {
-        disable_raw_mode().unwrap();
-        stdout().execute(LeaveAlternateScreen).unwrap();
     }
 }
