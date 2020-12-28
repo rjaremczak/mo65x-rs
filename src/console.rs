@@ -87,7 +87,7 @@ impl Console {
         stdout().queue(Hide)?.queue(DisableBlinking)?.queue(MoveTo(0, 0))?;
         self.header.print()?;
         stdout().queue(MoveToNextLine(1))?;
-        self.state.print();
+        self.state.print()?;
         stdout().queue(MoveTo(0, self.rows() - 1))?;
         self.status.print()
     }

@@ -1,5 +1,8 @@
 use crate::error::Result;
-use std::io::{stdout, Stdout, Write};
+use std::{
+    f64::NAN,
+    io::{stdout, Stdout, Write},
+};
 
 use crossterm::{
     queue,
@@ -28,7 +31,9 @@ impl State {
         self.label(" Y", &format!("{:02X}", self.regs.y))?;
         self.label(" P", &format!("{:08b}", self.flags.to_byte()))?;
         self.label(" trap", &format!("{}", self.trap))?;
-        self.label(" clock", &format!("{}", self.frequency()))?;
+        if self.cycles > 0 {
+            self.label(" clock", &format!("{}", self.frequency()))?;
+        }
         Ok(())
     }
 }
