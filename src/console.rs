@@ -7,7 +7,7 @@ use std::{
 };
 
 use crossterm::{
-    cursor::{DisableBlinking, Hide, MoveTo, MoveToNextLine},
+    cursor::{DisableBlinking, EnableBlinking, Hide, MoveTo, MoveToNextLine},
     event::{self, poll, Event, KeyCode, KeyEvent},
     style::{
         style,
@@ -35,9 +35,10 @@ pub struct Console {
 
 impl Drop for Console {
     fn drop(&mut self) {
-        disable_raw_mode().unwrap();
-        stdout().execute(EnableLineWrap).unwrap();
         stdout().execute(LeaveAlternateScreen).unwrap();
+        stdout().execute(EnableLineWrap).unwrap();
+        stdout().execute(EnableBlinking).unwrap();
+        disable_raw_mode().unwrap();
     }
 }
 
