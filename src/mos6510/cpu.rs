@@ -28,17 +28,17 @@ impl Cpu {
 
     pub fn new() -> Self {
         Self {
-            regs: Registers::new(),
-            flags: Flags::new(),
+            regs: Registers::default(),
+            flags: Flags::default(),
             decode_table: generate_opcode_table(),
         }
     }
 
     pub fn reset(&mut self, memory: &Memory) {
-        self.regs = Registers::new();
+        self.regs = Registers::default();
         self.regs.pc = memory.word(Cpu::RESET_VECTOR);
         self.regs.sp = Cpu::SP_INIT;
-        self.flags = Flags::new();
+        self.flags = Flags::default();
     }
 
     #[inline]

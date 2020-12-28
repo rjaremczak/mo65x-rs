@@ -7,8 +7,6 @@ use crossterm::{
 use std::io::stdout;
 
 pub struct TextLine {
-    pub col: u16,
-    pub row: u16,
     pub width: u16,
     pub text: String,
     pub style: ContentStyle,
@@ -18,8 +16,6 @@ pub struct TextLine {
 impl TextLine {
     pub fn new(text: &str, style: ContentStyle) -> Self {
         Self {
-            col: 0,
-            row: 0,
             width: 0,
             text: String::from(text),
             style,
@@ -28,9 +24,7 @@ impl TextLine {
     }
 
     pub fn print(&self) -> Result<()> {
-        stdout()
-            .queue(MoveTo(self.col, self.row))?
-            .queue(PrintStyledContent(self.content.clone()))?;
+        stdout().queue(PrintStyledContent(self.content.clone()))?;
         Ok(())
     }
 

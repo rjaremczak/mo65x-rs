@@ -1,3 +1,4 @@
+mod print_state;
 mod textline;
 
 use std::{
@@ -6,7 +7,7 @@ use std::{
 };
 
 use crossterm::{
-    cursor::{DisableBlinking, Hide, MoveTo},
+    cursor::{DisableBlinking, Hide, MoveTo, MoveToNextLine},
     event::{self, poll, Event, KeyCode, KeyEvent},
     style::{
         style,
@@ -22,11 +23,12 @@ use crossterm::{
 
 use textline::TextLine;
 
-use crate::{backend::Backend, error::Result, frontend::Frontend};
+use crate::{backend::Backend, error::Result, frontend::Frontend, state::State};
 
 pub struct Console {
     size: (u16, u16),
     header: TextLine,
+    state: State,
     command: TextLine,
     status: TextLine,
 }
@@ -44,28 +46,27 @@ impl Console {
         let mut console = Self {
             size: size()?,
             header: TextLine::new(title, ContentStyle::new().attribute(Reverse)),
+            state: State::default(),
             command: TextLine::new("command...", ContentStyle::new().foreground(crossterm::style::Color::White)),
             status: TextLine::new("ok", ContentStyle::new().attribute(Reset)),
         };
         enable_raw_mode()?;
         stdout().queue(EnterAlternateScreen)?.queue(DisableLineWrap)?;
         console.clear()?;
-        console.update();
+        console.update_size();
         console.print()?;
         stdout().flush()?;
         Ok(console)
     }
 
-    fn update(&mut self) {
+    fn update_size(&mut self) {
         self.header.width = self.cols();
         self.header.update();
 
         self.command.width = self.cols();
-        self.command.row = self.rows() - 2;
         self.command.update();
 
         self.status.width = self.cols();
-        self.status.row = self.rows() - 1;
         self.status.update();
     }
 
@@ -83,8 +84,11 @@ impl Console {
     }
 
     fn print(&mut self) -> Result<()> {
-        stdout().queue(Hide)?.queue(DisableBlinking)?;
+        stdout().queue(Hide)?.queue(DisableBlinking)?.queue(MoveTo(0, 0))?;
         self.header.print()?;
+        stdout().queue(MoveToNextLine(1))?;
+        self.state.print();
+        stdout().queue(MoveTo(0, self.rows() - 1))?;
         self.status.print()
     }
 
@@ -94,6 +98,17 @@ impl Console {
         self.status.print()
     }
 
+    fn on_resize(&mut self, cols: u16, rows: u16) -> Result<()> {
+        if cols != self.size.0 || rows != self.size.1 {
+            self.size = (cols, rows);
+            self.status.text = format!("resize({},{})", cols, rows);
+            self.update_size();
+            self.clear()?;
+            self.print()?;
+        }
+        Ok(())
+    }
+
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<bool> {
         if poll(Duration::from_millis(2))? {
             match event::read() {
@@ -101,19 +116,7 @@ impl Console {
                     code: KeyCode::Char(c), ..
                 })) => self.process_char(c)?,
                 Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
-                Ok(Event::Resize(cols, rows)) => {
-                    if cols != self.size.0 || rows != self.size.1 {
-                        self.size = (cols, rows);
-                        self.status.text = format!("resize({},{})", cols, rows);
-                        self.update();
-                        self.clear()?;
-                        self.print()?;
-                    } else {
-                        self.status.text = String::from("resize event without actual change");
-                        self.status.update();
-                        self.status.print()?;
-                    }
-                }
+                Ok(Event::Resize(cols, rows)) => self.on_resize(cols, rows)?,
                 Ok(event) => {
                     self.status.text = format!("unhandled event: {:?}", event);
                     self.status.update();

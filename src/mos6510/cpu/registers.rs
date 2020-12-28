@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Registers {
     pub a: u8,
     pub x: u8,
@@ -8,16 +8,6 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new() -> Self {
-        Self {
-            a: 0,
-            x: 0,
-            y: 0,
-            pc: 0,
-            sp: 0,
-        }
-    }
-
     pub fn with(pc: u16, sp: u8) -> Self {
         Self { a: 0, x: 0, y: 0, pc, sp }
     }

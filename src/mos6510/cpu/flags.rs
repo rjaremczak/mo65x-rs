@@ -8,16 +8,8 @@ pub struct Flags {
     pub c: bool,
 }
 
-impl Flags {
-    pub const BM_NEGATIVE: u8 = 0x80;
-    pub const BM_OVERFLOW: u8 = 0x40;
-    pub const BM_BREAK: u8 = 0x10;
-    pub const BM_DECIMAL: u8 = 0x08;
-    pub const BM_INTERRUPT: u8 = 0x04;
-    pub const BM_ZERO: u8 = 0x02;
-    pub const BM_CARRY: u8 = 0x01;
-
-    pub fn new() -> Self {
+impl Default for Flags {
+    fn default() -> Self {
         Self {
             n: false,
             v: false,
@@ -27,6 +19,16 @@ impl Flags {
             c: false,
         }
     }
+}
+
+impl Flags {
+    pub const BM_NEGATIVE: u8 = 0x80;
+    pub const BM_OVERFLOW: u8 = 0x40;
+    pub const BM_BREAK: u8 = 0x10;
+    pub const BM_DECIMAL: u8 = 0x08;
+    pub const BM_INTERRUPT: u8 = 0x04;
+    pub const BM_ZERO: u8 = 0x02;
+    pub const BM_CARRY: u8 = 0x01;
 
     pub fn from_byte(val: u8) -> Self {
         Self {
@@ -75,7 +77,7 @@ impl Flags {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn mask(b: bool, m: u8) -> u8 {
     if b {
         m
