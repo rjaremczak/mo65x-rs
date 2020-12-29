@@ -9,8 +9,8 @@ use std::{
 
 use crate::{
     error::AppError,
+    info::Info,
     mos6510::{cpu::Cpu, memory::Memory},
-    state::State,
 };
 
 pub struct Backend {
@@ -43,8 +43,8 @@ impl Backend {
         self.duration_ns.store(0, Relaxed);
     }
 
-    pub fn state(&self) -> State {
-        State {
+    pub fn state(&self) -> Info {
+        Info {
             regs: self.cpu.regs,
             flags: self.cpu.flags,
             cycles: self.cycles.load(Relaxed),

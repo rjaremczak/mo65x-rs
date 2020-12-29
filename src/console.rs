@@ -1,4 +1,4 @@
-mod print_state;
+mod print_info;
 mod textline;
 
 use std::{
@@ -7,30 +7,18 @@ use std::{
 };
 
 use crossterm::{
-    cursor::{position, DisableBlinking, EnableBlinking, Hide, MoveTo, MoveToNextLine},
     event::{self, poll, Event, KeyCode, KeyEvent},
-    style::{
-        style,
-        Attribute::{self, Reset, Reverse},
-        ContentStyle, Print, PrintStyledContent, SetAttribute,
-    },
-    terminal::{
-        disable_raw_mode, enable_raw_mode, size, Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen,
-        LeaveAlternateScreen,
-    },
-    ExecutableCommand, QueueableCommand,
+    style::{Attribute::Reset, ContentStyle},
 };
 
-use textline::TextLine;
-
-use crate::{backend::Backend, error::Result, frontend::Frontend, state::State, terminal};
+use crate::{backend::Backend, error::Result, frontend::Frontend, info::Info, terminal};
 
 pub struct Console {
     size: (u16, u16),
     title: String,
-    state: State,
-    command: TextLine,
-    status: TextLine,
+    info: Info,
+    command: String,
+    status: String,
 }
 
 impl Drop for Console {
@@ -39,86 +27,93 @@ impl Drop for Console {
     }
 }
 
+const PROMPT: &str = "> ";
+const STATUS_OK: &str = "Ok";
+
 impl Console {
-    pub fn new(title: &str) -> Result<Self> {
+    pub fn new(title: &str) -> Self {
         let mut console = Self {
-            size: size()?,
+            size: terminal::size(),
             title: String::from(title),
-            state: State::default(),
-            command: TextLine::new("command...", ContentStyle::new().foreground(crossterm::style::Color::White)),
-            status: TextLine::new("ok", ContentStyle::new().attribute(Reset)),
+            info: Info::default(),
+            command: String::default(),
+            status: String::from(STATUS_OK),
         };
         terminal::begin_session();
-        console.update_size();
-        console.print()?;
-        stdout().flush()?;
-        Ok(console)
+        console.print();
+        terminal::flush();
+        console
     }
 
-    fn update_size(&mut self) {
-        self.command.width = self.cols();
-        self.command.update();
-
-        self.status.width = self.cols();
-        self.status.update();
+    fn print(&mut self) {
+        terminal::hide_cursor();
+        self.print_header();
+        self.info.print();
+        self.print_status();
+        self.print_command();
+        terminal::show_cursor();
     }
 
-    pub fn cols(&self) -> u16 {
-        self.size.0
-    }
-
-    pub fn rows(&self) -> u16 {
-        self.size.1
-    }
-
-    fn print(&mut self) -> Result<()> {
-        stdout().queue(Hide)?.queue(MoveTo(0, 0))?;
-        terminal::reverse();
-        terminal::queue(&format!(" {} ", self.title));
+    fn print_header(&self) {
+        terminal::move_cursor(0, 0);
+        terminal::special();
+        terminal::print(&self.title);
         terminal::normal();
-        self.state.queue();
-        stdout().queue(MoveTo(0, self.rows() - 1))?;
-        self.status.print()
+        terminal::print(" ");
     }
 
-    fn process_char(&mut self, c: char) -> Result<()> {
-        self.status.text = format!("received: {}", c);
-        self.status.update();
-        self.status.print()
+    fn print_status(&self) {
+        terminal::move_cursor(0, self.size.1);
+        terminal::message();
+        terminal::print(&format!("{:1$}", self.status, self.size.0 as usize));
     }
 
-    fn on_resize(&mut self, cols: u16, rows: u16) -> Result<()> {
+    fn print_command(&self) {
+        terminal::move_cursor(0, self.size.1 - 1);
+        terminal::normal();
+        terminal::print(PROMPT);
+        terminal::input();
+        terminal::print(&self.command);
+    }
+
+    fn process_char(&mut self, c: char) {
+        self.command.push(c);
+        terminal::print(&self.command[self.command.len() - 1..]);
+    }
+
+    fn on_resize(&mut self, cols: u16, rows: u16) {
         if cols != self.size.0 || rows != self.size.1 {
             self.size = (cols, rows);
-            self.status.text = format!("resize({},{})", cols, rows);
-            self.update_size();
+            self.status = format!("resize({},{})", cols, rows);
             terminal::clear();
-            self.print()?;
+            self.print();
         }
-        Ok(())
     }
 
-    pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<bool> {
-        if poll(Duration::from_millis(2))? {
+    pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
+        if poll(Duration::from_millis(2)).unwrap() {
             match event::read() {
                 Ok(Event::Key(KeyEvent {
                     code: KeyCode::Char(c), ..
-                })) => self.process_char(c)?,
-                Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return Ok(false),
-                Ok(Event::Resize(cols, rows)) => self.on_resize(cols, rows)?,
+                })) => self.process_char(c),
+                Ok(Event::Key(KeyEvent {
+                    code: KeyCode::Backspace, ..
+                })) => terminal::backspace(),
+                Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return false,
+                Ok(Event::Resize(cols, rows)) => self.on_resize(cols, rows),
                 Ok(event) => {
-                    self.status.text = format!("unhandled event: {:?}", event);
-                    self.status.update();
-                    self.status.print()?;
+                    self.status = format!("unhandled event: {:?}", event);
+                    terminal::store_cursor();
+                    self.print_status();
+                    terminal::restore_cursor();
                 }
                 Err(err) => {
-                    self.status.text = format!("event handling error: {:?}", err);
-                    self.status.update();
-                    self.status.print()?;
+                    self.status = format!("event handling error: {:?}", err);
+                    self.print_status();
                 }
             }
-            stdout().flush()?;
+            terminal::flush();
         }
-        Ok(true)
+        true
     }
 }

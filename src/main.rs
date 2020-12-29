@@ -5,8 +5,8 @@ mod backend;
 mod console;
 mod error;
 mod frontend;
+mod info;
 mod mos6510;
-mod state;
 mod terminal;
 use backend::Backend;
 use console::Console;
@@ -157,8 +157,8 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
 fn console(title: &str) -> Result<()> {
     let mut backend = Backend::new();
     let mut frontend = Frontend::new();
-    let mut console = Console::new(title)?;
-    while !frontend.quit() && console.process(&mut backend, &mut frontend)? {
+    let mut console = Console::new(title);
+    while !frontend.quit() && console.process(&mut backend, &mut frontend) {
         frontend.vsync();
         frontend.update(backend.memory())?;
         // console.update(backend.memory(), backend.state())?;

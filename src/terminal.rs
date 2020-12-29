@@ -3,9 +3,9 @@ use std::io::{stdout, Write};
 const SPACE: &str = " ";
 
 use crossterm::{
-    cursor::{position, EnableBlinking, Hide, MoveTo, Show},
+    cursor::{position, EnableBlinking, Hide, MoveLeft, MoveTo, RestorePosition, SavePosition, Show},
     execute,
-    style::{Attribute, Print, SetAttribute},
+    style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
     },
@@ -14,16 +14,16 @@ use crossterm::{
 
 #[inline]
 pub fn bold() {
-    stdout().queue(SetAttribute(Attribute::Bold)).unwrap();
+    stdout()
+        .queue(SetAttribute(Attribute::Bold))
+        .unwrap()
+        .queue(SetForegroundColor(Color::White))
+        .unwrap();
 }
 
 #[inline]
 pub fn normal() {
-    stdout()
-        .queue(SetAttribute(Attribute::NormalIntensity))
-        .unwrap()
-        .queue(SetAttribute(Attribute::NoReverse))
-        .unwrap();
+    stdout().queue(SetAttribute(Attribute::Reset)).unwrap().queue(ResetColor).unwrap();
 }
 
 #[inline]
@@ -32,7 +32,32 @@ pub fn reverse() {
 }
 
 #[inline]
-pub fn queue(text: &str) {
+pub fn special() {
+    stdout().queue(SetForegroundColor(Color::Yellow)).unwrap();
+}
+
+#[inline]
+pub fn dim() {
+    stdout().queue(SetForegroundColor(Color::DarkGrey)).unwrap();
+}
+
+#[inline]
+pub fn message() {
+    stdout().queue(SetForegroundColor(Color::Green)).unwrap();
+}
+
+#[inline]
+pub fn input() {
+    stdout().queue(SetForegroundColor(Color::Blue)).unwrap();
+}
+
+#[inline]
+pub fn error() {
+    stdout().queue(SetForegroundColor(Color::Red)).unwrap();
+}
+
+#[inline]
+pub fn print(text: &str) {
     stdout().queue(Print(text)).unwrap();
 }
 
@@ -44,12 +69,12 @@ pub fn fill(endpos: usize) {
 
 #[inline]
 pub fn flush() {
-    stdout().flush();
+    stdout().flush().unwrap();
 }
 
 #[inline]
-pub fn move_cursor(col: usize, row: usize) {
-    stdout().queue(MoveTo(col as u16, row as u16)).unwrap();
+pub fn move_cursor(col: u16, row: u16) {
+    stdout().queue(MoveTo(col, row)).unwrap();
 }
 
 #[inline]
@@ -57,12 +82,33 @@ pub fn clear() {
     stdout().execute(Clear(ClearType::All)).unwrap();
 }
 
-pub fn hide_cursor() {
-    stdout().execute(Hide);
+#[inline]
+pub fn size() -> (u16, u16) {
+    crossterm::terminal::size().unwrap()
 }
 
+#[inline]
+pub fn hide_cursor() {
+    stdout().execute(Hide).unwrap();
+}
+
+#[inline]
 pub fn show_cursor() {
-    stdout().execute(Show);
+    stdout().execute(Show).unwrap();
+}
+
+#[inline]
+pub fn store_cursor() {
+    stdout().execute(SavePosition).unwrap();
+}
+
+#[inline]
+pub fn restore_cursor() {
+    stdout().execute(RestorePosition).unwrap();
+}
+
+pub fn backspace() {
+    execute!(stdout(), MoveLeft(1), Print(" "), MoveLeft(1)).unwrap();
 }
 
 pub fn begin_session() {
