@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crossterm::{
     cursor::MoveTo,
+    queue,
     style::{ContentStyle, PrintStyledContent, StyledContent},
     QueueableCommand,
 };

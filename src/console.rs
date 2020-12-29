@@ -7,12 +7,12 @@ use std::{
 };
 
 use crossterm::{
-    cursor::{DisableBlinking, EnableBlinking, Hide, MoveTo, MoveToNextLine},
+    cursor::{position, DisableBlinking, EnableBlinking, Hide, MoveTo, MoveToNextLine},
     event::{self, poll, Event, KeyCode, KeyEvent},
     style::{
         style,
-        Attribute::{Reset, Reverse},
-        ContentStyle, PrintStyledContent,
+        Attribute::{self, Reset, Reverse},
+        ContentStyle, Print, PrintStyledContent, SetAttribute,
     },
     terminal::{
         disable_raw_mode, enable_raw_mode, size, Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen,
@@ -23,11 +23,11 @@ use crossterm::{
 
 use textline::TextLine;
 
-use crate::{backend::Backend, error::Result, frontend::Frontend, state::State};
+use crate::{backend::Backend, error::Result, frontend::Frontend, state::State, terminal};
 
 pub struct Console {
     size: (u16, u16),
-    header: TextLine,
+    title: String,
     state: State,
     command: TextLine,
     status: TextLine,
@@ -35,10 +35,7 @@ pub struct Console {
 
 impl Drop for Console {
     fn drop(&mut self) {
-        stdout().execute(LeaveAlternateScreen).unwrap();
-        stdout().execute(EnableLineWrap).unwrap();
-        stdout().execute(EnableBlinking).unwrap();
-        disable_raw_mode().unwrap();
+        terminal::end_session()
     }
 }
 
@@ -46,14 +43,12 @@ impl Console {
     pub fn new(title: &str) -> Result<Self> {
         let mut console = Self {
             size: size()?,
-            header: TextLine::new(title, ContentStyle::new().attribute(Reverse)),
+            title: String::from(title),
             state: State::default(),
             command: TextLine::new("command...", ContentStyle::new().foreground(crossterm::style::Color::White)),
             status: TextLine::new("ok", ContentStyle::new().attribute(Reset)),
         };
-        enable_raw_mode()?;
-        stdout().queue(EnterAlternateScreen)?.queue(DisableLineWrap)?;
-        console.clear()?;
+        terminal::begin_session();
         console.update_size();
         console.print()?;
         stdout().flush()?;
@@ -61,9 +56,6 @@ impl Console {
     }
 
     fn update_size(&mut self) {
-        self.header.width = self.cols();
-        self.header.update();
-
         self.command.width = self.cols();
         self.command.update();
 
@@ -79,16 +71,12 @@ impl Console {
         self.size.1
     }
 
-    fn clear(&self) -> Result<()> {
-        stdout().queue(Clear(ClearType::All))?;
-        Ok(())
-    }
-
     fn print(&mut self) -> Result<()> {
-        stdout().queue(Hide)?.queue(DisableBlinking)?.queue(MoveTo(0, 0))?;
-        self.header.print()?;
-        stdout().queue(MoveToNextLine(1))?;
-        self.state.print()?;
+        stdout().queue(Hide)?.queue(MoveTo(0, 0))?;
+        terminal::reverse();
+        terminal::queue(&format!(" {} ", self.title));
+        terminal::normal();
+        self.state.queue();
         stdout().queue(MoveTo(0, self.rows() - 1))?;
         self.status.print()
     }
@@ -104,7 +92,7 @@ impl Console {
             self.size = (cols, rows);
             self.status.text = format!("resize({},{})", cols, rows);
             self.update_size();
-            self.clear()?;
+            terminal::clear();
             self.print()?;
         }
         Ok(())

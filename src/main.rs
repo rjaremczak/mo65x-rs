@@ -7,7 +7,7 @@ mod error;
 mod frontend;
 mod mos6510;
 mod state;
-
+mod terminal;
 use backend::Backend;
 use console::Console;
 use error::{AppError, Result};

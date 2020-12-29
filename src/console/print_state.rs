@@ -1,39 +1,29 @@
-use crate::error::Result;
-use std::{
-    f64::NAN,
-    io::{stdout, Stdout, Write},
-};
-
-use crossterm::{
-    queue,
-    style::{Attribute, Print, PrintStyledContent, SetAttribute, Styler},
-    QueueableCommand,
-};
-
 use crate::state::State;
+use crate::terminal;
 
 impl State {
-    fn label(&self, label: &str, text: &str) -> Result<()> {
-        stdout()
-            .queue(SetAttribute(Attribute::NormalIntensity))?
-            .queue(Print(label))?
-            .queue(Print(":"))?
-            .queue(SetAttribute(Attribute::Bold))?
-            .queue(Print(text))?;
-        Ok(())
+    fn label(&self, label: &str, text: &str) {
+        terminal::normal();
+        terminal::queue(label);
+        terminal::queue(":");
+        terminal::bold();
+        terminal::queue(text);
     }
 
-    pub fn print(&self) -> Result<()> {
-        self.label("PC", &format!("{:04X}", self.regs.pc))?;
-        self.label(" SP", &format!("{:04X}", self.regs.sp as u16 | 0x100))?;
-        self.label(" A", &format!("{:02X}", self.regs.a))?;
-        self.label(" X", &format!("{:02X}", self.regs.x))?;
-        self.label(" Y", &format!("{:02X}", self.regs.y))?;
-        self.label(" P", &format!("{:08b}", self.flags.to_byte()))?;
-        self.label(" trap", &format!("{}", self.trap))?;
+    pub fn queue(&self) {
+        self.label("PC", &format!("{:04X}", self.regs.pc));
+        self.label(" SP", &format!("{:04X}", self.regs.sp as u16 | 0x100));
+        self.label(" A", &format!("{:02X}", self.regs.a));
+        self.label(" X", &format!("{:02X}", self.regs.x));
+        self.label(" Y", &format!("{:02X}", self.regs.y));
+        self.label(" P", &format!("{:08b}", self.flags.to_byte()));
         if self.cycles > 0 {
-            self.label(" clock", &format!("{}", self.frequency()))?;
+            self.label(" f", &format!("{}", self.frequency()));
         }
-        Ok(())
+        terminal::bold();
+        terminal::queue(match self.trap {
+            true => " step",
+            false => " run",
+        });
     }
 }
