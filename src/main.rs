@@ -112,13 +112,17 @@ fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()
     Ok(())
 }
 
+fn print_disassembly_line(columns: &(String, String, String)) {
+    println!("{}{}{}", columns.0, columns.1, columns.2)
+}
+
 fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<()> {
     print!("binary file {:?}, disassemble from address {:04X} ", bin, start_addr);
     match end_addr {
         Some(addr) => println!("to {:04X} ...", addr),
         None => println!("..."),
     }
-    disassemble_file(start_addr, end_addr, bin)?.iter().for_each(|l| println!("{}", l));
+    disassemble_file(start_addr, end_addr, bin)?.iter().for_each(print_disassembly_line);
     Ok(())
 }
 
@@ -149,7 +153,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("state: {:#?}", state);
     disassemble_memory(backend.memory(), state.regs.pc, state.regs.pc.saturating_add(20))
         .iter()
-        .for_each(|s| println!("{}", s));
+        .for_each(print_disassembly_line);
     println!("stopped");
     Ok(())
 }

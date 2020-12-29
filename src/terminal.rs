@@ -42,21 +42,6 @@ pub fn dim() {
 }
 
 #[inline]
-pub fn message() {
-    stdout().queue(SetForegroundColor(Color::Green)).unwrap();
-}
-
-#[inline]
-pub fn input() {
-    stdout().queue(SetForegroundColor(Color::Blue)).unwrap();
-}
-
-#[inline]
-pub fn error() {
-    stdout().queue(SetForegroundColor(Color::Red)).unwrap();
-}
-
-#[inline]
 pub fn print(text: &str) {
     stdout().queue(Print(text)).unwrap();
 }

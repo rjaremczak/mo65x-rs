@@ -1,17 +1,14 @@
 mod print_info;
-mod textline;
 
-use std::{
-    io::{stdout, Write},
-    time::Duration,
+use crate::{
+    backend::Backend,
+    frontend::Frontend,
+    info::Info,
+    mos6510::{disassembler::disassemble, memory::Memory},
+    terminal,
 };
-
-use crossterm::{
-    event::{self, poll, Event, KeyCode, KeyEvent},
-    style::{Attribute::Reset, ContentStyle},
-};
-
-use crate::{backend::Backend, error::Result, frontend::Frontend, info::Info, terminal};
+use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
+use std::time::Duration;
 
 pub struct Console {
     size: (u16, u16),
@@ -40,15 +37,14 @@ impl Console {
             status: String::from(STATUS_OK),
         };
         terminal::begin_session();
-        console.print();
-        terminal::flush();
         console
     }
 
-    fn print(&mut self) {
+    fn print(&mut self, memory: &Memory) {
         terminal::hide_cursor();
         self.print_header();
         self.info.print();
+        self.print_disassembly(self.info.regs.pc, memory);
         self.print_status();
         self.print_command();
         terminal::show_cursor();
@@ -62,17 +58,31 @@ impl Console {
         terminal::print(" ");
     }
 
+    fn print_disassembly(&self, pc: u16, memory: &Memory) {
+        let mut pc = pc;
+        for row in 1..self.size.1 - 1 {
+            let columns = disassemble(memory, &mut pc);
+            terminal::move_cursor(0, row);
+            terminal::normal();
+            terminal::print(&(columns.0 + " "));
+            terminal::dim();
+            terminal::print(&(columns.1 + " "));
+            terminal::bold();
+            terminal::print(&(columns.2));
+        }
+    }
+
     fn print_status(&self) {
         terminal::move_cursor(0, self.size.1);
-        terminal::message();
+        terminal::dim();
         terminal::print(&format!("{:1$}", self.status, self.size.0 as usize));
     }
 
     fn print_command(&self) {
         terminal::move_cursor(0, self.size.1 - 1);
-        terminal::normal();
+        terminal::bold();
         terminal::print(PROMPT);
-        terminal::input();
+        terminal::special();
         terminal::print(&self.command);
     }
 
@@ -81,13 +91,12 @@ impl Console {
         terminal::print(&self.command[self.command.len() - 1..]);
     }
 
-    fn on_resize(&mut self, cols: u16, rows: u16) {
+    fn resize(&mut self, cols: u16, rows: u16) -> bool {
         if cols != self.size.0 || rows != self.size.1 {
             self.size = (cols, rows);
-            self.status = format!("resize({},{})", cols, rows);
-            terminal::clear();
-            self.print();
+            return true;
         }
+        false
     }
 
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
@@ -100,7 +109,13 @@ impl Console {
                     code: KeyCode::Backspace, ..
                 })) => terminal::backspace(),
                 Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return false,
-                Ok(Event::Resize(cols, rows)) => self.on_resize(cols, rows),
+                Ok(Event::Resize(cols, rows)) => {
+                    if self.resize(cols, rows) {
+                        self.info = backend.state();
+                        terminal::clear();
+                        self.print(backend.memory());
+                    }
+                }
                 Ok(event) => {
                     self.status = format!("unhandled event: {:?}", event);
                     terminal::store_cursor();

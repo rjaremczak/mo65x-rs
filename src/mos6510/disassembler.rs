@@ -3,21 +3,23 @@ use std::{fs::File, io::Read, path::Path};
 use super::{addrmode::AddrMode, memory::Memory, operation::Operation};
 use crate::error::Result;
 
-pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
-    let mut buf = format!("{:04X} ", pc);
+type Columns = (String, String, String);
+
+pub fn disassemble(memory: &Memory, pc: &mut u16) -> Columns {
+    let mut buf = (format!("{:04X} ", pc), String::new(), String::new());
     let opcode = memory[*pc];
     let operation = Operation::get(opcode);
     let opsize = operation.len() as u16;
     for i in 0..3 {
         if i < opsize {
-            buf.push_str(&format!("{:02X} ", memory[*pc + i]));
+            buf.1.push_str(&format!("{:02X} ", memory[*pc + i]));
         } else {
-            buf.push_str("   ");
+            buf.1.push_str("   ");
         }
     }
-    buf.push_str(&format!(" {} ", operation.instruction.mnemonic()));
+    buf.2.push_str(&format!(" {} ", operation.instruction.mnemonic()));
     let opaddr = *pc + 1;
-    buf.push_str(&match operation.addrmode {
+    buf.2.push_str(&match operation.addrmode {
         AddrMode::Implied => String::from(""),
         AddrMode::Relative => format!("${:04X}", *pc as i32 + (memory[opaddr] as i8) as i32 + 2),
         AddrMode::Immediate => format!("#${:02X}", memory[opaddr]),
@@ -35,7 +37,7 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> String {
     buf
 }
 
-pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, fpath: F) -> Result<Vec<String>> {
+pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, fpath: F) -> Result<Vec<Columns>> {
     let mut buf = Vec::new();
     let fsize = File::open(&fpath)?.read_to_end(&mut buf)?;
     let end_addr = end_addr.unwrap_or(start_addr.saturating_add(fsize as u16));
@@ -49,7 +51,7 @@ pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, 
     Ok(lines)
 }
 
-pub fn disassemble_memory(memory: &Memory, start_addr: u16, end_addr: u16) -> Vec<String> {
+pub fn disassemble_memory(memory: &Memory, start_addr: u16, end_addr: u16) -> Vec<Columns> {
     let mut lc = start_addr;
     let mut lines = Vec::new();
     while lc < end_addr {
@@ -68,6 +70,9 @@ mod tests {
         let mut pc: u16 = 0x1000;
         memory[pc] = 0xad;
         memory.set_word(pc + 1, 0x1234);
-        assert_eq!(disassemble(&memory, &mut pc), "1000 AD 34 12  LDA $1234");
+        assert_eq!(
+            disassemble(&memory, &mut pc),
+            ("1000 ".to_string(), "AD 34 12 ".to_string(), " LDA $1234".to_string())
+        );
     }
 }
