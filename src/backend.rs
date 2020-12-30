@@ -10,7 +10,10 @@ use std::{
 use crate::{
     error::AppError,
     info::Info,
-    mos6510::{cpu::Cpu, memory::Memory},
+    mos6510::{
+        cpu::{flags::Flags, registers::Registers, Cpu},
+        memory::Memory,
+    },
 };
 
 pub struct Backend {
@@ -43,7 +46,7 @@ impl Backend {
         self.duration_ns.store(0, Relaxed);
     }
 
-    pub fn state(&self) -> Info {
+    pub fn info(&self) -> Info {
         Info {
             regs: self.cpu.regs,
             flags: self.cpu.flags,
@@ -68,8 +71,14 @@ impl Backend {
         &self.memory
     }
 
-    pub fn set_reg_pc(&mut self, pc: u16) {
-        self.cpu.regs.pc = pc;
+    #[inline]
+    pub fn cpu_regs_mut(&mut self) -> &mut Registers {
+        &mut self.cpu.regs
+    }
+
+    #[inline]
+    pub fn cpu_flags_mut(&mut self) -> &mut Flags {
+        &mut self.cpu.flags
     }
 
     pub fn run(&mut self, period: Duration) -> bool {

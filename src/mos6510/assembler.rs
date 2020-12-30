@@ -69,7 +69,7 @@ impl Assembler {
                 return handler(self, tokens);
             }
         }
-        Err(AppError::SyntaxError)
+        Err(AppError::SyntaxError(String::from(line)))
     }
 
     fn parse_operand_list(&self, oplist: Option<&str>) -> Result<Vec<i32>, AppError> {
@@ -105,7 +105,7 @@ impl Assembler {
 
     fn assemble(&mut self, addrmode: AddrMode, tokens: Tokens) -> Result<(), AppError> {
         let operand = self.prepare_operand(addrmode, tokens.operand())?;
-        let mnemonic = tokens.operation().ok_or(AppError::SyntaxError)?;
+        let mnemonic = tokens.operation().ok_or(AppError::SyntaxError(tokens.to_string()))?;
         let instruction = Instruction::parse(mnemonic)?;
         let addrmode = optimize_addrmode(instruction, addrmode, operand);
         let opcode = find_opcode(instruction, addrmode)?;

@@ -24,4 +24,8 @@ impl<'a> Tokens<'a> {
     fn get_str(&self, i: usize) -> Option<&str> {
         self.captures.get(i).map_or(None, |m| Some(m.as_str().trim()))
     }
+
+    pub fn to_string(&self) -> String {
+        self.captures.get(0).map(|m| String::from(m.as_str())).unwrap_or(String::new())
+    }
 }

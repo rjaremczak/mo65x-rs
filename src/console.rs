@@ -1,3 +1,4 @@
+mod parser;
 mod print_info;
 
 use crate::{
@@ -8,9 +9,12 @@ use crate::{
     terminal,
 };
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
+use parser::CommandParser;
 use std::time::Duration;
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc};
+
+use self::parser::Command;
 
 pub struct Console {
     size: (u16, u16),
@@ -18,6 +22,7 @@ pub struct Console {
     info: Info,
     command: String,
     status: String,
+    parser: CommandParser,
 }
 
 impl Drop for Console {
@@ -37,6 +42,7 @@ impl Console {
             info: Info::default(),
             command: String::default(),
             status: String::from(STATUS_OK),
+            parser: CommandParser::new(),
         };
         terminal::begin_session();
         console
@@ -44,20 +50,20 @@ impl Console {
 
     fn print(&mut self, memory: &Memory) {
         terminal::hide_cursor();
-        self.print_header();
-        self.info.print();
+        self.print_info();
         self.print_disassembly(self.info.regs.pc, memory);
         self.print_status();
         self.print_command();
         terminal::show_cursor();
     }
 
-    fn print_header(&self) {
+    fn print_info(&self) {
         terminal::move_cursor(0, 0);
         terminal::special();
         terminal::print(&self.title);
         terminal::normal();
         terminal::print(" ");
+        self.info.print();
     }
 
     fn print_disassembly(&self, pc: u16, memory: &Memory) {
@@ -95,10 +101,20 @@ impl Console {
         terminal::print(&self.command[self.command.len() - 1..]);
     }
 
-    fn process_command(&mut self) {
-        self.update_status(format!("process command: {}", self.command));
+    fn process_command(&mut self, backend: &mut Backend) {
+        match self.parser.parse(&self.command) {
+            Some(Command::SetPC(w)) => backend.cpu_regs_mut().pc = w,
+            Some(Command::SetSP(b)) => backend.cpu_regs_mut().sp = b,
+            Some(Command::SetA(b)) => backend.cpu_regs_mut().a = b,
+            Some(Command::SetX(b)) => backend.cpu_regs_mut().x = b,
+            Some(Command::SetY(b)) => backend.cpu_regs_mut().y = b,
+            None => {}
+        }
+        self.info = backend.info();
+        self.print_info();
         self.command.clear();
         self.print_command();
+        self.update_status(STATUS_OK);
     }
 
     fn resize(&mut self, cols: u16, rows: u16) -> bool {
@@ -109,8 +125,8 @@ impl Console {
         false
     }
 
-    fn update_status(&mut self, status: String) {
-        self.status = status;
+    fn update_status(&mut self, status: &str) {
+        self.status = String::from(status);
         terminal::store_cursor();
         self.print_status();
         terminal::restore_cursor();
@@ -122,16 +138,16 @@ impl Console {
                 Ok(Key(KeyEvent { code: Char(c), .. })) => self.process_char(c),
                 Ok(Key(KeyEvent { code: Backspace, .. })) => terminal::backspace(),
                 Ok(Key(KeyEvent { code: Esc, .. })) => return false,
-                Ok(Key(KeyEvent { code: Enter, .. })) => self.process_command(),
+                Ok(Key(KeyEvent { code: Enter, .. })) => self.process_command(backend),
                 Ok(Resize(cols, rows)) => {
                     if self.resize(cols, rows) {
-                        self.info = backend.state();
+                        self.info = backend.info();
                         // terminal::clear();
                         self.print(backend.memory());
                     }
                 }
-                Ok(event) => self.update_status(format!("unhandled event: {:?}", event)),
-                Err(err) => self.update_status(format!("event handling error: {:?}", err)),
+                Ok(event) => self.update_status(&format!("unhandled event: {:?}", event)),
+                Err(err) => self.update_status(&format!("event handling error: {:?}", err)),
             }
             terminal::flush();
         }

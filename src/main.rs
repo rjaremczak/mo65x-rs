@@ -133,7 +133,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
     println!("clock speed: {} MHz", freq / 1e6);
     println!("start address: {:04X}", start_addr);
-    backend.set_reg_pc(start_addr);
+    backend.cpu_regs_mut().pc = start_addr;
     let backend_ptr = AtomicPtr::new(&mut backend);
     let handle = thread::spawn(move || {
         println!("starting thread");
@@ -149,7 +149,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     backend.set_trap(true);
     println!("stopping...");
     handle.join().unwrap();
-    let state = backend.state();
+    let state = backend.info();
     println!("state: {:#?}", state);
     disassemble_memory(backend.memory(), state.regs.pc, state.regs.pc.saturating_add(20))
         .iter()

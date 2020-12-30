@@ -10,7 +10,7 @@ pub enum AppError {
     UndefinedSymbol(String),
     MissingOperand,
     NoOpCode(Instruction, AddrMode),
-    SyntaxError,
+    SyntaxError(String),
     AddrOutOfRange(u16, u16),
     InvalidMnemonic(String),
     ParseIntError(String, std::num::ParseIntError),
