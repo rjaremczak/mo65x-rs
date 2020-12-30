@@ -9,6 +9,8 @@ use crate::{
 };
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::time::Duration;
+use Event::{Key, Resize};
+use KeyCode::{Backspace, Char, Enter, Esc};
 
 pub struct Console {
     size: (u16, u16),
@@ -79,16 +81,24 @@ impl Console {
     }
 
     fn print_command(&self) {
+        let len = (PROMPT.len() + self.command.len()) as u16;
         terminal::move_cursor(0, self.size.1 - 1);
         terminal::bold();
         terminal::print(PROMPT);
         terminal::special();
-        terminal::print(&self.command);
+        terminal::print(&format!("{:1$}", self.command, self.size.0 as usize - len as usize));
+        terminal::move_cursor(len, self.size.1 - 1);
     }
 
     fn process_char(&mut self, c: char) {
         self.command.push(c);
         terminal::print(&self.command[self.command.len() - 1..]);
+    }
+
+    fn process_command(&mut self) {
+        self.update_status(format!("process command: {}", self.command));
+        self.command.clear();
+        self.print_command();
     }
 
     fn resize(&mut self, cols: u16, rows: u16) -> bool {
@@ -99,33 +109,29 @@ impl Console {
         false
     }
 
+    fn update_status(&mut self, status: String) {
+        self.status = status;
+        terminal::store_cursor();
+        self.print_status();
+        terminal::restore_cursor();
+    }
+
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
         if poll(Duration::from_millis(2)).unwrap() {
             match event::read() {
-                Ok(Event::Key(KeyEvent {
-                    code: KeyCode::Char(c), ..
-                })) => self.process_char(c),
-                Ok(Event::Key(KeyEvent {
-                    code: KeyCode::Backspace, ..
-                })) => terminal::backspace(),
-                Ok(Event::Key(KeyEvent { code: KeyCode::Esc, .. })) => return false,
-                Ok(Event::Resize(cols, rows)) => {
+                Ok(Key(KeyEvent { code: Char(c), .. })) => self.process_char(c),
+                Ok(Key(KeyEvent { code: Backspace, .. })) => terminal::backspace(),
+                Ok(Key(KeyEvent { code: Esc, .. })) => return false,
+                Ok(Key(KeyEvent { code: Enter, .. })) => self.process_command(),
+                Ok(Resize(cols, rows)) => {
                     if self.resize(cols, rows) {
                         self.info = backend.state();
-                        terminal::clear();
+                        // terminal::clear();
                         self.print(backend.memory());
                     }
                 }
-                Ok(event) => {
-                    self.status = format!("unhandled event: {:?}", event);
-                    terminal::store_cursor();
-                    self.print_status();
-                    terminal::restore_cursor();
-                }
-                Err(err) => {
-                    self.status = format!("event handling error: {:?}", err);
-                    self.print_status();
-                }
+                Ok(event) => self.update_status(format!("unhandled event: {:?}", event)),
+                Err(err) => self.update_status(format!("event handling error: {:?}", err)),
             }
             terminal::flush();
         }
