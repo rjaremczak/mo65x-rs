@@ -14,6 +14,7 @@ use crate::{
         cpu::{flags::Flags, registers::Registers, Cpu},
         memory::Memory,
     },
+    Result,
 };
 
 pub struct Backend {
@@ -56,7 +57,7 @@ impl Backend {
         }
     }
 
-    pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {
+    pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize> {
         if self.trap.load(Relaxed) {
             return Err(AppError::EmulatorAlreadyRunning);
         }
@@ -79,6 +80,11 @@ impl Backend {
     #[inline]
     pub fn cpu_flags_mut(&mut self) -> &mut Flags {
         &mut self.cpu.flags
+    }
+
+    #[inline]
+    pub fn set_memory_byte(&mut self, addr: u16, value: u8) {
+        self.memory.set_byte(addr, value)
     }
 
     pub fn run(&mut self, period: Duration) -> bool {

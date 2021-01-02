@@ -6,11 +6,11 @@ use crate::{
     frontend::Frontend,
     info::Info,
     mos6510::{disassembler::disassemble, memory::Memory},
-    terminal,
+    terminal, Result,
 };
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use parser::CommandParser;
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc};
 
@@ -102,19 +102,24 @@ impl Console {
     }
 
     fn process_command(&mut self, backend: &mut Backend) {
+        self.update_status(STATUS_OK);
         match self.parser.parse(&self.command) {
             Some(Command::SetPC(w)) => backend.cpu_regs_mut().pc = w,
             Some(Command::SetSP(b)) => backend.cpu_regs_mut().sp = b,
             Some(Command::SetA(b)) => backend.cpu_regs_mut().a = b,
             Some(Command::SetX(b)) => backend.cpu_regs_mut().x = b,
             Some(Command::SetY(b)) => backend.cpu_regs_mut().y = b,
+            Some(Command::SetMemoryByte(addr, b)) => backend.set_memory_byte(addr, b),
+            Some(Command::Load(addr, f)) => match backend.upload(addr, PathBuf::from(f)) {
+                Ok(size) => self.update_status(&format!("uploaded {} bytes", size)),
+                Err(err) => self.update_status(&format!("error: {:?}", err)),
+            },
             None => {}
         }
         self.info = backend.info();
         self.print_info();
         self.command.clear();
         self.print_command();
-        self.update_status(STATUS_OK);
     }
 
     fn resize(&mut self, cols: u16, rows: u16) -> bool {
