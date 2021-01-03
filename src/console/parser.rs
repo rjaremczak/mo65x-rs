@@ -8,6 +8,8 @@ pub enum Command {
     SetY(u8),
     SetMemoryByte(u16, u8),
     Load(u16, String),
+    DisAddr(u16),
+    DisPcSync,
 }
 
 type Parser = fn(&Captures) -> Command;
@@ -45,7 +47,9 @@ impl CommandParser {
                 (set("x", 2), |c| Command::SetX(hex(c, 2) as u8)),
                 (set("y", 2), |c| Command::SetY(hex(c, 2) as u8)),
                 (set(HEX_U16, 2), |c| Command::SetMemoryByte(hex(c, 1), hex(c, 2) as u8)),
-                (rx(&format!("l\\s+{}\\s+\\S+", HEX_U16)), |c| Command::Load(hex(c, 1), arg(c, 2))),
+                (rx(&format!("l\\s+({})\\s+\\S+", HEX_U16)), |c| Command::Load(hex(c, 1), arg(c, 2))),
+                (rx(&format!("d\\s+({})", HEX_U16)), |c| Command::DisAddr(hex(c, 1))),
+                (rx("d\\s+pc"), |_| Command::DisPcSync),
             ],
         }
     }

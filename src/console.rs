@@ -57,7 +57,7 @@ impl Console {
     fn print(&mut self, memory: &Memory) {
         terminal::hide_cursor();
         self.print_info();
-        self.print_disassembly(self.info.regs.pc, memory);
+        self.dis_view.print(memory);
         self.print_status();
         self.print_command();
         terminal::show_cursor();
@@ -70,20 +70,6 @@ impl Console {
         terminal::normal();
         terminal::print(" ");
         self.info.print();
-    }
-
-    fn print_disassembly(&self, pc: u16, memory: &Memory) {
-        let mut pc = pc;
-        for row in 1..self.size.1 - 1 {
-            let columns = disassemble(memory, &mut pc);
-            terminal::move_cursor(0, row);
-            terminal::normal();
-            terminal::print(&(columns.0 + " "));
-            terminal::dim();
-            terminal::print(&(columns.1 + " "));
-            terminal::bold();
-            terminal::print(&(columns.2));
-        }
     }
 
     fn print_status(&self) {
@@ -120,6 +106,14 @@ impl Console {
                 Ok(size) => self.update_status(&format!("uploaded {} bytes", size)),
                 Err(err) => self.update_status(&format!("error: {:?}", err)),
             },
+            Some(Command::DisAddr(addr)) => {
+                self.dis_view.pc_sync = false;
+                self.dis_view.addr = addr;
+                self.dis_view.print(backend.memory());
+            }
+            Some(Command::DisPcSync) => {
+                self.dis_view.pc_sync = false;
+            }
             None => {}
         }
         self.update_info(backend.info());
@@ -130,6 +124,7 @@ impl Console {
     fn resize(&mut self, cols: u16, rows: u16) -> bool {
         if cols != self.size.0 || rows != self.size.1 {
             self.size = (cols, rows);
+            self.dis_view.rows = 1..self.size.1 - 1;
             return true;
         }
         false

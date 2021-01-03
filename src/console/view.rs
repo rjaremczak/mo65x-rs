@@ -1,5 +1,7 @@
-use crate::info::Info;
+use std::ops::Range;
+
 use crate::terminal;
+use crate::{info::Info, mos6510::disassembler::disassemble};
 
 impl Info {
     fn label(&self, label: &str, text: &str) {
@@ -32,8 +34,25 @@ impl Info {
 
 #[derive(Default)]
 pub struct Disassembler {
+    pub rows: Range<u16>,
     pub addr: u16,
     pub pc_sync: bool,
+}
+
+impl Disassembler {
+    pub fn print(&self, memory: &crate::mos6510::memory::Memory) {
+        let mut lc = self.addr;
+        for row in self.rows.clone() {
+            let columns = disassemble(memory, &mut lc);
+            terminal::move_cursor(0, row);
+            terminal::normal();
+            terminal::print(&(columns.0 + " "));
+            terminal::dim();
+            terminal::print(&(columns.1 + " "));
+            terminal::bold();
+            terminal::print(&(columns.2));
+        }
+    }
 }
 
 #[derive(Default)]
