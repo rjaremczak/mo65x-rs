@@ -1,12 +1,12 @@
 mod parser;
-mod print_info;
+mod view;
 
 use crate::{
     backend::Backend,
     frontend::Frontend,
     info::Info,
     mos6510::{disassembler::disassemble, memory::Memory},
-    terminal, Result,
+    terminal,
 };
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use parser::CommandParser;
@@ -23,6 +23,8 @@ pub struct Console {
     command: String,
     status: String,
     parser: CommandParser,
+    dis_view: view::Disassembler,
+    mem_view: view::Memory,
 }
 
 impl Drop for Console {
@@ -36,16 +38,20 @@ const STATUS_OK: &str = "Ok";
 
 impl Console {
     pub fn new(title: &str) -> Self {
-        let mut console = Self {
+        Self {
             size: terminal::size(),
             title: String::from(title),
             info: Info::default(),
             command: String::default(),
             status: String::from(STATUS_OK),
             parser: CommandParser::new(),
-        };
-        terminal::begin_session();
-        console
+            dis_view: view::Disassembler::default(),
+            mem_view: view::Memory::default(),
+        }
+    }
+
+    pub fn init(&self) {
+        terminal::begin_session()
     }
 
     fn print(&mut self, memory: &Memory) {
@@ -116,8 +122,7 @@ impl Console {
             },
             None => {}
         }
-        self.info = backend.info();
-        self.print_info();
+        self.update_info(backend.info());
         self.command.clear();
         self.print_command();
     }
@@ -135,6 +140,14 @@ impl Console {
         terminal::store_cursor();
         self.print_status();
         terminal::restore_cursor();
+    }
+
+    fn update_info(&mut self, info: Info) {
+        self.info = info;
+        if self.dis_view.pc_sync {
+            self.dis_view.addr = self.info.regs.pc;
+        }
+        self.print_info();
     }
 
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
