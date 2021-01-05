@@ -133,7 +133,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("ok, {} B [{:04X}-{:04X}]", size, start_addr, start_addr + size as u16 - 1);
     println!("clock speed: {} MHz", freq / 1e6);
     println!("start address: {:04X}", start_addr);
-    backend.cpu_regs_mut().pc = start_addr;
+    backend.cpu.regs.pc = start_addr;
     let backend_ptr = AtomicPtr::new(&mut backend);
     let handle = thread::spawn(move || {
         println!("starting thread");
@@ -143,7 +143,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("running, press a key to stop...");
     while !frontend.quit() {
         // TODO: read and process command from UI
-        frontend.update(backend.memory())?;
+        frontend.update(&backend.memory)?;
         //println!("fb refresh");
     }
     backend.set_trap(true);
@@ -151,7 +151,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     handle.join().unwrap();
     let state = backend.info();
     println!("state: {:#?}", state);
-    disassemble_memory(backend.memory(), state.regs.pc, state.regs.pc.saturating_add(20))
+    disassemble_memory(&backend.memory, state.regs.pc, state.regs.pc.saturating_add(20))
         .iter()
         .for_each(print_disassembly_line);
     println!("stopped");
@@ -165,7 +165,7 @@ fn console(title: &str) -> Result<()> {
     console.init();
     while !frontend.quit() && console.process(&mut backend, &mut frontend) {
         frontend.vsync();
-        frontend.update(backend.memory())?;
+        frontend.update(&backend.memory)?;
         // console.update(backend.memory(), backend.state())?;
     }
     Ok(())

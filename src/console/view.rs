@@ -1,9 +1,19 @@
 use std::ops::Range;
 
-use crate::terminal;
-use crate::{info::Info, mos6510::disassembler::disassemble};
+use crate::{backend::Backend, info::Info, mos6510::disassembler::disassemble};
+use crate::{mos6510::memory::Memory, terminal};
 
-impl Info {
+pub struct Header {
+    pub title: String,
+}
+
+impl Header {
+    pub fn new(title: &str) -> Self {
+        Self {
+            title: String::from(title),
+        }
+    }
+
     fn label(&self, label: &str, text: &str) {
         terminal::dim();
         terminal::print(label);
@@ -12,50 +22,49 @@ impl Info {
         terminal::print(text);
     }
 
-    pub fn print(&self) {
-        self.label("PC", &format!("{:04X}", self.regs.pc));
-        self.label(" SP", &format!("{:04X}", self.regs.sp as u16 | 0x100));
-        self.label(" A", &format!("{:02X}", self.regs.a));
-        self.label(" X", &format!("{:02X}", self.regs.x));
-        self.label(" Y", &format!("{:02X}", self.regs.y));
-        self.label(" P", &format!("{:08b}", self.flags.to_byte()));
-        self.label(
-            " T",
-            match self.trap {
-                true => "on",
-                false => "off",
-            },
-        );
-        if self.cycles > 0 {
-            self.label(" F", &format!("{}", self.frequency()));
+    pub fn print(&self, info: Info) {
+        terminal::move_cursor(0, 0);
+        terminal::special();
+        terminal::print(&self.title);
+        terminal::normal();
+        terminal::print(" ");
+        self.label("PC", &format!("{:04X}", info.regs.pc));
+        self.label(" SP", &format!("{:04X}", info.regs.sp as u16 | 0x100));
+        self.label(" A", &format!("{:02X}", info.regs.a));
+        self.label(" X", &format!("{:02X}", info.regs.x));
+        self.label(" Y", &format!("{:02X}", info.regs.y));
+        self.label(" P", &format!("{:08b}", info.flags.to_byte()));
+        if info.cycles > 0 {
+            self.label(" F", &format!("{}", info.frequency()));
         }
     }
 }
 
 #[derive(Default)]
-pub struct Disassembler {
+pub struct CodeView {
     pub rows: Range<u16>,
     pub addr: u16,
-    pub pc_sync: bool,
 }
 
-impl Disassembler {
-    pub fn print(&self, memory: &crate::mos6510::memory::Memory) {
+impl CodeView {
+    pub fn print(&self, backend: &Backend) {
         let mut lc = self.addr;
         for row in self.rows.clone() {
-            let columns = disassemble(memory, &mut lc);
+            let columns = disassemble(&backend.memory, &mut lc);
+            let highlight = lc == backend.cpu.regs.pc;
             terminal::move_cursor(0, row);
-            terminal::normal();
-            terminal::print(&(columns.0 + " "));
-            terminal::dim();
-            terminal::print(&(columns.1 + " "));
-            terminal::bold();
+            if highlight {
+                terminal::normal()
+            } else {
+                terminal::dim();
+            }
+            terminal::print(&format!("{} {} ", columns.0, columns.1));
+            if highlight {
+                terminal::special()
+            } else {
+                terminal::normal();
+            }
             terminal::print(&(columns.2));
         }
     }
-}
-
-#[derive(Default)]
-pub struct Memory {
-    pub addr: u16,
 }

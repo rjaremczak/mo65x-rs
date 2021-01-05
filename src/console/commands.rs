@@ -8,14 +8,10 @@ pub enum Command {
     SetY(u8),
     SetMemoryByte(u16, u8),
     Load(u16, String),
-    DisAddr(u16),
-    DisPcSync,
+    Disassemble(u16),
 }
 
 type Parser = fn(&Captures) -> Command;
-
-const HEX_U16: &str = "[0-9a-f]{1,4}";
-const HEX_U8: &str = "[0-9a-f]{1,4}";
 
 pub struct CommandParser {
     parsers: Vec<(Regex, Parser)>,
@@ -46,10 +42,9 @@ impl CommandParser {
                 (set("a", 2), |c| Command::SetA(hex(c, 2) as u8)),
                 (set("x", 2), |c| Command::SetX(hex(c, 2) as u8)),
                 (set("y", 2), |c| Command::SetY(hex(c, 2) as u8)),
-                (set(HEX_U16, 2), |c| Command::SetMemoryByte(hex(c, 1), hex(c, 2) as u8)),
-                (rx(&format!("l\\s+({})\\s+\\S+", HEX_U16)), |c| Command::Load(hex(c, 1), arg(c, 2))),
-                (rx(&format!("d\\s+({})", HEX_U16)), |c| Command::DisAddr(hex(c, 1))),
-                (rx("d\\s+pc"), |_| Command::DisPcSync),
+                (set("[0-9a-f]{1,4}", 2), |c| Command::SetMemoryByte(hex(c, 1), hex(c, 2) as u8)),
+                (rx("l\\s*([0-9a-f]{1,4})\\s+(\\S+)"), |c| Command::Load(hex(c, 1), arg(c, 2))),
+                (rx("d\\s*([0-9a-f]{1,4})"), |c| Command::Disassemble(hex(c, 1))),
             ],
         }
     }

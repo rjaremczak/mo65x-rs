@@ -18,8 +18,8 @@ use crate::{
 };
 
 pub struct Backend {
-    cpu: Cpu,
-    memory: Memory,
+    pub memory: Memory,
+    pub cpu: Cpu,
     trap: AtomicBool,
     cycles: AtomicU64,
     duration_ns: AtomicU64,
@@ -65,26 +65,6 @@ impl Backend {
         let size = File::open(&fpath)?.read_to_end(&mut buf)?;
         self.memory.set_block(addr, &buf);
         Ok(size)
-    }
-
-    #[inline]
-    pub fn memory(&self) -> &Memory {
-        &self.memory
-    }
-
-    #[inline]
-    pub fn cpu_regs_mut(&mut self) -> &mut Registers {
-        &mut self.cpu.regs
-    }
-
-    #[inline]
-    pub fn cpu_flags_mut(&mut self) -> &mut Flags {
-        &mut self.cpu.flags
-    }
-
-    #[inline]
-    pub fn set_memory_byte(&mut self, addr: u16, value: u8) {
-        self.memory.set_byte(addr, value)
     }
 
     pub fn run(&mut self, period: Duration) -> bool {
