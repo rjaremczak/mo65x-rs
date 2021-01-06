@@ -67,18 +67,17 @@ impl Backend {
         Ok(size)
     }
 
-    pub fn run(&mut self, period: Duration) -> bool {
+    pub fn run(&mut self, period: Duration) -> u8 {
         let period_ns = period.as_nanos() as u64;
         loop {
             let t0 = Instant::now();
-            let cycles = self.cpu.exec_inst(&mut self.memory) as u64;
-            let t1 = t0 + Duration::from_nanos(period_ns * cycles);
+            let cycles = self.cpu.exec_inst(&mut self.memory);
+            let t1 = t0 + Duration::from_nanos(period_ns * cycles as u64);
             while Instant::now() < t1 {}
-            self.cycles.fetch_add(cycles, Relaxed);
+            self.cycles.fetch_add(cycles as u64, Relaxed);
             self.duration_ns.fetch_add((Instant::now() - t0).as_nanos() as u64, Relaxed);
             if cycles == 0 || self.trap.load(Relaxed) {
-                println!("run ends: {}", cycles != 0);
-                return cycles != 0;
+                return cycles;
             }
         }
     }

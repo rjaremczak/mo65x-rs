@@ -42,6 +42,7 @@ impl Header {
 
 #[derive(Default)]
 pub struct CodeView {
+    pub width: u16,
     pub rows: Range<u16>,
     pub addr: u16,
 }
@@ -49,22 +50,22 @@ pub struct CodeView {
 impl CodeView {
     pub fn print(&self, backend: &Backend) {
         let mut lc = self.addr;
-        for row in self.rows.clone() {
+        for _ in self.rows.clone() {
             let columns = disassemble(&backend.memory, &mut lc);
             let highlight = lc == backend.cpu.regs.pc;
-            terminal::move_cursor(0, row);
             if highlight {
                 terminal::normal()
             } else {
                 terminal::dim();
             }
-            terminal::print(&format!("{} {} ", columns.0, columns.1));
+            let left = &format!("{} {} ", columns.0, columns.1);
+            terminal::print(left);
             if highlight {
                 terminal::special()
             } else {
                 terminal::normal();
             }
-            terminal::print(&(columns.2));
+            terminal::print(&format!("{:1$}\n", columns.2, self.width as usize - left.len() - 10));
         }
     }
 }

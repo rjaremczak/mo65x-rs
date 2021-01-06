@@ -7,7 +7,7 @@ use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{path::PathBuf, time::Duration};
 use view::CodeView;
 use Event::{Key, Resize};
-use KeyCode::{Backspace, Char, Enter, Esc};
+use KeyCode::{Backspace, Char, Enter, Esc, F};
 
 use self::{commands::Command, view::Header};
 
@@ -70,14 +70,17 @@ impl Console {
         if cols != self.size.0 || rows != self.size.1 {
             self.size = (cols, rows);
             self.code.rows = 1..self.size.1 - 1;
+            self.code.width = cols;
             return true;
         }
         false
     }
 
     fn backspace(&mut self) {
-        terminal::backspace();
-        self.command.pop();
+        if !self.command.is_empty() {
+            terminal::backspace();
+            self.command.pop();
+        }
     }
 
     fn process_command(&mut self, backend: &mut Backend) {
@@ -138,6 +141,21 @@ impl Console {
                 Ok(Key(KeyEvent { code: Backspace, .. })) => self.backspace(),
                 Ok(Key(KeyEvent { code: Esc, .. })) => return false,
                 Ok(Key(KeyEvent { code: Enter, .. })) => self.process_command(backend),
+                Ok(Key(KeyEvent { code: F(10), .. })) => {
+                    backend.set_trap(true);
+                    match backend.run(Duration::from_micros(1)) {
+                        0 => self.update_status(format!(
+                            "halted at {:04X}, invalid opcode: {:02X}",
+                            backend.cpu.regs.pc, backend.memory[backend.cpu.regs.pc]
+                        )),
+                        cycles @ _ => self.update_status(format!("ok, {} cycles spent", cycles)),
+                    }
+                    self.header.print(backend.info());
+                    self.code.print(&backend);
+                }
+                Ok(Key(KeyEvent { code: F(5), .. })) => {
+                    self.update_status(String::from("run not yet implemented"));
+                }
                 Ok(Resize(cols, rows)) => {
                     if self.resize(cols, rows) {
                         self.header.print(backend.info());
