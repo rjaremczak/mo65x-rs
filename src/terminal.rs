@@ -3,7 +3,7 @@ use std::io::{stdout, Write};
 const SPACE: &str = " ";
 
 use crossterm::{
-    cursor::{position, EnableBlinking, Hide, MoveLeft, MoveTo, RestorePosition, SavePosition, Show},
+    cursor::{position, EnableBlinking, Hide, MoveLeft, MoveTo, MoveToNextLine, RestorePosition, SavePosition, Show},
     execute,
     style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{
@@ -44,6 +44,11 @@ pub fn dim() {
 #[inline]
 pub fn print(text: &str) {
     stdout().queue(Print(text)).unwrap();
+}
+
+#[inline]
+pub fn println(text: &str) {
+    stdout().queue(Print(text)).unwrap().queue(MoveToNextLine(1)).unwrap();
 }
 
 pub fn fill(endpos: usize) {
@@ -104,4 +109,8 @@ pub fn begin_session() {
 pub fn end_session() {
     execute!(stdout(), LeaveAlternateScreen, EnableLineWrap, EnableBlinking).unwrap();
     disable_raw_mode().unwrap();
+}
+
+pub fn newline() {
+    stdout().queue(MoveToNextLine(1));
 }

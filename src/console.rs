@@ -12,7 +12,8 @@ use KeyCode::{Backspace, Char, Enter, Esc, F};
 use self::{commands::Command, view::Header};
 
 pub struct Console {
-    size: (u16, u16),
+    cols: u16,
+    rows: u16,
     header: Header,
     command: String,
     status: String,
@@ -32,7 +33,8 @@ const STATUS_OK: &str = "Ok";
 impl Console {
     pub fn new(title: &str) -> Self {
         Self {
-            size: terminal::size(),
+            cols: 0,
+            rows: 0,
             header: Header::new(title),
             command: String::default(),
             status: String::from(STATUS_OK),
@@ -41,39 +43,31 @@ impl Console {
         }
     }
 
-    pub fn init(&self) {
-        terminal::begin_session()
+    pub fn init(&mut self, backend: &Backend) {
+        terminal::begin_session();
+        let (cols, rows) = terminal::size();
+        self.update_size(backend, cols, rows);
     }
 
     fn print_status(&self) {
-        terminal::move_cursor(0, self.size.1);
+        terminal::move_cursor(0, self.rows);
         terminal::dim();
-        terminal::print(&format!("{:1$}", self.status, self.size.0 as usize));
+        terminal::print(&format!("{:1$}", self.status, self.cols as usize));
     }
 
     fn print_command(&self) {
         let len = (PROMPT.len() + self.command.len()) as u16;
-        terminal::move_cursor(0, self.size.1 - 1);
+        terminal::move_cursor(0, self.rows - 1);
         terminal::bold();
         terminal::print(PROMPT);
         terminal::special();
-        terminal::print(&format!("{:1$}", self.command, self.size.0 as usize - len as usize));
-        terminal::move_cursor(len, self.size.1 - 1);
+        terminal::print(&format!("{:1$}", self.command, self.cols as usize - len as usize));
+        terminal::move_cursor(len, self.rows - 1);
     }
 
     fn process_char(&mut self, c: char) {
         self.command.push(c);
         terminal::print(&self.command[self.command.len() - 1..]);
-    }
-
-    fn resize(&mut self, cols: u16, rows: u16) -> bool {
-        if cols != self.size.0 || rows != self.size.1 {
-            self.size = (cols, rows);
-            self.code.rows = 1..self.size.1 - 1;
-            self.code.width = cols;
-            return true;
-        }
-        false
     }
 
     fn backspace(&mut self) {
@@ -156,14 +150,7 @@ impl Console {
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
                     self.update_status(String::from("run not yet implemented"));
                 }
-                Ok(Resize(cols, rows)) => {
-                    if self.resize(cols, rows) {
-                        self.header.print(backend.info());
-                        self.code.print(&backend);
-                        self.print_status();
-                        self.print_command();
-                    }
-                }
+                Ok(Resize(cols, rows)) => self.update_size(backend, cols, rows),
                 Ok(event) => self.update_status(format!("unhandled event: {:?}", event)),
                 Err(err) => self.update_status(format!("event handling error: {:?}", err)),
             }
@@ -172,10 +159,19 @@ impl Console {
         true
     }
 
+    fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16) {
+        if cols != self.cols || rows != self.rows {
+            self.code.rows = rows - 2;
+            self.code.width = cols;
+            self.header.print(backend.info());
+            self.code.print(&backend);
+            self.print_status();
+            self.print_command();
+        }
+    }
+
     fn update_status(&mut self, status: String) {
-        terminal::store_cursor();
         self.status = status;
         self.print_status();
-        terminal::restore_cursor();
     }
 }

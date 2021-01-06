@@ -37,20 +37,21 @@ impl Header {
         if info.cycles > 0 {
             self.label(" F", &format!("{}", info.frequency()));
         }
+        terminal::newline();
     }
 }
 
 #[derive(Default)]
 pub struct CodeView {
     pub width: u16,
-    pub rows: Range<u16>,
+    pub rows: u16,
     pub addr: u16,
 }
 
 impl CodeView {
     pub fn print(&self, backend: &Backend) {
         let mut lc = self.addr;
-        for _ in self.rows.clone() {
+        for _ in 0..self.rows {
             let columns = disassemble(&backend.memory, &mut lc);
             let highlight = lc == backend.cpu.regs.pc;
             if highlight {
@@ -65,7 +66,7 @@ impl CodeView {
             } else {
                 terminal::normal();
             }
-            terminal::print(&format!("{:1$}\n", columns.2, self.width as usize - left.len() - 10));
+            terminal::println(&format!("{:1$}", columns.2, self.width as usize - left.len() - 10));
         }
     }
 }
