@@ -4,26 +4,25 @@ use std::time::{Duration, Instant};
 
 pub struct Frontend {
     next_update: Instant,
-    framebuf_addr: u16,
     framebuf: Vec<u32>,
     window: Window,
 }
 
-impl Frontend {
-    pub const WIDTH: usize = 32;
-    pub const HEIGHT: usize = 32;
-    pub const FB_LEN: usize = Self::WIDTH * Self::HEIGHT;
-    pub const UPDATE_PERIOD: Duration = Duration::from_millis(20);
+const WIDTH: usize = 32;
+const HEIGHT: usize = 32;
+const FB_ADDR: u16 = 0x200;
+const FB_LEN: usize = WIDTH * HEIGHT;
+const UPDATE_PERIOD: Duration = Duration::from_millis(20);
 
+impl Frontend {
     pub fn new() -> Self {
         let mut frontend = Self {
             next_update: Instant::now(),
-            framebuf_addr: 0x200,
-            framebuf: vec![0; Self::FB_LEN],
+            framebuf: vec![0; FB_LEN],
             window: Window::new(
-                "Frame Buffer",
-                Self::WIDTH,
-                Self::HEIGHT,
+                &format!("{:04X} {:.1} fps", FB_ADDR, 1.0 / UPDATE_PERIOD.as_secs_f64()),
+                WIDTH,
+                HEIGHT,
                 WindowOptions {
                     scale: minifb::Scale::X8,
                     scale_mode: minifb::ScaleMode::AspectRatioStretch,
@@ -47,15 +46,15 @@ impl Frontend {
 
     pub fn vsync(&mut self) {
         while Instant::now() < self.next_update {}
-        self.next_update = Instant::now() + Self::UPDATE_PERIOD;
+        self.next_update = Instant::now() + UPDATE_PERIOD;
     }
 
     pub fn update(&mut self, memory: &Memory) -> Result<()> {
-        let vmem = memory.view(self.framebuf_addr, Self::FB_LEN);
-        for i in 0..Self::FB_LEN {
+        let vmem = memory.view(FB_ADDR, FB_LEN);
+        for i in 0..FB_LEN {
             self.framebuf[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
         }
-        self.window.update_with_buffer(&mut self.framebuf, Self::WIDTH, Self::HEIGHT)?;
+        self.window.update_with_buffer(&mut self.framebuf, WIDTH, HEIGHT)?;
         Ok(())
     }
 

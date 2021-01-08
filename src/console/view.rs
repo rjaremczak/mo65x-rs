@@ -24,7 +24,7 @@ impl Header {
 
     pub fn print(&self, info: Info) {
         terminal::move_cursor(0, 0);
-        terminal::special();
+        terminal::highlight();
         terminal::print(&self.title);
         terminal::normal();
         terminal::print(" ");
@@ -35,7 +35,7 @@ impl Header {
         self.label(" Y", &format!("{:02X}", info.regs.y));
         self.label(" P", &format!("{:08b}", info.flags.to_byte()));
         if info.cycles > 0 {
-            self.label(" F", &format!("{}", info.frequency()));
+            self.label(" f", &format!("{:.2} MHz", info.frequency() / 1e6));
         }
         terminal::newline();
     }
@@ -50,10 +50,11 @@ pub struct CodeView {
 
 impl CodeView {
     pub fn print(&self, backend: &Backend) {
+        terminal::move_cursor(0, 1);
         let mut lc = self.addr;
         for _ in 0..self.rows {
-            let columns = disassemble(&backend.memory, &mut lc);
             let highlight = lc == backend.cpu.regs.pc;
+            let columns = disassemble(&backend.memory, &mut lc);
             if highlight {
                 terminal::normal()
             } else {
@@ -62,7 +63,7 @@ impl CodeView {
             let left = &format!("{} {} ", columns.0, columns.1);
             terminal::print(left);
             if highlight {
-                terminal::special()
+                terminal::highlight()
             } else {
                 terminal::normal();
             }

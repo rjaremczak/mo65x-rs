@@ -77,20 +77,6 @@ fn parse_hex(hex: &str) -> Result<u16> {
     u16::from_str_radix(hex, 16).map_err(|e| AppError::ParseIntError(String::from(hex), e))
 }
 
-fn main() {
-    let cliopt = CliOpt::from_args();
-    println!("cliopt: {:#?}", cliopt);
-    let result = match cliopt.mode.unwrap_or(Mode::Interactive) {
-        Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
-        Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
-        Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
-        Mode::Interactive => console(APP_NAME),
-    };
-    if let Err(apperr) = result {
-        println!("\napplication error: {:?}", apperr)
-    }
-}
-
 fn assemble(src: PathBuf, bin: Option<PathBuf>, dump_symbols: bool) -> Result<()> {
     println!("source file {:?}, assembling ...", src);
     let (origin, code, symbols) = assembler::assemble_file(&src)?;
@@ -169,4 +155,18 @@ fn console(title: &str) -> Result<()> {
         // console.update(backend.memory(), backend.state())?;
     }
     Ok(())
+}
+
+fn main() {
+    let cliopt = CliOpt::from_args();
+    println!("cliopt: {:#?}", cliopt);
+    let result = match cliopt.mode.unwrap_or(Mode::Interactive) {
+        Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
+        Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
+        Mode::Exec { start_addr, bin, freq } => execute(start_addr, bin, freq),
+        Mode::Interactive => console(APP_NAME),
+    };
+    if let Err(apperr) = result {
+        println!("\napplication error: {:?}", apperr)
+    }
 }

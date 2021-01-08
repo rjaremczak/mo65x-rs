@@ -32,7 +32,7 @@ pub fn reverse() {
 }
 
 #[inline]
-pub fn special() {
+pub fn highlight() {
     stdout().queue(SetForegroundColor(Color::Yellow)).unwrap();
 }
 
@@ -49,12 +49,6 @@ pub fn print(text: &str) {
 #[inline]
 pub fn println(text: &str) {
     stdout().queue(Print(text)).unwrap().queue(MoveToNextLine(1)).unwrap();
-}
-
-pub fn fill(endpos: usize) {
-    stdout()
-        .queue(Print(SPACE.repeat(endpos - position().unwrap().0 as usize)))
-        .unwrap();
 }
 
 #[inline]

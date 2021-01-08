@@ -30,7 +30,7 @@ impl Backend {
         let mut backend = Self {
             cpu: Cpu::new(),
             memory: Memory::new(),
-            trap: AtomicBool::new(false),
+            trap: AtomicBool::new(true),
             cycles: AtomicU64::new(0),
             duration_ns: AtomicU64::new(0),
         };
@@ -58,7 +58,7 @@ impl Backend {
     }
 
     pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize> {
-        if self.trap.load(Relaxed) {
+        if !self.trap.load(Relaxed) {
             return Err(AppError::EmulatorAlreadyRunning);
         }
         let mut buf = Vec::new();

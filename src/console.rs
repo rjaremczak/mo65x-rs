@@ -60,25 +60,28 @@ impl Console {
         terminal::move_cursor(0, self.rows - 1);
         terminal::bold();
         terminal::print(PROMPT);
-        terminal::special();
+        terminal::highlight();
         terminal::print(&format!("{:1$}", self.command, self.cols as usize - len as usize));
         terminal::move_cursor(len, self.rows - 1);
+        terminal::store_cursor();
     }
 
     fn process_char(&mut self, c: char) {
         self.command.push(c);
         terminal::print(&self.command[self.command.len() - 1..]);
+        terminal::store_cursor();
     }
 
     fn backspace(&mut self) {
         if !self.command.is_empty() {
-            terminal::backspace();
             self.command.pop();
+            terminal::backspace();
+            terminal::store_cursor();
         }
     }
 
     fn process_command(&mut self, backend: &mut Backend) {
-        self.status = String::from(STATUS_OK);
+        let mut status = String::from(STATUS_OK);
         match self.parser.parse(&self.command) {
             Some(Command::SetPC(pc)) => {
                 backend.cpu.regs.pc = pc;
@@ -108,11 +111,11 @@ impl Console {
             Some(Command::Load(addr, fpath)) => {
                 match backend.upload(addr, PathBuf::from(fpath)) {
                     Ok(size) => {
-                        self.update_status(format!("uploaded {} bytes", size));
                         self.code.print(&backend);
+                        status = format!("uploaded {} bytes", size);
                     }
                     Err(err) => {
-                        self.update_status(format!("error: {:?}", err));
+                        status = format!("error: {:?}", err);
                     }
                 };
             }
@@ -121,9 +124,10 @@ impl Console {
                 self.code.print(&backend);
             }
             None => {
-                self.update_status(format!("invalid command: {}", &self.command));
+                status = format!("invalid command: {}", &self.command);
             }
         }
+        self.update_status(status);
         self.command.clear();
         self.print_command();
     }
@@ -131,10 +135,18 @@ impl Console {
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
         if poll(Duration::from_millis(2)).unwrap() {
             match event::read() {
-                Ok(Key(KeyEvent { code: Char(c), .. })) => self.process_char(c),
-                Ok(Key(KeyEvent { code: Backspace, .. })) => self.backspace(),
-                Ok(Key(KeyEvent { code: Esc, .. })) => return false,
-                Ok(Key(KeyEvent { code: Enter, .. })) => self.process_command(backend),
+                Ok(Key(KeyEvent { code: Char(c), .. })) => {
+                    self.process_char(c);
+                }
+                Ok(Key(KeyEvent { code: Backspace, .. })) => {
+                    self.backspace();
+                }
+                Ok(Key(KeyEvent { code: Esc, .. })) => {
+                    return false;
+                }
+                Ok(Key(KeyEvent { code: Enter, .. })) => {
+                    self.process_command(backend);
+                }
                 Ok(Key(KeyEvent { code: F(10), .. })) => {
                     backend.set_trap(true);
                     match backend.run(Duration::from_micros(1)) {
@@ -150,10 +162,17 @@ impl Console {
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
                     self.update_status(String::from("run not yet implemented"));
                 }
-                Ok(Resize(cols, rows)) => self.update_size(backend, cols, rows),
-                Ok(event) => self.update_status(format!("unhandled event: {:?}", event)),
-                Err(err) => self.update_status(format!("event handling error: {:?}", err)),
+                Ok(Resize(cols, rows)) => {
+                    self.update_size(backend, cols, rows);
+                }
+                Ok(event) => {
+                    self.update_status(format!("unhandled event: {:?}", event));
+                }
+                Err(err) => {
+                    self.update_status(format!("event handling error: {:?}", err));
+                }
             }
+            terminal::restore_cursor();
             terminal::flush();
         }
         true
@@ -161,6 +180,8 @@ impl Console {
 
     fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16) {
         if cols != self.cols || rows != self.rows {
+            self.cols = cols;
+            self.rows = rows;
             self.code.rows = rows - 2;
             self.code.width = cols;
             self.header.print(backend.info());
