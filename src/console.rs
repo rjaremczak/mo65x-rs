@@ -181,8 +181,8 @@ impl Console {
     fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16) {
         if cols != self.cols || rows != self.rows {
             self.cols = cols;
-            self.rows = rows;
-            self.view.resize(cols, rows - 2);
+            self.rows = rows - 1;
+            self.view.resize(self.cols, self.rows - 2);
             self.header.print(backend.info());
             self.view.print(&backend);
             self.print_status();

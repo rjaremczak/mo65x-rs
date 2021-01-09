@@ -1,7 +1,5 @@
-use std::ops::Range;
-
+use crate::terminal;
 use crate::{backend::Backend, info::Info, mos6510::disassembler::disassemble};
-use crate::{mos6510::memory::Memory, terminal};
 
 pub struct Header {
     pub title: String,
@@ -88,7 +86,7 @@ impl View {
             terminal::print(" │ ");
             terminal::print(&format!("{:04X}", dump));
             terminal::normal();
-            for _ in 0..=self.bytes_per_row {
+            for _ in 0..self.bytes_per_row {
                 terminal::print(&format!(" {:02X}", backend.memory[dump]));
                 dump = dump.wrapping_add(1);
             }
