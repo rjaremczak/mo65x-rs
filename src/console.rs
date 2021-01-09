@@ -1,11 +1,11 @@
 mod commands;
 mod view;
 
-use crate::{backend::Backend, frontend::Frontend, info::Info, mos6510::memory::Memory, terminal};
+use crate::{backend::Backend, frontend::Frontend, terminal};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{path::PathBuf, time::Duration};
-use view::CodeView;
+use view::View;
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc, F};
 
@@ -18,7 +18,7 @@ pub struct Console {
     command: String,
     status: String,
     parser: CommandParser,
-    code: CodeView,
+    view: View,
 }
 
 impl Drop for Console {
@@ -39,7 +39,7 @@ impl Console {
             command: String::default(),
             status: String::from(STATUS_OK),
             parser: CommandParser::new(),
-            code: CodeView::default(),
+            view: View::default(),
         }
     }
 
@@ -86,7 +86,7 @@ impl Console {
             Some(Command::SetPC(pc)) => {
                 backend.cpu.regs.pc = pc;
                 self.header.print(backend.info());
-                self.code.print(backend);
+                self.view.print(backend);
             }
             Some(Command::SetSP(sp)) => {
                 backend.cpu.regs.sp = sp;
@@ -106,12 +106,12 @@ impl Console {
             }
             Some(Command::SetMemoryByte(addr, value)) => {
                 backend.memory[addr] = value;
-                self.code.print(&backend);
+                self.view.print(&backend);
             }
             Some(Command::Load(addr, fpath)) => {
                 match backend.upload(addr, PathBuf::from(fpath)) {
                     Ok(size) => {
-                        self.code.print(&backend);
+                        self.view.print(&backend);
                         status = format!("uploaded {} bytes", size);
                     }
                     Err(err) => {
@@ -120,8 +120,8 @@ impl Console {
                 };
             }
             Some(Command::Disassemble(addr)) => {
-                self.code.addr = addr;
-                self.code.print(&backend);
+                self.view.code_addr = addr;
+                self.view.print(&backend);
             }
             None => {
                 status = format!("invalid command: {}", &self.command);
@@ -157,7 +157,7 @@ impl Console {
                         cycles @ _ => self.update_status(format!("ok, {} cycles spent", cycles)),
                     }
                     self.header.print(backend.info());
-                    self.code.print(&backend);
+                    self.view.print(&backend);
                 }
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
                     self.update_status(String::from("run not yet implemented"));
@@ -182,10 +182,9 @@ impl Console {
         if cols != self.cols || rows != self.rows {
             self.cols = cols;
             self.rows = rows;
-            self.code.rows = rows - 2;
-            self.code.width = cols;
+            self.view.resize(cols, rows - 2);
             self.header.print(backend.info());
-            self.code.print(&backend);
+            self.view.print(&backend);
             self.print_status();
             self.print_command();
         }

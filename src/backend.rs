@@ -92,3 +92,14 @@ impl Backend {
         self.trap.load(Relaxed)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let b = Backend::new();
+        assert!(b.trap());
+    }
+}

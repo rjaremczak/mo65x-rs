@@ -24,6 +24,7 @@ impl Header {
 
     pub fn print(&self, info: Info) {
         terminal::move_cursor(0, 0);
+        terminal::clear_line();
         terminal::highlight();
         terminal::print(&self.title);
         terminal::normal();
@@ -42,19 +43,33 @@ impl Header {
 }
 
 #[derive(Default)]
-pub struct CodeView {
-    pub width: u16,
-    pub rows: u16,
-    pub addr: u16,
+pub struct View {
+    pub code_addr: u16,
+    pub dump_addr: u16,
+
+    cols: u16,
+    rows: u16,
+    bytes_per_row: u16,
 }
 
-impl CodeView {
+const START_ROW: u16 = 1;
+const DUMP_COL: u16 = 30;
+
+impl View {
+    pub fn resize(&mut self, cols: u16, rows: u16) {
+        self.cols = cols;
+        self.rows = rows;
+        self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
+    }
+
     pub fn print(&self, backend: &Backend) {
-        terminal::move_cursor(0, 1);
-        let mut lc = self.addr;
+        terminal::move_cursor(0, START_ROW);
+        let mut code = self.code_addr;
+        let mut dump = self.dump_addr;
         for _ in 0..self.rows {
-            let highlight = lc == backend.cpu.regs.pc;
-            let columns = disassemble(&backend.memory, &mut lc);
+            terminal::clear_line();
+            let highlight = code == backend.cpu.regs.pc;
+            let columns = disassemble(&backend.memory, &mut code);
             if highlight {
                 terminal::normal()
             } else {
@@ -67,7 +82,17 @@ impl CodeView {
             } else {
                 terminal::normal();
             }
-            terminal::println(&format!("{:1$}", columns.2, self.width as usize - left.len() - 10));
+            terminal::print(&columns.2);
+            terminal::move_to_col(DUMP_COL);
+            terminal::dim();
+            terminal::print(" │ ");
+            terminal::print(&format!("{:04X}", dump));
+            terminal::normal();
+            for _ in 0..=self.bytes_per_row {
+                terminal::print(&format!(" {:02X}", backend.memory[dump]));
+                dump = dump.wrapping_add(1);
+            }
+            terminal::newline();
         }
     }
 }
