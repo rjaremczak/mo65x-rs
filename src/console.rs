@@ -2,10 +2,10 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{backend::Backend, frontend::Frontend, terminal};
+use crate::{backend::Backend, error::Result, frontend::Frontend, terminal};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, sync::atomic::AtomicPtr, thread, time::Duration};
 use view::View;
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc, F};
@@ -80,6 +80,10 @@ impl Console {
                 self.view.code_addr = addr;
                 self.view.print_dump(&backend);
             }
+            Some(Command::MemoryDump(addr)) => {
+                self.view.dump_addr = addr;
+                self.view.print_dump(&backend);
+            }
             None => {
                 status = format!("invalid command: {}", &self.view.command);
             }
@@ -87,6 +91,20 @@ impl Console {
         self.view.update_status(status);
         self.view.command.clear();
         self.view.print_command();
+    }
+
+    unsafe fn execute(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<()> {
+        backend.set_trap(false);
+        let backend_ptr = AtomicPtr::new(backend);
+        let handle = thread::spawn(move || (*backend_ptr.into_inner()).run(Duration::from_micros(1)));
+        let mut fberr: Result<()> = Ok(());
+        while !frontend.quit() && fberr.is_ok() {
+            frontend.vsync();
+            fberr = frontend.update(&backend.memory);
+        }
+        backend.set_trap(true);
+        handle.join().unwrap();
+        fberr
     }
 
     pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
@@ -106,18 +124,22 @@ impl Console {
                 }
                 Ok(Key(KeyEvent { code: F(10), .. })) => {
                     backend.set_trap(true);
-                    self.view.print_header(backend.info());
-                    self.view.print_dump(&backend);
-                    self.view.update_status(match backend.run(Duration::from_micros(1)) {
+                    let status = match backend.run(Duration::from_micros(1)) {
                         0 => format!(
                             "halted at {:04X}, invalid opcode: {:02X}",
                             backend.cpu.regs.pc, backend.memory[backend.cpu.regs.pc]
                         ),
                         cycles @ _ => format!("ok, {} cycles spent", cycles),
-                    });
+                    };
+                    self.view.print_header(backend.info());
+                    self.view.print_dump(&backend);
+                    self.view.update_status(status);
                 }
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
-                    self.view.update_status(String::from("run not yet implemented"));
+                    self.view.update_status(String::from("running..."));
+                    terminal::flush();
+                    let result = unsafe { self.execute(backend, frontend) };
+                    self.view.update_status(format!("{:?}", result));
                 }
                 Ok(Resize(cols, rows)) => {
                     self.view.update_size(backend, cols, rows);

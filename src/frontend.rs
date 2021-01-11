@@ -36,7 +36,7 @@ impl Frontend {
             .unwrap(),
         };
         frontend.framebuf.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
-        // frontend.window.limit_update_rate(None);
+        // frontend.window.limit_update_rate(Some(Duration::from_millis(20)));
         frontend
     }
 

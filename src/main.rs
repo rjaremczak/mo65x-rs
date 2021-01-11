@@ -129,6 +129,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("running, press a key to stop...");
     while !frontend.quit() {
         // TODO: read and process command from UI
+        frontend.vsync();
         frontend.update(&backend.memory)?;
         //println!("fb refresh");
     }
@@ -152,7 +153,6 @@ fn console(title: &str) -> Result<()> {
     while !frontend.quit() && console.process(&mut backend, &mut frontend) {
         frontend.vsync();
         frontend.update(&backend.memory)?;
-        // console.update(backend.memory(), backend.state())?;
     }
     Ok(())
 }

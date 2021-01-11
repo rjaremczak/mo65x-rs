@@ -87,6 +87,11 @@ pub fn show_cursor() {
 }
 
 #[inline]
+pub fn hide_cursor() {
+    stdout().execute(Hide).unwrap();
+}
+
+#[inline]
 pub fn store_cursor() {
     stdout().execute(SavePosition).unwrap();
 }

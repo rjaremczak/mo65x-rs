@@ -81,6 +81,7 @@ impl View {
     }
 
     pub fn print_dump(&self, backend: &Backend) {
+        terminal::hide_cursor();
         terminal::set_cursor_pos(0, self.dump_row);
         let mut code = self.code_addr;
         let mut dump = self.dump_addr;
@@ -112,6 +113,7 @@ impl View {
             }
             terminal::newline();
         }
+        terminal::show_cursor();
     }
 
     pub fn print_command(&self) {

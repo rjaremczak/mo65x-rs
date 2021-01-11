@@ -9,6 +9,7 @@ pub enum Command {
     SetMemoryByte(u16, u8),
     Load(u16, String),
     Disassemble(u16),
+    MemoryDump(u16),
 }
 
 type Parser = fn(&Captures) -> Command;
@@ -45,6 +46,7 @@ impl CommandParser {
                 (set("[0-9a-f]{1,4}", 2), |c| Command::SetMemoryByte(hex(c, 1), hex(c, 2) as u8)),
                 (rx("l\\s*([0-9a-f]{1,4})\\s+(\\S+)"), |c| Command::Load(hex(c, 1), arg(c, 2))),
                 (rx("d\\s*([0-9a-f]{1,4})"), |c| Command::Disassemble(hex(c, 1))),
+                (rx("m\\s*([0-9a-f]{1,4})"), |c| Command::MemoryDump(hex(c, 1))),
             ],
         }
     }
