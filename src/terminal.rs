@@ -47,17 +47,12 @@ pub fn print(text: &str) {
 }
 
 #[inline]
-pub fn println(text: &str) {
-    stdout().queue(Print(text)).unwrap().queue(MoveToNextLine(1)).unwrap();
-}
-
-#[inline]
 pub fn clear_line() {
     stdout().queue(Clear(ClearType::CurrentLine)).unwrap();
 }
 
 #[inline]
-pub fn move_to_col(col: u16) {
+pub fn set_cursor_col(col: u16) {
     stdout().queue(MoveToColumn(col)).unwrap();
 }
 
@@ -67,7 +62,7 @@ pub fn flush() {
 }
 
 #[inline]
-pub fn move_cursor(col: u16, row: u16) {
+pub fn set_cursor_pos(col: u16, row: u16) {
     stdout().queue(MoveTo(col, row)).unwrap();
 }
 
