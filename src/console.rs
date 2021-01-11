@@ -2,7 +2,12 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{backend::Backend, error::Result, frontend::Frontend, terminal};
+use crate::{
+    backend::{Backend, ExecMode},
+    error::Result,
+    frontend::Frontend,
+    terminal,
+};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{path::PathBuf, sync::atomic::AtomicPtr, thread, time::Duration};
@@ -94,15 +99,15 @@ impl Console {
     }
 
     unsafe fn execute(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<()> {
-        backend.set_trap(false);
+        backend.set_mode(ExecMode::Run);
         let backend_ptr = AtomicPtr::new(backend);
-        let handle = thread::spawn(move || (*backend_ptr.into_inner()).run(Duration::from_micros(1)));
+        let handle = thread::spawn(move || (*backend_ptr.into_inner()).execute(Duration::from_micros(1)));
         let mut fberr: Result<()> = Ok(());
         while !frontend.quit() && fberr.is_ok() {
             frontend.vsync();
             fberr = frontend.update(&backend.memory);
         }
-        backend.set_trap(true);
+        backend.set_mode(ExecMode::Step);
         handle.join().unwrap();
         fberr
     }
@@ -123,8 +128,8 @@ impl Console {
                     self.process_command(backend);
                 }
                 Ok(Key(KeyEvent { code: F(10), .. })) => {
-                    backend.set_trap(true);
-                    let status = match backend.run(Duration::from_micros(1)) {
+                    backend.set_mode(ExecMode::Step);
+                    let status = match backend.execute(Duration::from_micros(1)) {
                         0 => format!(
                             "halted at {:04X}, invalid opcode: {:02X}",
                             backend.cpu.regs.pc, backend.memory[backend.cpu.regs.pc]

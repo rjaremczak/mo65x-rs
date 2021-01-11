@@ -17,6 +17,12 @@ use crate::{
     Result,
 };
 
+#[derive(PartialEq, Debug)]
+pub enum ExecMode {
+    Run,
+    Step,
+}
+
 pub struct Backend {
     pub memory: Memory,
     pub cpu: Cpu,
@@ -67,7 +73,7 @@ impl Backend {
         Ok(size)
     }
 
-    pub fn run(&mut self, period: Duration) -> u8 {
+    pub fn execute(&mut self, period: Duration) -> u8 {
         let period_ns = period.as_nanos() as u64;
         loop {
             let t0 = Instant::now();
@@ -83,13 +89,22 @@ impl Backend {
     }
 
     #[inline]
-    pub fn set_trap(&self, on: bool) {
-        self.trap.store(on, Relaxed)
+    pub fn set_mode(&self, mode: ExecMode) {
+        self.trap.store(
+            match mode {
+                ExecMode::Run => false,
+                ExecMode::Step => true,
+            },
+            Relaxed,
+        );
     }
 
     #[inline]
-    pub fn trap(&self) -> bool {
-        self.trap.load(Relaxed)
+    pub fn mode(&self) -> ExecMode {
+        match self.trap.load(Relaxed) {
+            false => ExecMode::Run,
+            true => ExecMode::Step,
+        }
     }
 }
 
@@ -100,6 +115,6 @@ mod tests {
     #[test]
     fn new() {
         let b = Backend::new();
-        assert!(b.trap());
+        assert_eq!(b.mode(), ExecMode::Step);
     }
 }
