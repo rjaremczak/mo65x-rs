@@ -132,10 +132,10 @@ mod tests {
         op
     }
 
-    fn assert_err(txt: &str, experr: AppError) {
+    fn assert_err(txt: &str, _experr: AppError) {
         match operand_parser().resolve(txt, true) {
             Ok(_) => assert!(false),
-            Err(err) => assert!(matches!(err, experr)),
+            Err(err) => assert!(matches!(err, _experr)),
         }
     }
 

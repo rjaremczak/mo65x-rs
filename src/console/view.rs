@@ -43,9 +43,8 @@ impl View {
 
     pub fn print_header(&self, info: Info) {
         terminal::set_cursor_pos(0, 0);
-        terminal::clear_line();
         terminal::highlight();
-        terminal::print("CPU  ");
+        terminal::print("CPU ");
         terminal::normal();
         self.label("PC", &format!("{:04X} ", info.regs.pc));
         self.label("SP", &format!("{:04X} ", info.regs.sp as u16 | 0x100));
@@ -53,13 +52,17 @@ impl View {
         self.label("X", &format!("{:02X} ", info.regs.x));
         self.label("Y", &format!("{:02X} ", info.regs.y));
         self.label("P", &format!("{:08b}", info.flags.to_byte()));
-        if info.cycles > 0 {
-            self.label(" f", &format!("{:.2} MHz", info.frequency() / 1e6));
-        }
+        self.label(
+            " trap",
+            match info.trap {
+                true => "on",
+                false => "off",
+            },
+        );
+        self.label(" f", &format!("{:.2} MHz", info.frequency() / 1e6));
         terminal::newline();
-        terminal::clear_line();
         terminal::highlight();
-        terminal::print("MEM  ");
+        terminal::print("MEM ");
         terminal::normal();
         self.label("RST", &format!("{:04X} ", info.rst));
         self.label("NMI", &format!("{:04X} ", info.nmi));
@@ -68,7 +71,7 @@ impl View {
         self.label("IOD", &format!("{:08b} ", info.io_data));
     }
 
-    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16) {
+    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, idle: bool) {
         // correction needed on windows
         let cols = cols + 1;
         let rows = rows + 1;
@@ -81,8 +84,11 @@ impl View {
             self.status_row = self.shortcuts_row - 1;
             self.command_row = self.status_row - 1;
             self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
+            terminal::clear();
             self.print_header(backend.info());
-            self.print_dump(&backend);
+            if idle {
+                self.print_dump(&backend);
+            }
             self.print_command();
             self.print_status();
             self.print_shortcuts();
@@ -125,6 +131,14 @@ impl View {
         terminal::show_cursor();
     }
 
+    pub fn clear_dump(&self) {
+        terminal::hide_cursor();
+        for row in self.dump_row..self.command_row {
+            terminal::set_cursor_pos(0, row);
+            terminal::clear_line();
+        }
+    }
+
     pub fn print_command(&self) {
         terminal::set_cursor_pos(0, self.command_row);
         terminal::bold();
@@ -154,7 +168,7 @@ impl View {
         terminal::highlight();
         terminal::print(&self.title);
         terminal::normal();
-        terminal::print(" [F1]-Help [F5]-Run [F10]-Step Over [ESC]-Quit");
+        terminal::print(" [F1]Help [F2]Rst.Stat [F5]Run/Stop [F10]Step [ESC]-Quit");
     }
 
     pub fn input_char(&mut self, c: char) {

@@ -1,9 +1,7 @@
 use std::io::{stdout, Write};
 
-const SPACE: &str = " ";
-
 use crossterm::{
-    cursor::{position, EnableBlinking, Hide, MoveLeft, MoveTo, MoveToColumn, MoveToNextLine, RestorePosition, SavePosition, Show},
+    cursor::{EnableBlinking, Hide, MoveLeft, MoveTo, MoveToColumn, MoveToNextLine, RestorePosition, SavePosition, Show},
     execute,
     style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{
@@ -27,11 +25,6 @@ pub fn normal() {
 }
 
 #[inline]
-pub fn reverse() {
-    stdout().queue(SetAttribute(Attribute::Reverse)).unwrap();
-}
-
-#[inline]
 pub fn highlight() {
     stdout().queue(SetForegroundColor(Color::Yellow)).unwrap();
 }
@@ -44,6 +37,11 @@ pub fn dim() {
 #[inline]
 pub fn print(text: &str) {
     stdout().queue(Print(text)).unwrap();
+}
+
+#[inline]
+pub fn clear() {
+    stdout().queue(Clear(ClearType::All)).unwrap();
 }
 
 #[inline]
@@ -67,18 +65,8 @@ pub fn set_cursor_pos(col: u16, row: u16) {
 }
 
 #[inline]
-pub fn clear() {
-    stdout().execute(Clear(ClearType::All)).unwrap();
-}
-
-#[inline]
 pub fn size() -> (u16, u16) {
     crossterm::terminal::size().unwrap()
-}
-
-#[inline]
-pub fn cursor_pos() -> (u16, u16) {
-    crossterm::cursor::position().unwrap()
 }
 
 #[inline]
@@ -116,5 +104,5 @@ pub fn end_session() {
 }
 
 pub fn newline() {
-    stdout().queue(MoveToNextLine(1));
+    stdout().queue(MoveToNextLine(1)).unwrap();
 }

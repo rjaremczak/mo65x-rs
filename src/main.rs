@@ -120,7 +120,7 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
     println!("clock speed: {} MHz", freq / 1e6);
     println!("start address: {:04X}", start_addr);
     backend.cpu.regs.pc = start_addr;
-    backend.set_mode(backend::ExecMode::Run);
+    backend.trap_off();
     let backend_ptr = AtomicPtr::new(&mut backend);
     let handle = thread::spawn(move || {
         println!("starting thread");
@@ -134,9 +134,9 @@ fn execute(start_addr: u16, fname: PathBuf, freq: f64) -> Result<()> {
         frontend.update(&backend.memory)?;
         //println!("fb refresh");
     }
-    backend.set_mode(backend::ExecMode::Step);
+    backend.trap_on();
     println!("stopping...");
-    handle.join().unwrap();
+    handle.join().unwrap()?;
     let state = backend.info();
     println!("state: {:#?}", state);
     disassemble_memory(&backend.memory, state.regs.pc, state.regs.pc.saturating_add(20))
@@ -150,8 +150,8 @@ fn console(title: &str) -> Result<()> {
     let mut backend = Backend::new();
     let mut frontend = Frontend::new();
     let mut console = Console::new(title);
-    console.init(&backend);
-    while !frontend.quit() && console.process(&mut backend, &mut frontend) {
+    console.init();
+    while !frontend.quit() && console.process(&mut backend) {
         frontend.vsync();
         frontend.update(&backend.memory)?;
     }

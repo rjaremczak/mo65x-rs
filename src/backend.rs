@@ -2,7 +2,6 @@ use std::{
     fs::File,
     io::Read,
     path::PathBuf,
-    ptr::read_volatile,
     sync::atomic::AtomicBool,
     sync::atomic::{AtomicU64, Ordering::Relaxed},
     time::{Duration, Instant},
@@ -11,18 +10,9 @@ use std::{
 use crate::{
     error::AppError,
     info::Info,
-    mos6510::{
-        cpu::{flags::Flags, registers::Registers, Cpu},
-        memory::Memory,
-    },
+    mos6510::{cpu::Cpu, memory::Memory},
     Result,
 };
-
-#[derive(PartialEq, Debug)]
-pub enum ExecMode {
-    Run,
-    Step,
-}
 
 pub struct Backend {
     pub memory: Memory,
@@ -55,19 +45,17 @@ impl Backend {
     }
 
     pub fn info(&self) -> Info {
-        unsafe {
-            Info {
-                regs: self.cpu.regs,
-                flags: self.cpu.flags,
-                cycles: self.cycles.load(Relaxed),
-                duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
-                trap: self.trap.load(Relaxed),
-                rst: self.memory.word(Cpu::RESET_VECTOR),
-                nmi: self.memory.word(Cpu::NMI_VECTOR),
-                irq: self.memory.word(Cpu::IRQ_VECTOR),
-                io_config: self.memory[Cpu::IO_PORT_CONFIG],
-                io_data: self.memory[Cpu::IO_PORT_DATA],
-            }
+        Info {
+            regs: self.cpu.regs,
+            flags: self.cpu.flags,
+            cycles: self.cycles.load(Relaxed),
+            duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
+            trap: self.trap.load(Relaxed),
+            rst: self.memory.word(Cpu::RESET_VECTOR),
+            nmi: self.memory.word(Cpu::NMI_VECTOR),
+            irq: self.memory.word(Cpu::IRQ_VECTOR),
+            io_config: self.memory[Cpu::IO_PORT_CONFIG],
+            io_data: self.memory[Cpu::IO_PORT_DATA],
         }
     }
 
@@ -81,7 +69,7 @@ impl Backend {
         Ok(size)
     }
 
-    pub fn execute(&mut self, period: Duration) -> u8 {
+    pub fn execute(&mut self, period: Duration) -> Result<u8> {
         let period_ns = period.as_nanos() as u64;
         loop {
             let t0 = Instant::now();
@@ -90,29 +78,24 @@ impl Backend {
             while Instant::now() < t1 {}
             self.cycles.fetch_add(cycles as u64, Relaxed);
             self.duration_ns.fetch_add((Instant::now() - t0).as_nanos() as u64, Relaxed);
-            if cycles == 0 || self.trap.load(Relaxed) {
-                return cycles;
+            if cycles == 0 {
+                self.trap.store(true, Relaxed);
+                return Err(AppError::InvalidOpCode(self.cpu.regs.pc, self.memory[self.cpu.regs.pc]));
+            }
+            if self.trap.load(Relaxed) {
+                return Ok(cycles);
             }
         }
     }
 
     #[inline]
-    pub fn set_mode(&self, mode: ExecMode) {
-        self.trap.store(
-            match mode {
-                ExecMode::Run => false,
-                ExecMode::Step => true,
-            },
-            Relaxed,
-        );
+    pub fn trap_on(&self) {
+        self.trap.store(true, Relaxed);
     }
 
     #[inline]
-    pub fn mode(&self) -> ExecMode {
-        match self.trap.load(Relaxed) {
-            false => ExecMode::Run,
-            true => ExecMode::Step,
-        }
+    pub fn trap_off(&self) {
+        self.trap.store(false, Relaxed);
     }
 }
 
@@ -123,6 +106,6 @@ mod tests {
     #[test]
     fn new() {
         let b = Backend::new();
-        assert_eq!(b.mode(), ExecMode::Step);
+        assert!(b.trap.load(Relaxed));
     }
 }

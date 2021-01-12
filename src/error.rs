@@ -16,6 +16,8 @@ pub enum AppError {
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
     EmulatorAlreadyRunning,
+    EmulatorNotRunning,
+    InvalidOpCode(u16, u8),
     GeneralError(String),
 }
 

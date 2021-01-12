@@ -22,13 +22,6 @@ impl Operation {
         self.instruction == instruction && self.addrmode == addrmode
     }
 
-    pub fn find(instruction: Instruction, addrmode: AddrMode) -> Option<(u8, &'static Operation)> {
-        OPCODE_MAP
-            .iter()
-            .find(|kv| kv.1.matches(instruction, addrmode))
-            .map(|kv| (*kv.0, kv.1))
-    }
-
     #[inline]
     pub fn get(code: u8) -> &'static Operation {
         OPCODE_MAP.get(&code).unwrap_or(&OPCODE_KIL)
@@ -215,9 +208,16 @@ static OPCODE_KIL: Operation = Operation::new(Kil, Implied, 0);
 mod tests {
     use super::*;
 
+    fn find(instruction: Instruction, addrmode: AddrMode) -> Option<(u8, &'static Operation)> {
+        OPCODE_MAP
+            .iter()
+            .find(|kv| kv.1.matches(instruction, addrmode))
+            .map(|kv| (*kv.0, kv.1))
+    }
+
     #[test]
     fn test_find_operation() {
-        match Operation::find(Jmp, Absolute) {
+        match find(Jmp, Absolute) {
             Some(kv) => {
                 assert_eq!(kv.0, 0x4c);
                 assert_eq!(kv.1.instruction, Jmp);

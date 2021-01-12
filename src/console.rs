@@ -3,14 +3,21 @@ mod view;
 
 use self::commands::Command;
 use crate::{
-    backend::{Backend, ExecMode},
-    error::Result,
-    frontend::Frontend,
+    backend::Backend,
+    error::{AppError, Result},
     terminal,
 };
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
-use std::{path::PathBuf, sync::atomic::AtomicPtr, thread, time::Duration};
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, AtomicPtr, Ordering},
+        Arc,
+    },
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 use view::View;
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc, F};
@@ -18,9 +25,12 @@ use KeyCode::{Backspace, Char, Enter, Esc, F};
 pub struct Console {
     parser: CommandParser,
     view: View,
+    handle: Option<JoinHandle<Result<u8>>>,
+    running: Arc<AtomicBool>,
 }
 
 const STATUS_OK: &str = "Ok";
+const STATUS_IS_RUNNING: &str = "Emulation is running, press F5 to stop...";
 
 impl Drop for Console {
     fn drop(&mut self) {
@@ -33,13 +43,13 @@ impl Console {
         Self {
             parser: CommandParser::new(),
             view: View::new(title),
+            handle: None,
+            running: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub fn init(&mut self, backend: &Backend) {
+    pub fn init(&mut self) {
         terminal::begin_session();
-        // let (cols, rows) = terminal::size();
-        // self.view.update_size(backend, cols, rows);
     }
 
     fn process_command(&mut self, backend: &mut Backend) {
@@ -66,8 +76,14 @@ impl Console {
                 backend.cpu.regs.y = y;
                 self.view.print_header(backend.info());
             }
-            Some(Command::SetMemoryByte(addr, value)) => {
-                backend.memory[addr] = value;
+            Some(Command::SetByte(addr, value)) => {
+                backend.memory.set_byte(addr, value);
+                self.view.print_header(backend.info());
+                self.view.print_dump(&backend);
+            }
+            Some(Command::SetWord(addr, value)) => {
+                backend.memory.set_word(addr, value);
+                self.view.print_header(backend.info());
                 self.view.print_dump(&backend);
             }
             Some(Command::Load(addr, fpath)) => {
@@ -87,6 +103,22 @@ impl Console {
             }
             Some(Command::MemoryDump(addr)) => {
                 self.view.dump_addr = addr;
+                self.view.print_header(backend.info());
+                self.view.print_dump(&backend);
+            }
+            Some(Command::Reset) => {
+                backend.cpu.reset(&backend.memory);
+                self.view.print_header(backend.info());
+                self.view.print_dump(&backend);
+            }
+            Some(Command::Nmi) => {
+                backend.cpu.nmi(&mut backend.memory);
+                self.view.print_header(backend.info());
+                self.view.print_dump(&backend);
+            }
+            Some(Command::Irq) => {
+                backend.cpu.irq(&mut backend.memory);
+                self.view.print_header(backend.info());
                 self.view.print_dump(&backend);
             }
             None => {
@@ -98,56 +130,84 @@ impl Console {
         self.view.print_command();
     }
 
-    unsafe fn execute(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> Result<()> {
-        backend.set_mode(ExecMode::Run);
+    unsafe fn start_execution(&mut self, backend: &mut Backend) {
+        self.running.store(true, Ordering::Relaxed);
+        backend.trap_off();
         let backend_ptr = AtomicPtr::new(backend);
-        let handle = thread::spawn(move || (*backend_ptr.into_inner()).execute(Duration::from_micros(1)));
-        let mut fberr: Result<()> = Ok(());
-        while !frontend.quit() && fberr.is_ok() {
-            frontend.vsync();
-            fberr = frontend.update(&backend.memory);
-        }
-        backend.set_mode(ExecMode::Step);
-        handle.join().unwrap();
-        fberr
+        let running_clone = self.running.clone();
+        self.handle = Some(thread::spawn(move || {
+            let cycles = (*backend_ptr.into_inner()).execute(Duration::from_micros(1));
+            running_clone.store(false, Ordering::Relaxed);
+            cycles
+        }));
     }
 
-    pub fn process(&mut self, backend: &mut Backend, frontend: &mut Frontend) -> bool {
+    fn stop_execution(&mut self, backend: &Backend) -> Result<u8> {
+        backend.trap_on();
+        match self.handle.take() {
+            Some(h) => h.join().unwrap(),
+            None => Err(AppError::EmulatorNotRunning),
+        }
+    }
+
+    fn is_running(&self) -> bool {
+        self.running.load(Ordering::Relaxed)
+    }
+
+    pub fn process(&mut self, backend: &mut Backend) -> bool {
+        let idle = !self.is_running();
+        if !idle {
+            self.view.print_header(backend.info());
+        }
         if poll(Duration::from_millis(2)).unwrap() {
             match event::read() {
                 Ok(Key(KeyEvent { code: Char(c), .. })) => {
-                    self.view.input_char(c);
+                    if idle {
+                        self.view.input_char(c);
+                    }
                 }
                 Ok(Key(KeyEvent { code: Backspace, .. })) => {
-                    self.view.input_backspace();
+                    if idle {
+                        self.view.input_backspace();
+                    }
                 }
                 Ok(Key(KeyEvent { code: Esc, .. })) => {
-                    return false;
+                    if idle {
+                        return false;
+                    }
                 }
                 Ok(Key(KeyEvent { code: Enter, .. })) => {
-                    self.process_command(backend);
+                    if idle {
+                        self.process_command(backend);
+                    }
                 }
-                Ok(Key(KeyEvent { code: F(10), .. })) => {
-                    backend.set_mode(ExecMode::Step);
-                    let status = match backend.execute(Duration::from_micros(1)) {
-                        0 => format!(
-                            "halted at {:04X}, invalid opcode: {:02X}",
-                            backend.cpu.regs.pc, backend.memory[backend.cpu.regs.pc]
-                        ),
-                        cycles @ _ => format!("ok, {} cycles spent", cycles),
-                    };
+                Ok(Key(KeyEvent { code: F(2), .. })) => {
+                    backend.reset_statistics();
                     self.view.print_header(backend.info());
-                    self.view.print_dump(&backend);
-                    self.view.update_status(status);
                 }
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
-                    self.view.update_status(String::from("running..."));
-                    terminal::flush();
-                    let result = unsafe { self.execute(backend, frontend) };
-                    self.view.update_status(format!("{:?}", result));
+                    if idle {
+                        unsafe { self.start_execution(backend) };
+                        self.view.clear_dump();
+                        self.view.update_status(String::from(STATUS_IS_RUNNING));
+                    } else {
+                        let result = self.stop_execution(backend);
+                        self.view.print_dump(backend);
+                        self.view.update_status(format!("{:?}", result));
+                    }
+                    self.view.print_header(backend.info());
+                }
+                Ok(Key(KeyEvent { code: F(10), .. })) => {
+                    if idle {
+                        backend.trap_on();
+                        let status = backend.execute(Duration::from_micros(1));
+                        self.view.print_header(backend.info());
+                        self.view.print_dump(&backend);
+                        self.view.update_status(format!("{:?}", status));
+                    }
                 }
                 Ok(Resize(cols, rows)) => {
-                    self.view.update_size(backend, cols, rows);
+                    self.view.update_size(backend, cols, rows, idle);
                 }
                 Ok(event) => {
                     self.view.update_status(format!("unhandled event: {:?}", event));

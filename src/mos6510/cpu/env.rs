@@ -114,7 +114,15 @@ mod tests {
     use super::*;
 
     fn setup() -> (Env, Memory, Registers) {
-        (Env::with(1000, 2), Memory::new(), Registers::with(1000, 0xfd))
+        (
+            Env::with(1000, 2),
+            Memory::new(),
+            Registers {
+                pc: 1000,
+                sp: 0xfd,
+                ..Registers::default()
+            },
+        )
     }
 
     #[test]
