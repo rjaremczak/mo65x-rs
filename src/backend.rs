@@ -2,6 +2,7 @@ use std::{
     fs::File,
     io::Read,
     path::PathBuf,
+    ptr::read_volatile,
     sync::atomic::AtomicBool,
     sync::atomic::{AtomicU64, Ordering::Relaxed},
     time::{Duration, Instant},
@@ -54,12 +55,19 @@ impl Backend {
     }
 
     pub fn info(&self) -> Info {
-        Info {
-            regs: self.cpu.regs,
-            flags: self.cpu.flags,
-            cycles: self.cycles.load(Relaxed),
-            duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
-            trap: self.trap.load(Relaxed),
+        unsafe {
+            Info {
+                regs: self.cpu.regs,
+                flags: self.cpu.flags,
+                cycles: self.cycles.load(Relaxed),
+                duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
+                trap: self.trap.load(Relaxed),
+                rst: self.memory.word(Cpu::RESET_VECTOR),
+                nmi: self.memory.word(Cpu::NMI_VECTOR),
+                irq: self.memory.word(Cpu::IRQ_VECTOR),
+                io_config: self.memory[Cpu::IO_PORT_CONFIG],
+                io_data: self.memory[Cpu::IO_PORT_DATA],
+            }
         }
     }
 

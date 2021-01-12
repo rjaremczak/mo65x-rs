@@ -21,6 +21,7 @@ pub struct View {
 }
 
 const PROMPT: &str = "> ";
+const HEADER_ROWS: u16 = 2;
 const DUMP_COL: u16 = 30;
 
 impl View {
@@ -44,19 +45,27 @@ impl View {
         terminal::set_cursor_pos(0, 0);
         terminal::clear_line();
         terminal::highlight();
-        terminal::print(&self.title);
+        terminal::print("CPU  ");
         terminal::normal();
-        terminal::print(" ");
-        self.label("PC", &format!("{:04X}", info.regs.pc));
-        self.label(" SP", &format!("{:04X}", info.regs.sp as u16 | 0x100));
-        self.label(" A", &format!("{:02X}", info.regs.a));
-        self.label(" X", &format!("{:02X}", info.regs.x));
-        self.label(" Y", &format!("{:02X}", info.regs.y));
-        self.label(" P", &format!("{:08b}", info.flags.to_byte()));
+        self.label("PC", &format!("{:04X} ", info.regs.pc));
+        self.label("SP", &format!("{:04X} ", info.regs.sp as u16 | 0x100));
+        self.label("A", &format!("{:02X} ", info.regs.a));
+        self.label("X", &format!("{:02X} ", info.regs.x));
+        self.label("Y", &format!("{:02X} ", info.regs.y));
+        self.label("P", &format!("{:08b}", info.flags.to_byte()));
         if info.cycles > 0 {
             self.label(" f", &format!("{:.2} MHz", info.frequency() / 1e6));
         }
         terminal::newline();
+        terminal::clear_line();
+        terminal::highlight();
+        terminal::print("MEM  ");
+        terminal::normal();
+        self.label("RST", &format!("{:04X} ", info.rst));
+        self.label("NMI", &format!("{:04X} ", info.nmi));
+        self.label("IRQ", &format!("{:04X} ", info.irq));
+        self.label("IOC", &format!("{:08b} ", info.io_config));
+        self.label("IOD", &format!("{:08b} ", info.io_data));
     }
 
     pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16) {
@@ -67,7 +76,7 @@ impl View {
         if cols != self.cols || rows != self.rows {
             self.cols = cols;
             self.rows = rows;
-            self.dump_row = 1;
+            self.dump_row = HEADER_ROWS;
             self.shortcuts_row = self.rows - 1;
             self.status_row = self.shortcuts_row - 1;
             self.command_row = self.status_row - 1;
@@ -141,9 +150,11 @@ impl View {
 
     fn print_shortcuts(&self) {
         terminal::set_cursor_pos(0, self.shortcuts_row);
-        terminal::normal();
         terminal::clear_line();
-        terminal::print("[F1]-Help [F5]-Run [F10]-Step Over [ESC]-Quit");
+        terminal::highlight();
+        terminal::print(&self.title);
+        terminal::normal();
+        terminal::print(" [F1]-Help [F5]-Run [F10]-Step Over [ESC]-Quit");
     }
 
     pub fn input_char(&mut self, c: char) {
