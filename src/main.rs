@@ -150,7 +150,7 @@ fn console(title: &str) -> Result<()> {
     let mut backend = Backend::new();
     let mut frontend = Frontend::new();
     let mut console = Console::new(title);
-    console.init();
+    console.init(&backend);
     while !frontend.quit() && console.process(&mut backend) {
         frontend.vsync();
         frontend.update(&backend.memory)?;

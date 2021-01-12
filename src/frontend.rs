@@ -29,7 +29,7 @@ impl Frontend {
                     title: true,
                     borderless: false,
                     resize: false,
-                    topmost: false,
+                    topmost: true,
                     transparency: false,
                 },
             )

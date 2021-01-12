@@ -48,8 +48,12 @@ impl Console {
         }
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self, backend: &Backend) {
         terminal::begin_session();
+        let (cols, rows) = terminal::size();
+        self.view.update_size(backend, cols, rows, true);
+        terminal::restore_cursor();
+        terminal::flush();
     }
 
     fn process_command(&mut self, backend: &mut Backend) {
