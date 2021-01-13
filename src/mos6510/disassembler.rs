@@ -51,15 +51,6 @@ pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, 
     Ok(lines)
 }
 
-pub fn disassemble_memory(memory: &Memory, start_addr: u16, end_addr: u16) -> Vec<Columns> {
-    let mut lc = start_addr;
-    let mut lines = Vec::new();
-    while lc < end_addr {
-        lines.push(disassemble(&memory, &mut lc))
-    }
-    lines
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

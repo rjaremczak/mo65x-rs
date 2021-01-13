@@ -1,9 +1,8 @@
 use crate::{error::Result, mos6510::memory::Memory};
 use minifb::{Key, Window, WindowOptions};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub struct Frontend {
-    next_update: Instant,
     framebuf: Vec<u32>,
     window: Window,
 }
@@ -17,7 +16,6 @@ const UPDATE_PERIOD: Duration = Duration::from_millis(20);
 impl Frontend {
     pub fn new() -> Self {
         let mut frontend = Self {
-            next_update: Instant::now(),
             framebuf: vec![0; FB_LEN],
             window: Window::new(
                 &format!("{:04X} {:.1} fps", FB_ADDR, 1.0 / UPDATE_PERIOD.as_secs_f64()),
@@ -36,17 +34,12 @@ impl Frontend {
             .unwrap(),
         };
         frontend.framebuf.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
-        // frontend.window.limit_update_rate(Some(Duration::from_millis(20)));
+        frontend.window.limit_update_rate(Some(UPDATE_PERIOD));
         frontend
     }
 
     pub fn quit(&self) -> bool {
         !self.is_window_open() || self.is_key_down(Key::Escape)
-    }
-
-    pub fn vsync(&mut self) {
-        while Instant::now() < self.next_update {}
-        self.next_update = Instant::now() + UPDATE_PERIOD;
     }
 
     pub fn update(&mut self, memory: &Memory) -> Result<()> {

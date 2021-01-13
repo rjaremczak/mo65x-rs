@@ -1,5 +1,5 @@
-use crate::terminal;
-use crate::{backend::Backend, info::Info, mos6510::disassembler::disassemble};
+use crate::{backend::Backend, mos6510::disassembler::disassemble};
+use crate::{mos6510::cpu::Cpu, terminal};
 
 use super::STATUS_OK;
 
@@ -33,45 +33,37 @@ impl View {
         }
     }
 
-    fn label(&self, label: &str, text: &str) {
-        terminal::dim();
-        terminal::print(label);
-        terminal::print(":");
-        terminal::bold();
-        terminal::print(text);
-    }
-
-    pub fn print_header(&self, info: Info) {
+    pub fn print_header(&self, backend: &Backend, clock: f64) {
         terminal::set_cursor_pos(0, 0);
         terminal::highlight();
         terminal::print("CPU ");
         terminal::normal();
-        self.label("PC", &format!("{:04X} ", info.regs.pc));
-        self.label("SP", &format!("{:04X} ", info.regs.sp as u16 | 0x100));
-        self.label("A", &format!("{:02X} ", info.regs.a));
-        self.label("X", &format!("{:02X} ", info.regs.x));
-        self.label("Y", &format!("{:02X} ", info.regs.y));
-        self.label("P", &format!("{:08b}", info.flags.to_byte()));
-        self.label(
+        print_property("PC", &format!("{:04X} ", backend.cpu.regs.pc));
+        print_property("SP", &format!("{:04X} ", backend.cpu.regs.sp as u16 | 0x100));
+        print_property("A", &format!("{:02X} ", backend.cpu.regs.a));
+        print_property("X", &format!("{:02X} ", backend.cpu.regs.x));
+        print_property("Y", &format!("{:02X} ", backend.cpu.regs.y));
+        print_property("P", &format!("{:08b}", backend.cpu.flags.to_byte()));
+        print_property(
             " trap",
-            match info.trap {
+            match backend.trap() {
                 true => "on",
                 false => "off",
             },
         );
-        self.label(" f", &format!("{:.2} MHz", info.frequency() / 1e6));
+        print_speed(backend.clock(), clock);
         terminal::newline();
         terminal::highlight();
         terminal::print("MEM ");
         terminal::normal();
-        self.label("RST", &format!("{:04X} ", info.rst));
-        self.label("NMI", &format!("{:04X} ", info.nmi));
-        self.label("IRQ", &format!("{:04X} ", info.irq));
-        self.label("IOC", &format!("{:08b} ", info.io_config));
-        self.label("IOD", &format!("{:08b} ", info.io_data));
+        print_property("RST", &format!("{:04X} ", backend.memory.word(Cpu::RESET_VECTOR)));
+        print_property("NMI", &format!("{:04X} ", backend.memory.word(Cpu::NMI_VECTOR)));
+        print_property("IRQ", &format!("{:04X} ", backend.memory.word(Cpu::IRQ_VECTOR)));
+        print_property("IOC", &format!("{:08b} ", backend.memory.byte(Cpu::IO_PORT_CONFIG)));
+        print_property("IOD", &format!("{:08b} ", backend.memory.byte(Cpu::IO_PORT_DATA)));
     }
 
-    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, idle: bool) {
+    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, clock: f64, idle: bool) {
         // correction needed on windows
         let cols = cols + 1;
         let rows = rows + 1;
@@ -85,7 +77,7 @@ impl View {
             self.command_row = self.status_row - 1;
             self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
             terminal::clear();
-            self.print_header(backend.info());
+            self.print_header(backend, clock);
             if idle {
                 self.print_dump(&backend);
             }
@@ -167,8 +159,11 @@ impl View {
         terminal::clear_line();
         terminal::highlight();
         terminal::print(&self.title);
-        terminal::normal();
-        terminal::print(" [F1]Help [F2]Rst.Stat [F5]Run/Stop [F10]Step [ESC]-Quit");
+        print_shortcut(" F1", "Help");
+        print_shortcut(" F2", "Clear Stats.");
+        print_shortcut(" F5", "Help");
+        print_shortcut(" F10", "Help");
+        print_shortcut(" Esc", "Quit");
     }
 
     pub fn input_char(&mut self, c: char) {
@@ -184,4 +179,29 @@ impl View {
             terminal::store_cursor();
         }
     }
+}
+
+fn print_property(name: &str, value: &str) {
+    terminal::dim();
+    terminal::print(name);
+    terminal::print(":");
+    terminal::bold();
+    terminal::print(value);
+}
+
+fn print_shortcut(key: &str, desc: &str) {
+    terminal::normal();
+    terminal::print(key);
+    terminal::dim();
+    terminal::print(":");
+    terminal::print(desc);
+}
+
+fn print_speed(actual_clock: f64, requested_clock: f64) {
+    terminal::dim();
+    terminal::print(" f:");
+    terminal::bold();
+    terminal::print(&format!("{:.2}", actual_clock / 1e6));
+    terminal::dim();
+    terminal::print(&format!("/{:.2} MHz  ", requested_clock / 1e6));
 }

@@ -27,6 +27,7 @@ pub struct Console {
     view: View,
     handle: Option<JoinHandle<Result<u8>>>,
     running: Arc<AtomicBool>,
+    clock: f64,
 }
 
 const STATUS_OK: &str = "Ok";
@@ -39,19 +40,20 @@ impl Drop for Console {
 }
 
 impl Console {
-    pub fn new(title: &str) -> Self {
+    pub fn new(title: &str, freq: f64) -> Self {
         Self {
             parser: CommandParser::new(),
             view: View::new(title),
             handle: None,
             running: Arc::new(AtomicBool::new(false)),
+            clock: freq,
         }
     }
 
     pub fn init(&mut self, backend: &Backend) {
         terminal::begin_session();
         let (cols, rows) = terminal::size();
-        self.view.update_size(backend, cols, rows, true);
+        self.view.update_size(backend, cols, rows, self.clock, true);
         terminal::restore_cursor();
         terminal::flush();
     }
@@ -61,39 +63,42 @@ impl Console {
         match self.parser.parse(&self.view.command) {
             Some(Command::SetPC(pc)) => {
                 backend.cpu.regs.pc = pc;
-                self.view.print_header(backend.info());
+                self.view.print_header(backend, self.clock);
                 self.view.print_dump(backend);
             }
             Some(Command::SetSP(sp)) => {
                 backend.cpu.regs.sp = sp;
-                self.view.print_header(backend.info());
+                self.view.print_header(backend, self.clock);
             }
             Some(Command::SetA(a)) => {
                 backend.cpu.regs.a = a;
-                self.view.print_header(backend.info());
+                self.view.print_header(backend, self.clock);
             }
             Some(Command::SetX(x)) => {
                 backend.cpu.regs.x = x;
-                self.view.print_header(backend.info());
+                self.view.print_header(backend, self.clock);
             }
             Some(Command::SetY(y)) => {
                 backend.cpu.regs.y = y;
-                self.view.print_header(backend.info());
+                self.view.print_header(backend, self.clock);
             }
             Some(Command::SetByte(addr, value)) => {
                 backend.memory.set_byte(addr, value);
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             Some(Command::SetWord(addr, value)) => {
                 backend.memory.set_word(addr, value);
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             Some(Command::Load(addr, fpath)) => {
                 match backend.upload(addr, PathBuf::from(fpath)) {
                     Ok(size) => {
-                        self.view.print_dump(&backend);
+                        backend.cpu.regs.pc = addr;
+                        self.view.code_addr = addr;
+                        self.view.print_header(backend, self.clock);
+                        self.view.print_dump(backend);
                         status = format!("uploaded {} bytes", size);
                     }
                     Err(err) => {
@@ -103,27 +108,27 @@ impl Console {
             }
             Some(Command::Disassemble(addr)) => {
                 self.view.code_addr = addr;
-                self.view.print_dump(&backend);
+                self.view.print_dump(backend);
             }
             Some(Command::MemoryDump(addr)) => {
                 self.view.dump_addr = addr;
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             Some(Command::Reset) => {
                 backend.cpu.reset(&backend.memory);
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             Some(Command::Nmi) => {
                 backend.cpu.nmi(&mut backend.memory);
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             Some(Command::Irq) => {
                 backend.cpu.irq(&mut backend.memory);
-                self.view.print_header(backend.info());
-                self.view.print_dump(&backend);
+                self.view.print_header(backend, self.clock);
+                self.view.print_dump(backend);
             }
             None => {
                 status = format!("invalid command: {}", &self.view.command);
@@ -139,8 +144,9 @@ impl Console {
         backend.trap_off();
         let backend_ptr = AtomicPtr::new(backend);
         let running_clone = self.running.clone();
+        let period = Duration::from_secs_f64(1.0 / self.clock);
         self.handle = Some(thread::spawn(move || {
-            let cycles = (*backend_ptr.into_inner()).execute(Duration::from_micros(1));
+            let cycles = (*backend_ptr.into_inner()).execute(period);
             running_clone.store(false, Ordering::Relaxed);
             cycles
         }));
@@ -161,7 +167,7 @@ impl Console {
     pub fn process(&mut self, backend: &mut Backend) -> bool {
         let idle = !self.is_running();
         if !idle {
-            self.view.print_header(backend.info());
+            self.view.print_header(backend, self.clock);
         }
         if poll(Duration::from_millis(2)).unwrap() {
             match event::read() {
@@ -175,10 +181,10 @@ impl Console {
                         self.view.input_backspace();
                     }
                 }
+                #[allow(unused_must_use)]
                 Ok(Key(KeyEvent { code: Esc, .. })) => {
-                    if idle {
-                        return false;
-                    }
+                    self.stop_execution(backend);
+                    return false;
                 }
                 Ok(Key(KeyEvent { code: Enter, .. })) => {
                     if idle {
@@ -187,7 +193,7 @@ impl Console {
                 }
                 Ok(Key(KeyEvent { code: F(2), .. })) => {
                     backend.reset_statistics();
-                    self.view.print_header(backend.info());
+                    self.view.print_header(backend, self.clock);
                 }
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
                     if idle {
@@ -199,19 +205,19 @@ impl Console {
                         self.view.print_dump(backend);
                         self.view.update_status(format!("{:?}", result));
                     }
-                    self.view.print_header(backend.info());
+                    self.view.print_header(backend, self.clock);
                 }
                 Ok(Key(KeyEvent { code: F(10), .. })) => {
                     if idle {
                         backend.trap_on();
                         let status = backend.execute(Duration::from_micros(1));
-                        self.view.print_header(backend.info());
-                        self.view.print_dump(&backend);
+                        self.view.print_header(backend, self.clock);
+                        self.view.print_dump(backend);
                         self.view.update_status(format!("{:?}", status));
                     }
                 }
                 Ok(Resize(cols, rows)) => {
-                    self.view.update_size(backend, cols, rows, idle);
+                    self.view.update_size(backend, cols, rows, self.clock, idle);
                 }
                 Ok(event) => {
                     self.view.update_status(format!("unhandled event: {:?}", event));

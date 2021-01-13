@@ -9,7 +9,6 @@ use std::{
 
 use crate::{
     error::AppError,
-    info::Info,
     mos6510::{cpu::Cpu, memory::Memory},
     Result,
 };
@@ -44,19 +43,8 @@ impl Backend {
         self.duration_ns.store(0, Relaxed);
     }
 
-    pub fn info(&self) -> Info {
-        Info {
-            regs: self.cpu.regs,
-            flags: self.cpu.flags,
-            cycles: self.cycles.load(Relaxed),
-            duration: Duration::from_nanos(self.duration_ns.load(Relaxed)),
-            trap: self.trap.load(Relaxed),
-            rst: self.memory.word(Cpu::RESET_VECTOR),
-            nmi: self.memory.word(Cpu::NMI_VECTOR),
-            irq: self.memory.word(Cpu::IRQ_VECTOR),
-            io_config: self.memory[Cpu::IO_PORT_CONFIG],
-            io_data: self.memory[Cpu::IO_PORT_DATA],
-        }
+    pub fn clock(&self) -> f64 {
+        self.cycles.load(Relaxed) as f64 * 1e9 / self.duration_ns.load(Relaxed) as f64
     }
 
     pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize> {
@@ -96,6 +84,11 @@ impl Backend {
     #[inline]
     pub fn trap_off(&self) {
         self.trap.store(false, Relaxed);
+    }
+
+    #[inline]
+    pub fn trap(&self) -> bool {
+        self.trap.load(Relaxed)
     }
 }
 
