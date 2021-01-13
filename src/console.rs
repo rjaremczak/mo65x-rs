@@ -40,13 +40,13 @@ impl Drop for Console {
 }
 
 impl Console {
-    pub fn new(title: &str, freq: f64) -> Self {
+    pub fn new(title: &str, clock: f64) -> Self {
         Self {
             parser: CommandParser::new(),
             view: View::new(title),
             handle: None,
             running: Arc::new(AtomicBool::new(false)),
-            clock: freq,
+            clock,
         }
     }
 
