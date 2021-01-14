@@ -64,17 +64,17 @@ impl View {
     }
 
     pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, clock: f64, idle: bool) {
-        // correction needed on windows
-        let cols = cols + 1;
+        #[cfg(target_os = "windows")]
         let rows = rows + 1;
 
+        let cols = cols + 1;
         if cols != self.cols || rows != self.rows {
             self.cols = cols;
             self.rows = rows;
             self.dump_row = HEADER_ROWS;
+            self.command_row = self.rows - 3;
+            self.status_row = self.rows - 2;
             self.shortcuts_row = self.rows - 1;
-            self.status_row = self.shortcuts_row - 1;
-            self.command_row = self.status_row - 1;
             self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
             terminal::clear();
             self.print_header(backend, clock);
