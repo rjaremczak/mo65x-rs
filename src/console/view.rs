@@ -1,4 +1,7 @@
-use crate::{backend::Backend, mos6510::disassembler::disassemble};
+use crate::{
+    backend::Backend,
+    mos6510::{disassembler::disassemble, memory::Memory},
+};
 use crate::{mos6510::cpu::Cpu, terminal};
 
 use super::STATUS_OK;
@@ -33,37 +36,40 @@ impl View {
         }
     }
 
-    pub fn print_header(&self, backend: &Backend, clock: f64) {
+    pub fn print_cpu_line(&self, cpu: &Cpu, trap: bool, clock: f64, req_clock: f64) {
         terminal::set_cursor_pos(0, 0);
         terminal::highlight();
         terminal::print("CPU ");
         terminal::normal();
-        print_property("PC", &format!("{:04X} ", backend.cpu.regs.pc));
-        print_property("SP", &format!("{:04X} ", backend.cpu.regs.sp as u16 | 0x100));
-        print_property("A", &format!("{:02X} ", backend.cpu.regs.a));
-        print_property("X", &format!("{:02X} ", backend.cpu.regs.x));
-        print_property("Y", &format!("{:02X} ", backend.cpu.regs.y));
-        print_property("P", &format!("{:08b}", backend.cpu.flags.to_byte()));
+        print_property("PC", &format!("{:04X} ", cpu.regs.pc));
+        print_property("SP", &format!("{:04X} ", cpu.regs.sp as u16 | 0x100));
+        print_property("A", &format!("{:02X} ", cpu.regs.a));
+        print_property("X", &format!("{:02X} ", cpu.regs.x));
+        print_property("Y", &format!("{:02X} ", cpu.regs.y));
+        print_property("P", &format!("{:08b}", cpu.flags.to_byte()));
         print_property(
             " trap",
-            match backend.trap() {
+            match trap {
                 true => "on",
                 false => "off",
             },
         );
-        print_speed(backend.clock(), clock);
+        print_speed(clock, req_clock);
+    }
+
+    pub fn print_mem_line(&self, memory: &Memory) {
         terminal::newline();
         terminal::highlight();
         terminal::print("MEM ");
         terminal::normal();
-        print_property("RST", &format!("{:04X} ", backend.memory.word(Cpu::RESET_VECTOR)));
-        print_property("NMI", &format!("{:04X} ", backend.memory.word(Cpu::NMI_VECTOR)));
-        print_property("IRQ", &format!("{:04X} ", backend.memory.word(Cpu::IRQ_VECTOR)));
-        print_property("IOC", &format!("{:08b} ", backend.memory.byte(Cpu::IO_PORT_CONFIG)));
-        print_property("IOD", &format!("{:08b} ", backend.memory.byte(Cpu::IO_PORT_DATA)));
+        print_property("RST", &format!("{:04X} ", memory.word(Cpu::RESET_VECTOR)));
+        print_property("NMI", &format!("{:04X} ", memory.word(Cpu::NMI_VECTOR)));
+        print_property("IRQ", &format!("{:04X} ", memory.word(Cpu::IRQ_VECTOR)));
+        print_property("IOC", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_CONFIG)));
+        print_property("IOD", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_DATA)));
     }
 
-    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, clock: f64, idle: bool) {
+    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, req_clock: f64, idle: bool) {
         #[cfg(target_os = "windows")]
         let rows = rows + 1;
 
@@ -77,7 +83,8 @@ impl View {
             self.shortcuts_row = self.rows - 1;
             self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
             terminal::clear();
-            self.print_header(backend, clock);
+            self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
+            self.print_mem_line(&backend.memory);
             if idle {
                 self.print_dump(&backend);
             }

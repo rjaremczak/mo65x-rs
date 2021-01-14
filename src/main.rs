@@ -7,10 +7,9 @@ mod error;
 mod frontend;
 mod mos6510;
 mod terminal;
-use backend::Backend;
+
 use console::Console;
 use error::{AppError, Result};
-use frontend::Frontend;
 use mos6510::{assembler, disassembler::disassemble_file};
 use std::io::Write;
 use std::{fs::File, path::PathBuf};
@@ -99,24 +98,13 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
     Ok(())
 }
 
-fn console(freq: f64) -> Result<()> {
-    let mut backend = Backend::new();
-    let mut frontend = Frontend::new();
-    let mut console = Console::new(APP_NAME, freq);
-    console.init(&backend);
-    while !frontend.quit() && console.process(&mut backend) {
-        frontend.update(&backend.memory)?;
-    }
-    Ok(())
-}
-
 fn main() {
     let cliopt = CliOpt::from_args();
     // println!("cliopt: {:#?}", cliopt);
     let result = match cliopt.mode.unwrap_or(Mode::Console { clock_mhz: 1.0 }) {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
-        Mode::Console { clock_mhz } => console(clock_mhz * 1e6),
+        Mode::Console { clock_mhz } => Console::start(APP_NAME, clock_mhz * 1e6),
     };
     if let Err(apperr) = result {
         println!("\napplication error: {:?}", apperr)
