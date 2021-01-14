@@ -62,10 +62,7 @@ impl Backend {
         loop {
             let t0 = Instant::now();
             let cycles = self.cpu.exec_inst(&mut self.memory);
-            let t1 = t0 + Duration::from_nanos(period_ns * cycles as u64);
-            while Instant::now() < t1 {}
             self.cycles.fetch_add(cycles as u64, Relaxed);
-            self.duration_ns.fetch_add((Instant::now() - t0).as_nanos() as u64, Relaxed);
             if cycles == 0 {
                 self.trap.store(true, Relaxed);
                 return Err(AppError::InvalidOpCode(self.cpu.regs.pc, self.memory[self.cpu.regs.pc]));
@@ -73,6 +70,9 @@ impl Backend {
             if self.trap.load(Relaxed) {
                 return Ok(cycles);
             }
+            let t1 = t0 + Duration::from_nanos(period_ns * cycles as u64);
+            while Instant::now() < t1 {}
+            self.duration_ns.fetch_add((Instant::now() - t0).as_nanos() as u64, Relaxed);
         }
     }
 

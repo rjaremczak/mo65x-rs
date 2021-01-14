@@ -15,7 +15,7 @@ use std::io::Write;
 use std::{fs::File, path::PathBuf};
 use structopt::StructOpt;
 
-const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
+const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "My Own 65xx emulator, assembler and disassembler")]
@@ -53,8 +53,8 @@ enum Mode {
     },
     /// Interactive console
     Console {
-        /// Frequency of CPU clock in Hz
-        #[structopt(short, default_value = "1.0")]
+        /// Frequency of CPU clock in MHz
+        #[structopt(default_value = "1.0")]
         clock_mhz: f64,
     },
 }

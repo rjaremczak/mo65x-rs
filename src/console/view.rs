@@ -86,7 +86,7 @@ impl View {
             self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
             self.print_mem_line(&backend.memory);
             if idle {
-                self.print_dump(&backend);
+                self.print_dump(&backend.memory, backend.cpu.regs.pc);
             }
             self.print_command();
             self.print_status();
@@ -94,15 +94,15 @@ impl View {
         }
     }
 
-    pub fn print_dump(&self, backend: &Backend) {
+    pub fn print_dump(&self, memory: &Memory, pc: u16) {
         terminal::hide_cursor();
         terminal::set_cursor_pos(0, self.dump_row);
         let mut code = self.code_addr;
         let mut dump = self.dump_addr;
         for _ in self.dump_row..self.command_row {
             terminal::clear_line();
-            let highlight = code == backend.cpu.regs.pc;
-            let columns = disassemble(&backend.memory, &mut code);
+            let highlight = code == pc;
+            let columns = disassemble(&memory, &mut code);
             if highlight {
                 terminal::normal()
             } else {
@@ -122,7 +122,7 @@ impl View {
             terminal::print(&format!("{:04X}", dump));
             terminal::normal();
             for _ in 0..self.bytes_per_row {
-                terminal::print(&format!(" {:02X}", backend.memory[dump]));
+                terminal::print(&format!(" {:02X}", memory[dump]));
                 dump = dump.wrapping_add(1);
             }
             terminal::newline();

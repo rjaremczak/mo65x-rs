@@ -81,13 +81,17 @@ impl Console {
         self.view.print_mem_line(&self.backend.memory);
     }
 
+    fn print_dump(&self) {
+        self.view.print_dump(&self.backend.memory, self.backend.cpu.regs.pc);
+    }
+
     fn process_command(&mut self) {
         let mut status = String::from(STATUS_OK);
         match self.parser.parse(&self.view.command) {
             Some(Command::SetPC(pc)) => {
                 self.backend.cpu.regs.pc = pc;
                 self.print_cpu_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::SetSP(sp)) => {
                 self.backend.cpu.regs.sp = sp;
@@ -108,12 +112,12 @@ impl Console {
             Some(Command::SetByte(addr, value)) => {
                 self.backend.memory.set_byte(addr, value);
                 self.print_mem_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::SetWord(addr, value)) => {
                 self.backend.memory.set_word(addr, value);
                 self.print_mem_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::Load(addr, fpath)) => {
                 match self.backend.upload(addr, PathBuf::from(fpath)) {
@@ -122,7 +126,7 @@ impl Console {
                         self.view.code_addr = addr;
                         self.print_cpu_line();
                         self.print_mem_line();
-                        self.view.print_dump(&self.backend);
+                        self.print_dump();
                         status = format!("uploaded {} bytes", size);
                     }
                     Err(err) => {
@@ -132,27 +136,27 @@ impl Console {
             }
             Some(Command::Disassemble(addr)) => {
                 self.view.code_addr = addr;
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::MemoryDump(addr)) => {
                 self.view.dump_addr = addr;
                 self.print_mem_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::Reset) => {
                 self.backend.cpu.reset(&self.backend.memory);
                 self.print_cpu_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::Nmi) => {
                 self.backend.cpu.nmi(&mut self.backend.memory);
                 self.print_cpu_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             Some(Command::Irq) => {
                 self.backend.cpu.irq(&mut self.backend.memory);
                 self.print_cpu_line();
-                self.view.print_dump(&self.backend);
+                self.print_dump();
             }
             None => {
                 status = format!("invalid command: {}", &self.view.command);
@@ -227,7 +231,7 @@ impl Console {
                         self.view.update_status(String::from(STATUS_IS_RUNNING));
                     } else {
                         let result = self.stop_execution();
-                        self.view.print_dump(&self.backend);
+                        self.print_dump();
                         self.view.update_status(format!("{:?}", result));
                     }
                     self.print_cpu_line();
@@ -238,7 +242,7 @@ impl Console {
                         let status = self.backend.execute(Duration::from_micros(1));
                         self.print_cpu_line();
                         self.print_mem_line();
-                        self.view.print_dump(&self.backend);
+                        self.print_dump();
                         self.view.update_status(format!("{:?}", status));
                     }
                 }
