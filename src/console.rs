@@ -192,6 +192,20 @@ impl Console {
         self.running.load(Ordering::Relaxed)
     }
 
+    fn wait_for_key(&self) {
+        loop {
+            if poll(Duration::from_millis(20)).unwrap() {
+                match event::read() {
+                    Ok(Key(KeyEvent { .. })) => return,
+                    _ => {}
+                }
+            };
+            if self.frontend.quit() {
+                return;
+            }
+        }
+    }
+
     pub fn process(&mut self) -> bool {
         let idle = !self.is_running();
         if !idle {
@@ -218,6 +232,13 @@ impl Console {
                 Ok(Key(KeyEvent { code: Enter, .. })) => {
                     if idle {
                         self.process_command();
+                    }
+                }
+                Ok(Key(KeyEvent { code: F(1), .. })) => {
+                    if idle {
+                        view::print_help();
+                        self.wait_for_key();
+                        self.view.print_all(&self.backend, self.clock, idle);
                     }
                 }
                 Ok(Key(KeyEvent { code: F(2), .. })) => {

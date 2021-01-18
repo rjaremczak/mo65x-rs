@@ -82,16 +82,20 @@ impl View {
             self.status_row = self.rows - 2;
             self.shortcuts_row = self.rows - 1;
             self.bytes_per_row = (cols - DUMP_COL - 8) / 3;
-            terminal::clear();
-            self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
-            self.print_mem_line(&backend.memory);
-            if idle {
-                self.print_dump(&backend.memory, backend.cpu.regs.pc);
-            }
-            self.print_command();
-            self.print_status();
-            self.print_shortcuts();
+            self.print_all(backend, req_clock, idle);
         }
+    }
+
+    pub fn print_all(&self, backend: &Backend, req_clock: f64, idle: bool) {
+        terminal::clear();
+        self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
+        self.print_mem_line(&backend.memory);
+        if idle {
+            self.print_dump(&backend.memory, backend.cpu.regs.pc);
+        }
+        self.print_command();
+        self.print_status();
+        self.print_shortcuts();
     }
 
     pub fn print_dump(&self, memory: &Memory, pc: u16) {
@@ -211,4 +215,42 @@ fn print_speed(actual_clock: f64, requested_clock: f64) {
     terminal::print(&format!("{:.2}", actual_clock / 1e6));
     terminal::dim();
     terminal::print(&format!("/{:.2} MHz  ", requested_clock / 1e6));
+}
+
+fn print_help_line(cmd: &str, desc: &str) {
+    terminal::bold();
+    terminal::print(&format!("{:30}", cmd));
+    terminal::normal();
+    terminal::print(&format!(" - {}", desc));
+    terminal::newline();
+}
+
+pub fn print_help() {
+    terminal::clear();
+    terminal::set_cursor_pos(0, 0);
+    terminal::dim();
+    terminal::print("console commands:");
+    terminal::newlines(2);
+    print_help_line("pc|sp|a|x|y = hex-value", "assign value to a CPU register");
+    print_help_line("sb hex-addr hex-byte", "assign byte value to a memory location");
+    print_help_line("sw hex-addr hex-word", "assign word value to a memory location");
+    print_help_line("l hex-addr file-path", "load binary file to memory at given location");
+    print_help_line("d hex-addr", "set start address of disassembly view");
+    print_help_line("m hex-addr", "set start address of hex dump view");
+    print_help_line("reset", "simulate CPU reset");
+    print_help_line("nmi", "simulate NMI request");
+    print_help_line("irq", "simulate IRQ request");
+    terminal::newline();
+    terminal::dim();
+    terminal::print("key shortcuts:");
+    terminal::newlines(2);
+    print_help_line("F1", "this help information");
+    print_help_line("F2", "clear runtime statistics");
+    print_help_line("F5", "start/stop continuous execution at requested speed");
+    print_help_line("F10", "execute single instruction");
+    print_help_line("Esc", "quit application");
+    terminal::newline();
+    terminal::dim();
+    terminal::print("press a key to quit this help screen");
+    terminal::flush();
 }

@@ -106,3 +106,7 @@ pub fn end_session() {
 pub fn newline() {
     stdout().queue(MoveToNextLine(1)).unwrap();
 }
+
+pub fn newlines(num: u16) {
+    stdout().queue(MoveToNextLine(num)).unwrap();
+}
