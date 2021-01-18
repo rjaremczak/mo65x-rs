@@ -100,7 +100,6 @@ fn disassemble(start_addr: u16, end_addr: Option<u16>, bin: PathBuf) -> Result<(
 
 fn main() {
     let cliopt = CliOpt::from_args();
-    // println!("cliopt: {:#?}", cliopt);
     let result = match cliopt.mode.unwrap_or(Mode::Console { clock_mhz: 1.0 }) {
         Mode::Asm { src, bin, dump_symbols } => assemble(src, bin, dump_symbols),
         Mode::Dasm { start_addr, end_addr, bin } => disassemble(start_addr, end_addr, bin),
