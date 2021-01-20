@@ -76,10 +76,7 @@ impl Resolver {
         match self.symbols.insert(String::from(key), val) {
             Some(old) => {
                 if old != val {
-                    Err(AppError::GeneralError(format!(
-                        "symbol {} redefinition, was {} changed to {}",
-                        key, old, val
-                    )))
+                    Err(AppError::SymbolRedefined(String::from(key), old, val))
                 } else {
                     Ok(())
                 }
@@ -103,7 +100,7 @@ impl Resolver {
                     } else if let Some(num) = self.symbols.get(raw) {
                         Ok(Operand::symbol(*num))
                     } else if no_symbol_fail {
-                        Err(AppError::UndefinedSymbol(raw.to_string()))
+                        Err(AppError::SymbolUndefined(raw.to_string()))
                     } else {
                         Ok(Operand::symbol(0))
                     }
@@ -196,6 +193,6 @@ mod tests {
         assert_ok("label_2", 0xac02);
         assert_ok("<label_1", 0xfe);
         assert_ok(">label_1", 0x2f);
-        assert_err("labeloza", AppError::UndefinedSymbol(String::from("labeloza")));
+        assert_err("labeloza", AppError::SymbolUndefined(String::from("labeloza")));
     }
 }

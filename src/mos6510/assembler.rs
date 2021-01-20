@@ -95,8 +95,8 @@ impl Assembler {
             let opstr = opstr.ok_or(AppError::MissingOperand)?;
             let mut operand = self.resolver.resolve(opstr, self.generate_code)?;
             if self.generate_code && addrmode == AddrMode::Relative && operand.is_symbol {
-                let displacement =
-                    i8::try_from(operand.value - self.location_counter as i32 - 2).map_err(|e| AppError::GeneralError(e.to_string()))?;
+                let diff = operand.value - self.location_counter as i32 - 2;
+                let displacement = i8::try_from(diff).map_err(|_| AppError::BranchTooFar(diff))?;
                 operand.value = displacement as i32;
             }
             Ok(operand)
@@ -222,7 +222,7 @@ impl Assembler {
             }
             Ok(())
         } else {
-            Err(AppError::AddrOutOfRange(addr, self.location_counter))
+            Err(AppError::OriginTooLow(addr, self.location_counter))
         }
     }
 

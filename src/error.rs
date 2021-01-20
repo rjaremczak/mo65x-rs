@@ -7,18 +7,21 @@ pub type Result<T> = std::result::Result<T, AppError>;
 
 #[derive(Debug)]
 pub enum AppError {
-    UndefinedSymbol(String),
+    SymbolUndefined(String),
+    SymbolRedefined(String, i32, i32),
     MissingOperand,
     NoOpCode(Instruction, AddrMode),
     SyntaxError(String),
-    AddrOutOfRange(u16, u16),
+    OriginTooLow(u16, u16),
+    BranchTooFar(i32),
     InvalidMnemonic(String),
     ParseIntError(String, std::num::ParseIntError),
     IoError(std::io::Error),
     EmulatorAlreadyRunning,
     EmulatorNotRunning,
     InvalidOpCode(u16, u8),
-    GeneralError(String),
+    CrossTermError(ErrorKind),
+    MiniFbError(minifb::Error),
 }
 
 impl Display for AppError {
@@ -35,12 +38,12 @@ impl From<std::io::Error> for AppError {
 
 impl From<ErrorKind> for AppError {
     fn from(err: ErrorKind) -> Self {
-        Self::GeneralError(err.to_string())
+        Self::CrossTermError(err)
     }
 }
 
 impl From<minifb::Error> for AppError {
     fn from(err: minifb::Error) -> Self {
-        Self::GeneralError(err.to_string())
+        Self::MiniFbError(err)
     }
 }
