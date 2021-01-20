@@ -2,12 +2,7 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{
-    backend::Backend,
-    error::{AppError, Result},
-    frontend::Frontend,
-    terminal,
-};
+use crate::{backend::Backend, error::AppError, frontend::Frontend, terminal};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{
@@ -28,7 +23,7 @@ pub struct Console {
     frontend: Frontend,
     parser: CommandParser,
     view: View,
-    handle: Option<JoinHandle<Result<u8>>>,
+    handle: Option<JoinHandle<Result<u8, AppError>>>,
     running: Arc<AtomicBool>,
     clock: f64,
 }
@@ -43,7 +38,7 @@ impl Drop for Console {
 }
 
 impl Console {
-    pub fn start(title: &str, clock: f64) -> Result<()> {
+    pub fn start(title: &str, clock: f64) -> Result<(), AppError> {
         let mut console = Self {
             backend: Backend::new(),
             frontend: Frontend::new(),
@@ -57,7 +52,7 @@ impl Console {
         console.processing_loop()
     }
 
-    fn processing_loop(&mut self) -> Result<()> {
+    fn processing_loop(&mut self) -> Result<(), AppError> {
         while !self.frontend.quit() && self.process() {
             self.frontend.update(&self.backend.memory)?;
         }
@@ -180,7 +175,7 @@ impl Console {
         }));
     }
 
-    fn stop_execution(&mut self) -> Result<u8> {
+    fn stop_execution(&mut self) -> Result<u8, AppError> {
         self.backend.trap_on();
         match self.handle.take() {
             Some(h) => h.join().unwrap(),

@@ -1,14 +1,11 @@
-use std::fmt::Display;
-
 use crate::mos6510::{addrmode::AddrMode, instruction::Instruction};
 use crossterm::ErrorKind;
-
-pub type Result<T> = std::result::Result<T, AppError>;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum AppError {
-    SymbolUndefined(String),
-    SymbolRedefined(String, i32, i32),
+    UndefinedSymbol(String),
+    RedefinedSymbol(String, i32, i32),
     MissingOperand,
     NoOpCode(Instruction, AddrMode),
     SyntaxError(String),
@@ -22,6 +19,7 @@ pub enum AppError {
     InvalidOpCode(u16, u8),
     CrossTermError(ErrorKind),
     MiniFbError(minifb::Error),
+    AsmLineError(usize, Box<AppError>),
 }
 
 impl Display for AppError {

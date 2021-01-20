@@ -10,7 +10,6 @@ use std::{
 use crate::{
     error::AppError,
     mos6510::{cpu::Cpu, memory::Memory},
-    Result,
 };
 
 pub struct Backend {
@@ -47,7 +46,7 @@ impl Backend {
         self.cycles.load(Relaxed) as f64 * 1e9 / self.duration_ns.load(Relaxed) as f64
     }
 
-    pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize> {
+    pub fn upload(&mut self, addr: u16, fpath: PathBuf) -> Result<usize, AppError> {
         if !self.trap.load(Relaxed) {
             return Err(AppError::EmulatorAlreadyRunning);
         }
@@ -57,7 +56,7 @@ impl Backend {
         Ok(size)
     }
 
-    pub fn execute(&mut self, period: Duration) -> Result<u8> {
+    pub fn execute(&mut self, period: Duration) -> Result<u8, AppError> {
         let period_ns = period.as_nanos() as u64;
         loop {
             let t0 = Instant::now();

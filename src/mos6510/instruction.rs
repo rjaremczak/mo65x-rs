@@ -1,4 +1,4 @@
-use crate::error::{AppError, Result};
+use crate::error::AppError;
 use std::collections::BTreeMap;
 use Instruction::*;
 
@@ -68,7 +68,7 @@ impl Instruction {
         MNEMONICS.get(self).unwrap()
     }
 
-    pub fn parse(mnemonic: &str) -> Result<Instruction> {
+    pub fn parse(mnemonic: &str) -> Result<Instruction, AppError> {
         let m = &mnemonic.to_uppercase();
         MNEMONICS
             .iter()

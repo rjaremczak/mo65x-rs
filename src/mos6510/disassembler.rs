@@ -1,7 +1,6 @@
-use std::{fs::File, io::Read, path::Path};
-
 use super::{addrmode::AddrMode, memory::Memory, operation::Operation};
-use crate::error::Result;
+use crate::error::AppError;
+use std::{fs::File, io::Read, path::Path};
 
 type Columns = (String, String, String);
 
@@ -37,7 +36,7 @@ pub fn disassemble(memory: &Memory, pc: &mut u16) -> Columns {
     buf
 }
 
-pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, fpath: F) -> Result<Vec<Columns>> {
+pub fn disassemble_file<F: AsRef<Path>>(start_addr: u16, end_addr: Option<u16>, fpath: F) -> Result<Vec<Columns>, AppError> {
     let mut buf = Vec::new();
     let fsize = File::open(&fpath)?.read_to_end(&mut buf)?;
     let end_addr = end_addr.unwrap_or(start_addr.saturating_add(fsize as u16));

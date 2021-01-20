@@ -228,8 +228,8 @@ impl Assembler {
 
     fn process_file(&mut self, generate_code: bool, strbuf: &String) -> Result<(), AppError> {
         self.reset_phase(generate_code);
-        for line in strbuf.lines() {
-            self.process_line(line)?;
+        for (num, line) in strbuf.lines().enumerate() {
+            self.process_line(line).map_err(|e| AppError::AsmLineError(num + 1, Box::from(e)))?;
         }
         Ok(())
     }

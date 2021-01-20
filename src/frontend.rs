@@ -1,4 +1,4 @@
-use crate::{error::Result, mos6510::memory::Memory};
+use crate::{error::AppError, mos6510::memory::Memory};
 use minifb::{Key, Window, WindowOptions};
 use std::time::Duration;
 
@@ -42,7 +42,7 @@ impl Frontend {
         !self.is_window_open() || self.is_key_down(Key::Escape)
     }
 
-    pub fn update(&mut self, memory: &Memory) -> Result<()> {
+    pub fn update(&mut self, memory: &Memory) -> Result<(), AppError> {
         let vmem = memory.view(FB_ADDR, FB_LEN);
         for i in 0..FB_LEN {
             self.framebuf[i] = C64_PALETTE[vmem[i] as usize & 0x0f];

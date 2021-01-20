@@ -1,4 +1,4 @@
-use crate::error::{AppError, Result};
+use crate::error::AppError;
 use std::collections::HashMap;
 
 pub const LO_BYTE_MODIFIER: char = '<';
@@ -66,17 +66,17 @@ impl Resolver {
         Self { symbols: HashMap::new() }
     }
 
-    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<Operand> {
+    pub fn resolve(&self, txt: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
         let modifier = Modifier::from(txt);
         let rest = &txt[modifier.len()..];
         self.resolve_raw(rest, no_symbol_fail).and_then(|op| Ok(op.modified(modifier)))
     }
 
-    pub fn define_symbol(&mut self, key: &str, val: i32) -> Result<()> {
+    pub fn define_symbol(&mut self, key: &str, val: i32) -> Result<(), AppError> {
         match self.symbols.insert(String::from(key), val) {
             Some(old) => {
                 if old != val {
-                    Err(AppError::SymbolRedefined(String::from(key), old, val))
+                    Err(AppError::RedefinedSymbol(String::from(key), old, val))
                 } else {
                     Ok(())
                 }
@@ -89,7 +89,7 @@ impl Resolver {
         &self.symbols
     }
 
-    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<Operand> {
+    fn resolve_raw(&self, raw: &str, no_symbol_fail: bool) -> Result<Operand, AppError> {
         match raw.chars().next() {
             Some(c) => match c {
                 HEX_PREFIX => parse_int(&raw[1..], 16),
@@ -100,7 +100,7 @@ impl Resolver {
                     } else if let Some(num) = self.symbols.get(raw) {
                         Ok(Operand::symbol(*num))
                     } else if no_symbol_fail {
-                        Err(AppError::SymbolUndefined(raw.to_string()))
+                        Err(AppError::UndefinedSymbol(raw.to_string()))
                     } else {
                         Ok(Operand::symbol(0))
                     }
@@ -111,7 +111,7 @@ impl Resolver {
     }
 }
 
-fn parse_int(str: &str, radix: u32) -> Result<Operand> {
+fn parse_int(str: &str, radix: u32) -> Result<Operand, AppError> {
     match i32::from_str_radix(str, radix) {
         Ok(num) => Ok(Operand::literal(num)),
         Err(perr) => Err(AppError::ParseIntError(String::from(str), perr)),
@@ -193,6 +193,6 @@ mod tests {
         assert_ok("label_2", 0xac02);
         assert_ok("<label_1", 0xfe);
         assert_ok(">label_1", 0x2f);
-        assert_err("labeloza", AppError::SymbolUndefined(String::from("labeloza")));
+        assert_err("labeloza", AppError::UndefinedSymbol(String::from("labeloza")));
     }
 }
