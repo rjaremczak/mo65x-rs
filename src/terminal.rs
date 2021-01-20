@@ -1,5 +1,4 @@
 use std::io::{stdout, Write};
-
 use crossterm::{
     cursor::{EnableBlinking, Hide, MoveLeft, MoveTo, MoveToColumn, MoveToNextLine, RestorePosition, SavePosition, Show},
     execute,
