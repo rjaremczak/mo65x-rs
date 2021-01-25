@@ -104,6 +104,30 @@ impl Console {
                 self.backend.cpu.regs.y = y;
                 self.print_cpu_line();
             }
+            Some(Command::SetFlagN(f)) => {
+                self.backend.cpu.flags.n = f;
+                self.print_cpu_line();
+            }
+            Some(Command::SetFlagV(f)) => {
+                self.backend.cpu.flags.v = f;
+                self.print_cpu_line();
+            }
+            Some(Command::SetFlagD(f)) => {
+                self.backend.cpu.flags.d = f;
+                self.print_cpu_line();
+            }
+            Some(Command::SetFlagI(f)) => {
+                self.backend.cpu.flags.i = f;
+                self.print_cpu_line();
+            }
+            Some(Command::SetFlagZ(f)) => {
+                self.backend.cpu.flags.z = f;
+                self.print_cpu_line();
+            }
+            Some(Command::SetFlagC(f)) => {
+                self.backend.cpu.flags.c = f;
+                self.print_cpu_line();
+            }
             Some(Command::SetByte(addr, value)) => {
                 self.backend.memory.set_byte(addr, value);
                 self.print_mem_line();
