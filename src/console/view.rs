@@ -1,6 +1,6 @@
 use crate::{
     backend::Backend,
-    mos6510::{disassembler::disassemble, memory::Memory},
+    mos6510::{cpu::flags::Flags, disassembler::disassemble, memory::Memory},
 };
 use crate::{mos6510::cpu::Cpu, terminal};
 
@@ -46,7 +46,8 @@ impl View {
         print_property("A", &format!("{:02X} ", cpu.regs.a));
         print_property("X", &format!("{:02X} ", cpu.regs.x));
         print_property("Y", &format!("{:02X} ", cpu.regs.y));
-        print_property("P", &format!("{:08b}", cpu.flags.to_byte()));
+        // print_property("P", &format!("{:08b}", cpu.flags.to_byte()));
+        print_flags(cpu.flags);
         print_property(
             " trap",
             match trap {
@@ -172,8 +173,8 @@ impl View {
         terminal::print(&self.title);
         print_shortcut(" F1", "Help");
         print_shortcut(" F2", "Clear Stats.");
-        print_shortcut(" F5", "Help");
-        print_shortcut(" F10", "Help");
+        print_shortcut(" F5", "Run/Stop");
+        print_shortcut(" F10", "Step");
         print_shortcut(" Esc", "Quit");
     }
 
@@ -253,4 +254,26 @@ pub fn print_help() {
     terminal::dim();
     terminal::print("press a key to quit this help screen");
     terminal::flush();
+}
+
+fn print_flag(bit: bool, text: &str) {
+    if bit {
+        terminal::bold();
+    } else {
+        terminal::dim();
+    }
+    terminal::print(text);
+}
+
+fn print_flags(flags: Flags) {
+    terminal::dim();
+    terminal::print("P:");
+    print_flag(flags.n, "N");
+    print_flag(flags.v, "V");
+    print_flag(false, "B");
+    print_flag(false, "_");
+    print_flag(flags.d, "D");
+    print_flag(flags.i, "I");
+    print_flag(flags.z, "Z");
+    print_flag(flags.c, "C");
 }
