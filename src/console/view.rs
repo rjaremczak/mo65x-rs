@@ -233,6 +233,7 @@ pub fn print_help() {
     terminal::print("console commands:");
     terminal::newlines(2);
     print_help_line("pc|sp|a|x|y = hex-value", "assign value to a CPU register");
+    print_help_line("n|v|v|i|z|c = bin-value", "assign 0 or 1 value to a CPU flag");
     print_help_line("sb hex-addr hex-byte", "assign byte value to a memory location");
     print_help_line("sw hex-addr hex-word", "assign word value to a memory location");
     print_help_line("l hex-addr file-path", "load binary file to memory at given location");
@@ -270,7 +271,7 @@ fn print_flags(flags: Flags) {
     terminal::print("P:");
     print_flag(flags.n, "N");
     print_flag(flags.v, "V");
-    print_flag(false, "B");
+    print_flag(false, "_");
     print_flag(false, "_");
     print_flag(flags.d, "D");
     print_flag(flags.i, "I");
