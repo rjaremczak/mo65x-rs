@@ -53,7 +53,7 @@ impl Console {
     }
 
     fn processing_loop(&mut self) -> Result<(), AppError> {
-        while !self.frontend.quit() && self.process() {
+        while !self.frontend.quit() && self.process_input() {
             self.frontend.update(&self.backend.memory)?;
         }
         Ok(())
@@ -225,7 +225,7 @@ impl Console {
         }
     }
 
-    pub fn process(&mut self) -> bool {
+    pub fn process_input(&mut self) -> bool {
         let idle = !self.is_running();
         if !idle {
             self.print_cpu_line();

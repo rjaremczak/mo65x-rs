@@ -9,15 +9,15 @@ pub const BIN_PREFIX: char = '%';
 #[derive(Copy, Clone)]
 pub struct Operand {
     pub value: i32,
-    pub is_symbol: bool,
+    pub symbolic: bool,
 }
 
 impl Operand {
     pub fn literal(value: i32) -> Self {
-        Self { value, is_symbol: false }
+        Self { value, symbolic: false }
     }
     pub fn symbol(value: i32) -> Self {
-        Self { value, is_symbol: true }
+        Self { value, symbolic: true }
     }
     pub fn modified(&self, modifier: Modifier) -> Self {
         Self {
@@ -26,7 +26,7 @@ impl Operand {
                 Modifier::LoByte => self.value & 0x00ff,
                 Modifier::HiByte => self.value >> 8,
             },
-            is_symbol: self.is_symbol,
+            symbolic: self.symbolic,
         }
     }
 }

@@ -94,7 +94,7 @@ impl Assembler {
         } else {
             let opstr = opstr.ok_or(AppError::MissingOperand)?;
             let mut operand = self.resolver.resolve(opstr, self.generate_code)?;
-            if self.generate_code && addrmode == AddrMode::Relative && operand.is_symbol {
+            if self.generate_code && addrmode == AddrMode::Relative && operand.symbolic {
                 let diff = operand.value - self.location_counter as i32 - 2;
                 let displacement = i8::try_from(diff).map_err(|_| AppError::BranchTooFar(diff))?;
                 operand.value = displacement as i32;
@@ -236,7 +236,7 @@ impl Assembler {
 }
 
 fn optimize_addrmode(instruction: Instruction, addrmode: AddrMode, operand: Operand) -> AddrMode {
-    if addrmode == Implied || instruction == Jsr || instruction == Jmp || operand.is_symbol {
+    if addrmode == Implied || instruction == Jsr || instruction == Jmp || operand.symbolic {
         addrmode
     } else {
         addrmode.optimized(operand.value)
