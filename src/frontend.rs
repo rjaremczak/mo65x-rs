@@ -29,6 +29,7 @@ impl Frontend {
                     resize: false,
                     topmost: true,
                     transparency: false,
+                    none: true,
                 },
             )
             .unwrap(),
