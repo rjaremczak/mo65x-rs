@@ -5,6 +5,7 @@ use self::commands::Command;
 use crate::{backend::Backend, error::AppError, frontend, terminal};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
+use frontend::Video;
 use std::{
     path::PathBuf,
     sync::{
@@ -20,7 +21,7 @@ use KeyCode::{Backspace, Char, Enter, Esc, F};
 
 pub struct Console {
     backend: Backend,
-    frontend: frontend::Video,
+    video: Video,
     parser: CommandParser,
     view: View,
     handle: Option<JoinHandle<Result<u8, AppError>>>,
@@ -41,7 +42,7 @@ impl Console {
     pub fn start(title: &str, clock: f64) -> Result<(), AppError> {
         let mut console = Self {
             backend: Backend::new(),
-            frontend: Video::new(),
+            video: Video::new(),
             parser: CommandParser::new(),
             view: View::new(title),
             handle: None,
@@ -53,8 +54,8 @@ impl Console {
     }
 
     fn processing_loop(&mut self) -> Result<(), AppError> {
-        while !self.frontend.quit() && self.process_input() {
-            self.frontend.update(&self.backend.memory)?;
+        while !self.video.quit() && self.process_input() {
+            self.video.update(&self.backend.memory)?;
         }
         Ok(())
     }
@@ -219,7 +220,7 @@ impl Console {
                     _ => {}
                 }
             };
-            if self.frontend.quit() {
+            if self.video.quit() {
                 return;
             }
         }
