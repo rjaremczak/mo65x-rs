@@ -2,7 +2,7 @@ use crate::{error::AppError, mos6510::memory::Memory};
 use minifb::{Key, Window, WindowOptions};
 use std::time::Duration;
 
-pub struct Frontend {
+pub struct Video {
     framebuf: Vec<u32>,
     window: Window,
 }
@@ -13,7 +13,7 @@ const FB_ADDR: u16 = 0x200;
 const FB_LEN: usize = WIDTH * HEIGHT;
 const UPDATE_PERIOD: Duration = Duration::from_millis(20);
 
-impl Frontend {
+impl Video {
     pub fn new() -> Self {
         let mut frontend = Self {
             framebuf: vec![0; FB_LEN],

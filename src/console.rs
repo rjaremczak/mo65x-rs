@@ -2,7 +2,7 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{backend::Backend, error::AppError, frontend::Frontend, terminal};
+use crate::{backend::Backend, error::AppError, frontend, terminal};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{
@@ -20,7 +20,7 @@ use KeyCode::{Backspace, Char, Enter, Esc, F};
 
 pub struct Console {
     backend: Backend,
-    frontend: Frontend,
+    frontend: frontend::Video,
     parser: CommandParser,
     view: View,
     handle: Option<JoinHandle<Result<u8, AppError>>>,
@@ -41,7 +41,7 @@ impl Console {
     pub fn start(title: &str, clock: f64) -> Result<(), AppError> {
         let mut console = Self {
             backend: Backend::new(),
-            frontend: Frontend::new(),
+            frontend: Video::new(),
             parser: CommandParser::new(),
             view: View::new(title),
             handle: None,
