@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod backend;
 mod console;
+mod emulator;
 mod error;
-mod frontend;
 mod mos6510;
 mod terminal;
+mod video;
 
 use console::Console;
 use error::AppError;

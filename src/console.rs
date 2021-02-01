@@ -2,10 +2,9 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{backend::Backend, error::AppError, frontend, terminal};
+use crate::{emulator::Emulator, error::AppError, terminal, video};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
-use frontend::Video;
 use std::{
     path::PathBuf,
     sync::{
@@ -15,12 +14,13 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
+use video::Video;
 use view::View;
 use Event::{Key, Resize};
 use KeyCode::{Backspace, Char, Enter, Esc, F};
 
 pub struct Console {
-    backend: Backend,
+    emulator: Emulator,
     video: Video,
     parser: CommandParser,
     view: View,
@@ -41,7 +41,7 @@ impl Drop for Console {
 impl Console {
     pub fn start(title: &str, clock: f64) -> Result<(), AppError> {
         let mut console = Self {
-            backend: Backend::new(),
+            emulator: Emulator::new(),
             video: Video::new(),
             parser: CommandParser::new(),
             view: View::new(title),
@@ -55,7 +55,7 @@ impl Console {
 
     fn processing_loop(&mut self) -> Result<(), AppError> {
         while !self.video.quit() && self.process_input() {
-            self.video.update(&self.backend.memory)?;
+            self.video.update(&self.emulator.memory)?;
         }
         Ok(())
     }
@@ -63,86 +63,86 @@ impl Console {
     fn init(&mut self) {
         terminal::begin_session();
         let (cols, rows) = terminal::size();
-        self.view.update_size(&self.backend, cols, rows, self.clock, true);
+        self.view.update_size(&self.emulator, cols, rows, self.clock, true);
         terminal::restore_cursor();
         terminal::flush();
     }
 
     fn print_cpu_line(&self) {
         self.view
-            .print_cpu_line(&self.backend.cpu, self.backend.trap(), self.backend.clock(), self.clock);
+            .print_cpu_line(&self.emulator.cpu, self.emulator.trap(), self.emulator.clock(), self.clock);
     }
 
     fn print_mem_line(&self) {
-        self.view.print_mem_line(&self.backend.memory);
+        self.view.print_mem_line(&self.emulator.memory);
     }
 
     fn print_dump(&self) {
-        self.view.print_dump(&self.backend.memory, self.backend.cpu.regs.pc);
+        self.view.print_dump(&self.emulator.memory, self.emulator.cpu.regs.pc);
     }
 
     fn process_command(&mut self) {
         let mut status = String::from(STATUS_OK);
         match self.parser.parse(&self.view.command) {
             Some(Command::SetPC(pc)) => {
-                self.backend.cpu.regs.pc = pc;
+                self.emulator.cpu.regs.pc = pc;
                 self.print_cpu_line();
                 self.print_dump();
             }
             Some(Command::SetSP(sp)) => {
-                self.backend.cpu.regs.sp = sp;
+                self.emulator.cpu.regs.sp = sp;
                 self.print_cpu_line();
             }
             Some(Command::SetA(a)) => {
-                self.backend.cpu.regs.a = a;
+                self.emulator.cpu.regs.a = a;
                 self.print_cpu_line();
             }
             Some(Command::SetX(x)) => {
-                self.backend.cpu.regs.x = x;
+                self.emulator.cpu.regs.x = x;
                 self.print_cpu_line();
             }
             Some(Command::SetY(y)) => {
-                self.backend.cpu.regs.y = y;
+                self.emulator.cpu.regs.y = y;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagN(f)) => {
-                self.backend.cpu.flags.n = f;
+                self.emulator.cpu.flags.n = f;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagV(f)) => {
-                self.backend.cpu.flags.v = f;
+                self.emulator.cpu.flags.v = f;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagD(f)) => {
-                self.backend.cpu.flags.d = f;
+                self.emulator.cpu.flags.d = f;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagI(f)) => {
-                self.backend.cpu.flags.i = f;
+                self.emulator.cpu.flags.i = f;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagZ(f)) => {
-                self.backend.cpu.flags.z = f;
+                self.emulator.cpu.flags.z = f;
                 self.print_cpu_line();
             }
             Some(Command::SetFlagC(f)) => {
-                self.backend.cpu.flags.c = f;
+                self.emulator.cpu.flags.c = f;
                 self.print_cpu_line();
             }
             Some(Command::SetByte(addr, value)) => {
-                self.backend.memory.set_byte(addr, value);
+                self.emulator.memory.set_byte(addr, value);
                 self.print_mem_line();
                 self.print_dump();
             }
             Some(Command::SetWord(addr, value)) => {
-                self.backend.memory.set_word(addr, value);
+                self.emulator.memory.set_word(addr, value);
                 self.print_mem_line();
                 self.print_dump();
             }
             Some(Command::Load(addr, fpath)) => {
-                match self.backend.upload(addr, PathBuf::from(fpath)) {
+                match self.emulator.upload(addr, PathBuf::from(fpath)) {
                     Ok(size) => {
-                        self.backend.cpu.regs.pc = addr;
+                        self.emulator.cpu.regs.pc = addr;
                         self.view.code_addr = addr;
                         self.print_cpu_line();
                         self.print_mem_line();
@@ -164,17 +164,17 @@ impl Console {
                 self.print_dump();
             }
             Some(Command::Reset) => {
-                self.backend.cpu.reset(&self.backend.memory);
+                self.emulator.cpu.reset(&self.emulator.memory);
                 self.print_cpu_line();
                 self.print_dump();
             }
             Some(Command::Nmi) => {
-                self.backend.cpu.nmi(&mut self.backend.memory);
+                self.emulator.cpu.nmi(&mut self.emulator.memory);
                 self.print_cpu_line();
                 self.print_dump();
             }
             Some(Command::Irq) => {
-                self.backend.cpu.irq(&mut self.backend.memory);
+                self.emulator.cpu.irq(&mut self.emulator.memory);
                 self.print_cpu_line();
                 self.print_dump();
             }
@@ -189,8 +189,8 @@ impl Console {
 
     unsafe fn start_execution(&mut self) {
         self.running.store(true, Ordering::Relaxed);
-        self.backend.trap_off();
-        let backend_ptr = AtomicPtr::new(&mut self.backend);
+        self.emulator.trap_off();
+        let backend_ptr = AtomicPtr::new(&mut self.emulator);
         let running_clone = self.running.clone();
         let period = Duration::from_secs_f64(1.0 / self.clock);
         self.handle = Some(thread::spawn(move || {
@@ -201,7 +201,7 @@ impl Console {
     }
 
     fn stop_execution(&mut self) -> Result<u8, AppError> {
-        self.backend.trap_on();
+        self.emulator.trap_on();
         match self.handle.take() {
             Some(h) => h.join().unwrap(),
             None => Err(AppError::EmulatorNotRunning),
@@ -258,11 +258,11 @@ impl Console {
                     if idle {
                         view::print_help();
                         self.wait_for_key();
-                        self.view.print_all(&self.backend, self.clock, idle);
+                        self.view.print_all(&self.emulator, self.clock, idle);
                     }
                 }
                 Ok(Key(KeyEvent { code: F(2), .. })) => {
-                    self.backend.reset_statistics();
+                    self.emulator.reset_statistics();
                     self.print_cpu_line();
                 }
                 Ok(Key(KeyEvent { code: F(5), .. })) => {
@@ -279,8 +279,8 @@ impl Console {
                 }
                 Ok(Key(KeyEvent { code: F(10), .. })) => {
                     if idle {
-                        self.backend.trap_on();
-                        let status = self.backend.execute(Duration::from_micros(1));
+                        self.emulator.trap_on();
+                        let status = self.emulator.execute(Duration::from_micros(1));
                         self.print_cpu_line();
                         self.print_mem_line();
                         self.print_dump();
@@ -288,7 +288,7 @@ impl Console {
                     }
                 }
                 Ok(Resize(cols, rows)) => {
-                    self.view.update_size(&self.backend, cols, rows, self.clock, idle);
+                    self.view.update_size(&self.emulator, cols, rows, self.clock, idle);
                 }
                 Ok(event) => {
                     self.view.update_status(format!("unhandled event: {:?}", event));

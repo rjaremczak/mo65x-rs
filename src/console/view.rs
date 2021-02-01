@@ -1,5 +1,5 @@
 use crate::{
-    backend::Backend,
+    emulator::Emulator,
     mos6510::{cpu::flags::Flags, disassembler::disassemble, memory::Memory},
 };
 use crate::{mos6510::cpu::Cpu, terminal};
@@ -70,7 +70,7 @@ impl View {
         print_property("IOD", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_DATA)));
     }
 
-    pub fn update_size(&mut self, backend: &Backend, cols: u16, rows: u16, req_clock: f64, idle: bool) {
+    pub fn update_size(&mut self, backend: &Emulator, cols: u16, rows: u16, req_clock: f64, idle: bool) {
         #[cfg(target_os = "windows")]
         let rows = rows + 1;
 
@@ -87,7 +87,7 @@ impl View {
         }
     }
 
-    pub fn print_all(&self, backend: &Backend, req_clock: f64, idle: bool) {
+    pub fn print_all(&self, backend: &Emulator, req_clock: f64, idle: bool) {
         terminal::clear();
         self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
         self.print_mem_line(&backend.memory);
