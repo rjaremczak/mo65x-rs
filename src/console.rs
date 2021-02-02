@@ -49,7 +49,7 @@ impl Console {
             running: Arc::new(AtomicBool::new(false)),
             clock,
         };
-        // console.view.update_size(&console.emulator, None, console.clock, true);
+        console.view.update_size(&console.emulator, None, console.clock, true);
         console.view.flush();
         console.processing_loop()
     }
