@@ -2,7 +2,7 @@ mod commands;
 mod view;
 
 use self::commands::Command;
-use crate::{emulator::Emulator, error::AppError, terminal, video};
+use crate::{emulator::Emulator, error::AppError, video};
 use commands::CommandParser;
 use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{
@@ -34,7 +34,7 @@ const STATUS_IS_RUNNING: &str = "Emulation is running, press F5 to stop...";
 
 impl Drop for Console {
     fn drop(&mut self) {
-        terminal::end_session()
+        self.view.terminate()
     }
 }
 
@@ -49,7 +49,8 @@ impl Console {
             running: Arc::new(AtomicBool::new(false)),
             clock,
         };
-        console.init();
+        // console.view.update_size(&console.emulator, None, console.clock, true);
+        console.view.flush();
         console.processing_loop()
     }
 
@@ -58,14 +59,6 @@ impl Console {
             self.video.update(&self.emulator.memory)?;
         }
         Ok(())
-    }
-
-    fn init(&mut self) {
-        terminal::begin_session();
-        let (cols, rows) = terminal::size();
-        self.view.update_size(&self.emulator, cols, rows, self.clock, true);
-        terminal::restore_cursor();
-        terminal::flush();
     }
 
     fn print_cpu_line(&self) {
@@ -288,7 +281,7 @@ impl Console {
                     }
                 }
                 Ok(Resize(cols, rows)) => {
-                    self.view.update_size(&self.emulator, cols, rows, self.clock, idle);
+                    self.view.update_size(&self.emulator, Some((cols, rows)), self.clock, idle);
                 }
                 Ok(event) => {
                     self.view.update_status(format!("unhandled event: {:?}", event));
@@ -297,8 +290,7 @@ impl Console {
                     self.view.update_status(format!("event handling error: {:?}", err));
                 }
             }
-            terminal::restore_cursor();
-            terminal::flush();
+            self.view.flush();
         }
         true
     }

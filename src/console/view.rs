@@ -29,11 +29,22 @@ const DUMP_COL: u16 = 30;
 
 impl View {
     pub fn new(title: &str) -> Self {
-        Self {
+        let view = Self {
             title: String::from(title),
             status: String::from(STATUS_OK),
             ..Self::default()
-        }
+        };
+        terminal::begin_session();
+        view
+    }
+
+    pub fn terminate(&self) {
+        terminal::end_session()
+    }
+
+    pub fn flush(&self) {
+        terminal::restore_cursor();
+        terminal::flush();
     }
 
     pub fn print_cpu_line(&self, cpu: &Cpu, trap: bool, clock: f64, req_clock: f64) {
@@ -70,7 +81,9 @@ impl View {
         print_property("IOD", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_DATA)));
     }
 
-    pub fn update_size(&mut self, backend: &Emulator, cols: u16, rows: u16, req_clock: f64, idle: bool) {
+    pub fn update_size(&mut self, backend: &Emulator, size: Option<(u16, u16)>, req_clock: f64, idle: bool) {
+        let (cols, rows) = size.unwrap_or_else(|| terminal::size());
+
         #[cfg(target_os = "windows")]
         let rows = rows + 1;
 

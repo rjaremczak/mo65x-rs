@@ -29,7 +29,7 @@ impl Video {
                     resize: false,
                     topmost: true,
                     transparency: false,
-                    none: true,
+                    none: false,
                 },
             )
             .unwrap(),
