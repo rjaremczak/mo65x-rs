@@ -34,7 +34,7 @@ const STATUS_IS_RUNNING: &str = "Emulation is running, press F5 to stop...";
 
 impl Drop for Console {
     fn drop(&mut self) {
-        self.view.terminate()
+        view::terminate()
     }
 }
 
@@ -49,8 +49,8 @@ impl Console {
             running: Arc::new(AtomicBool::new(false)),
             clock,
         };
-        // console.view.update_size(&console.emulator, None, console.clock, true);
-        console.view.flush();
+        console.view.update_size(&console.emulator, None, console.clock, true);
+        view::flush();
         console.processing_loop()
     }
 
@@ -62,12 +62,11 @@ impl Console {
     }
 
     fn print_cpu_line(&self) {
-        self.view
-            .print_cpu_line(&self.emulator.cpu, self.emulator.trap(), self.emulator.clock(), self.clock);
+        view::print_cpu_line(&self.emulator.cpu, self.emulator.trap(), self.emulator.clock(), self.clock);
     }
 
     fn print_mem_line(&self) {
-        self.view.print_mem_line(&self.emulator.memory);
+        view::print_mem_line(&self.emulator.memory);
     }
 
     fn print_dump(&self) {
@@ -290,7 +289,7 @@ impl Console {
                     self.view.update_status(format!("event handling error: {:?}", err));
                 }
             }
-            self.view.flush();
+            view::flush();
         }
         true
     }

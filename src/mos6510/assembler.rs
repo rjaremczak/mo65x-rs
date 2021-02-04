@@ -118,10 +118,10 @@ impl Assembler {
         Ok(())
     }
 
-    pub fn reset_phase(&mut self, generate_code: bool) {
+    pub fn reset_phase(&mut self, generate_code: bool, lc: u16) {
         self.generate_code = generate_code;
         self.origin = None;
-        self.location_counter = 0;
+        self.location_counter = lc;
         self.code.clear();
     }
 
@@ -137,77 +137,77 @@ impl Assembler {
         self.origin.unwrap_or(self.location_counter)
     }
 
-    pub fn handle_empty_line(&mut self, _: Tokens) -> Result<(), AppError> {
+    fn handle_empty_line(&mut self, _: Tokens) -> Result<(), AppError> {
         Ok(())
     }
 
-    pub fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_set_location_counter(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let str = tokens.operand().ok_or(AppError::MissingOperand)?;
         let operand = self.resolver.resolve(str, false)?;
         self.set_location_counter(operand.value as u16)
     }
 
-    pub fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_emit_bytes(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let values = self.parse_operand_list(tokens.operand())?;
         values.iter().for_each(|v| self.emit_byte(*v as u8));
         Ok(())
     }
 
-    pub fn handle_emit_words(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_emit_words(&mut self, tokens: Tokens) -> Result<(), AppError> {
         let values = self.parse_operand_list(tokens.operand())?;
         values.iter().for_each(|v| self.emit_word(*v as u16));
         Ok(())
     }
 
-    pub fn handle_implied(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_implied(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Implied, tokens)
     }
 
-    pub fn handle_immediate(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_immediate(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Immediate, tokens)
     }
 
-    pub fn handle_relative(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_relative(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Relative, tokens)
     }
 
-    pub fn handle_absolute(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_absolute(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Absolute, tokens)
     }
 
-    pub fn handle_absolute_indexed_x(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_absolute_indexed_x(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::AbsoluteX, tokens)
     }
 
-    pub fn handle_absolute_indexed_y(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_absolute_indexed_y(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::AbsoluteY, tokens)
     }
 
-    pub fn handle_indirect(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_indirect(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::Indirect, tokens)
     }
 
-    pub fn handle_indexed_indirect_x(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_indexed_indirect_x(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::IndexedIndirectX, tokens)
     }
 
-    pub fn handle_indirect_indexed_y(&mut self, tokens: Tokens) -> Result<(), AppError> {
+    fn handle_indirect_indexed_y(&mut self, tokens: Tokens) -> Result<(), AppError> {
         self.assemble(AddrMode::IndirectIndexedY, tokens)
     }
 
-    pub fn emit_byte(&mut self, byte: u8) {
+    fn emit_byte(&mut self, byte: u8) {
         if self.generate_code {
             self.code.push(byte);
         }
         self.location_counter = self.location_counter.wrapping_add(1);
     }
 
-    pub fn emit_word(&mut self, word: u16) {
+    fn emit_word(&mut self, word: u16) {
         self.emit_byte(word as u8);
         self.emit_byte((word >> 8) as u8);
     }
 
-    pub fn set_location_counter(&mut self, addr: u16) -> Result<(), AppError> {
+    fn set_location_counter(&mut self, addr: u16) -> Result<(), AppError> {
         if self.origin.is_none() {
             self.origin = Some(addr);
             self.location_counter = addr;
@@ -227,7 +227,7 @@ impl Assembler {
     }
 
     fn process_file(&mut self, generate_code: bool, strbuf: &String) -> Result<(), AppError> {
-        self.reset_phase(generate_code);
+        self.reset_phase(generate_code, 0);
         for (num, line) in strbuf.lines().enumerate() {
             self.process_line(line).map_err(|e| AppError::AsmLineError(num + 1, Box::from(e)))?;
         }

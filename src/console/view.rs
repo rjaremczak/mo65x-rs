@@ -27,6 +27,49 @@ const PROMPT: &str = "> ";
 const HEADER_ROWS: u16 = 2;
 const DUMP_COL: u16 = 30;
 
+pub fn terminate() {
+    terminal::end_session()
+}
+
+pub fn flush() {
+    terminal::restore_cursor();
+    terminal::flush();
+}
+
+pub fn print_cpu_line(cpu: &Cpu, trap: bool, clock: f64, req_clock: f64) {
+    terminal::set_cursor_pos(0, 0);
+    terminal::highlight();
+    terminal::print("CPU ");
+    terminal::normal();
+    print_property("PC", &format!("{:04X} ", cpu.regs.pc));
+    print_property("SP", &format!("{:04X} ", cpu.regs.sp as u16 | 0x100));
+    print_property("A", &format!("{:02X} ", cpu.regs.a));
+    print_property("X", &format!("{:02X} ", cpu.regs.x));
+    print_property("Y", &format!("{:02X} ", cpu.regs.y));
+    // print_property("P", &format!("{:08b}", cpu.flags.to_byte()));
+    print_flags(cpu.flags);
+    print_property(
+        " trap",
+        match trap {
+            true => "on",
+            false => "off",
+        },
+    );
+    print_speed(clock, req_clock);
+}
+
+pub fn print_mem_line(memory: &Memory) {
+    terminal::newline();
+    terminal::highlight();
+    terminal::print("MEM ");
+    terminal::normal();
+    print_property("RST", &format!("{:04X} ", memory.word(Cpu::RESET_VECTOR)));
+    print_property("NMI", &format!("{:04X} ", memory.word(Cpu::NMI_VECTOR)));
+    print_property("IRQ", &format!("{:04X} ", memory.word(Cpu::IRQ_VECTOR)));
+    print_property("IOC", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_CONFIG)));
+    print_property("IOD", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_DATA)));
+}
+
 impl View {
     pub fn new(title: &str) -> Self {
         let view = Self {
@@ -36,49 +79,6 @@ impl View {
         };
         terminal::begin_session();
         view
-    }
-
-    pub fn terminate(&self) {
-        terminal::end_session()
-    }
-
-    pub fn flush(&self) {
-        terminal::restore_cursor();
-        terminal::flush();
-    }
-
-    pub fn print_cpu_line(&self, cpu: &Cpu, trap: bool, clock: f64, req_clock: f64) {
-        terminal::set_cursor_pos(0, 0);
-        terminal::highlight();
-        terminal::print("CPU ");
-        terminal::normal();
-        print_property("PC", &format!("{:04X} ", cpu.regs.pc));
-        print_property("SP", &format!("{:04X} ", cpu.regs.sp as u16 | 0x100));
-        print_property("A", &format!("{:02X} ", cpu.regs.a));
-        print_property("X", &format!("{:02X} ", cpu.regs.x));
-        print_property("Y", &format!("{:02X} ", cpu.regs.y));
-        // print_property("P", &format!("{:08b}", cpu.flags.to_byte()));
-        print_flags(cpu.flags);
-        print_property(
-            " trap",
-            match trap {
-                true => "on",
-                false => "off",
-            },
-        );
-        print_speed(clock, req_clock);
-    }
-
-    pub fn print_mem_line(&self, memory: &Memory) {
-        terminal::newline();
-        terminal::highlight();
-        terminal::print("MEM ");
-        terminal::normal();
-        print_property("RST", &format!("{:04X} ", memory.word(Cpu::RESET_VECTOR)));
-        print_property("NMI", &format!("{:04X} ", memory.word(Cpu::NMI_VECTOR)));
-        print_property("IRQ", &format!("{:04X} ", memory.word(Cpu::IRQ_VECTOR)));
-        print_property("IOC", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_CONFIG)));
-        print_property("IOD", &format!("{:08b} ", memory.byte(Cpu::IO_PORT_DATA)));
     }
 
     pub fn update_size(&mut self, backend: &Emulator, size: Option<(u16, u16)>, req_clock: f64, idle: bool) {
@@ -102,8 +102,8 @@ impl View {
 
     pub fn print_all(&self, backend: &Emulator, req_clock: f64, idle: bool) {
         terminal::clear();
-        self.print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
-        self.print_mem_line(&backend.memory);
+        print_cpu_line(&backend.cpu, backend.trap(), backend.clock(), req_clock);
+        print_mem_line(&backend.memory);
         if idle {
             self.print_dump(&backend.memory, backend.cpu.regs.pc);
         }
