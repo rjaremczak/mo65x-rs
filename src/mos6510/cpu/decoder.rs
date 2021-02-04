@@ -104,7 +104,7 @@ impl OpCodeEntry {
 
 pub type OpCodeTable = [OpCodeEntry; 256];
 
-pub fn generate_opcode_table() -> OpCodeTable {
+pub fn opcode_table() -> OpCodeTable {
     let mut oct: OpCodeTable = [OpCodeEntry::from(Instruction::Kil, AddrMode::Implied, 0); 256];
     for code in u8::MIN..u8::MAX {
         let operation = Operation::get(code);

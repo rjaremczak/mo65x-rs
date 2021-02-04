@@ -14,7 +14,7 @@ use decoder::*;
 pub struct Cpu {
     pub regs: Registers,
     pub flags: Flags,
-    decode_table: OpCodeTable,
+    opcode_table: OpCodeTable,
 }
 
 impl Cpu {
@@ -30,7 +30,7 @@ impl Cpu {
         Self {
             regs: Registers::default(),
             flags: Flags::default(),
-            decode_table: generate_opcode_table(),
+            opcode_table: opcode_table(),
         }
     }
 
@@ -59,7 +59,7 @@ impl Cpu {
 
     pub fn exec_inst(&mut self, memory: &mut Memory) -> u8 {
         let opcode = memory[self.regs.pc];
-        let entry = self.decode_table[opcode as usize];
+        let entry = self.opcode_table[opcode as usize];
         let mut env = Env::with(self.regs.pc + 1, entry.cycles);
         self.regs.pc = self.regs.pc + entry.size as u16;
         (entry.prep_handler)(&mut env, memory, &mut self.regs);
