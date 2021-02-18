@@ -120,7 +120,7 @@ impl Assembler {
         Ok(())
     }
 
-    pub fn start_pass(&mut self, generate_code: bool) {
+    pub fn init_pass(&mut self, generate_code: bool) {
         self.generate_code = generate_code;
         self.origin = None;
         self.location_counter = DEFAULT_LOCATION_COUNTER;
@@ -229,7 +229,7 @@ impl Assembler {
     }
 
     fn process_file(&mut self, generate_code: bool, strbuf: &String) -> Result<(), AppError> {
-        self.start_pass(generate_code);
+        self.init_pass(generate_code);
         for (num, line) in strbuf.lines().enumerate() {
             self.process_line(line).map_err(|e| AppError::AsmLineError(num + 1, Box::from(e)))?;
         }
