@@ -15,27 +15,27 @@ const UPDATE_PERIOD: Duration = Duration::from_millis(20);
 
 impl Video {
     pub fn new() -> Self {
-        let mut frontend = Self {
-            framebuf: vec![0; FB_LEN],
-            window: Window::new(
-                &format!("{:04X} {:.1} fps", FB_ADDR, 1.0 / UPDATE_PERIOD.as_secs_f64()),
-                WIDTH,
-                HEIGHT,
-                WindowOptions {
-                    scale: minifb::Scale::X8,
-                    scale_mode: minifb::ScaleMode::AspectRatioStretch,
-                    title: true,
-                    borderless: false,
-                    resize: false,
-                    topmost: true,
-                    transparency: false,
-                    none: false,
-                },
-            )
-            .unwrap(),
-        };
-        frontend.framebuf.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
-        frontend.window.limit_update_rate(Some(UPDATE_PERIOD));
+let mut frontend = Self {
+    framebuf: vec![0; FB_LEN],
+    window: Window::new(
+        &format!("{:04X} {:.1} fps", FB_ADDR, 1.0 / UPDATE_PERIOD.as_secs_f64()),
+        WIDTH,
+        HEIGHT,
+        WindowOptions {
+            scale: minifb::Scale::X8,
+            scale_mode: minifb::ScaleMode::AspectRatioStretch,
+            title: true,
+            borderless: false,
+            resize: false,
+            topmost: true,
+            transparency: false,
+            none: false,
+        },
+    )
+    .unwrap(),
+};
+frontend.framebuf.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
+frontend.window.limit_update_rate(Some(UPDATE_PERIOD));
         frontend
     }
 

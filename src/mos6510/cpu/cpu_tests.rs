@@ -30,10 +30,12 @@ impl Ctx {
 
     fn assert_inst(&mut self, line: &str, cycles: u8) {
         let mut asm = Assembler::new();
-        asm.reset_phase(true, self.cpu.regs.pc);
+        asm.start_pass(true);
+        assert!(asm.set_location_counter(self.cpu.regs.pc).is_ok());
         let r = asm.process_line(line);
         assert!(r.is_ok(), "line \"{}\" : {:?}", line, r);
         self.memory.set_block(asm.origin(), asm.code());
+        println!("code: {:?}", self.memory.view(self.cpu.regs.pc, asm.code().len()));
         let c = self.cpu.exec_inst(&mut self.memory);
         assert_eq!(c, cycles, "wrong number of cycles");
         // assert_eq!(self.cpu.regs.pc, asm.location_counter(), "PC not incremented right");

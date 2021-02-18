@@ -10,7 +10,7 @@ fn assert_next(asm: &mut Assembler, line: &str, expected: &[u8]) {
 
 fn assert_asm(line: &str, code: &[u8]) -> Assembler {
     let mut asm = Assembler::new();
-    asm.reset_phase(true, 0);
+    asm.start_pass(true);
     assert_next(&mut asm, line, code);
     asm
 }
@@ -82,6 +82,11 @@ fn absolute_mode() {
     assert_next(&mut asm, "jmp $2000", &[0x4c, 0x00, 0x20]);
     assert!(asm.resolver.define_symbol("c", 0xfab0).is_ok());
     assert_next(&mut asm, "jmp c", &[0x4c, 0xb0, 0xfa]);
+}
+
+#[test]
+fn absolute_mode_adc() {
+    assert_asm("ADC $2000", &[0x6d, 0x00, 0x20]);
 }
 
 #[test]
@@ -169,7 +174,7 @@ fn test_label() {
 fn test_symbols() {
     let mut asm = Assembler::new();
     assert!(asm.resolver.define_symbol("dziabaDucha", 0xaf02).is_ok());
-    asm.reset_phase(true, 0);
+    asm.start_pass(true);
     assert!(asm.set_location_counter(1000).is_ok());
     assert_next(&mut asm, "TestLabel_01:  SEI   ; disable interrupts ", &[0x78]);
     assert_next(&mut asm, "c:lda dziabaDucha", &[0xad, 0x02, 0xaf]);

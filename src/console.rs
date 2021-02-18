@@ -236,9 +236,9 @@ impl Console {
                         self.view.input_backspace();
                     }
                 }
-                #[allow(unused_must_use)]
+                // #[allow(unused_must_use)]
                 Ok(Key(KeyEvent { code: Esc, .. })) => {
-                    self.stop_execution();
+                    self.stop_execution().unwrap();
                     return false;
                 }
                 Ok(Key(KeyEvent { code: Enter, .. })) => {

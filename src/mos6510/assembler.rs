@@ -19,6 +19,8 @@ use Instruction::{Jmp, Jsr};
 
 type Handler = fn(&mut Assembler, tokens: Tokens) -> Result<(), AppError>;
 
+const DEFAULT_LOCATION_COUNTER: u16 = 0;
+
 pub struct Assembler {
     handlers: Vec<(Regex, Handler)>,
     resolver: Resolver,
@@ -118,10 +120,10 @@ impl Assembler {
         Ok(())
     }
 
-    pub fn reset_phase(&mut self, generate_code: bool, lc: u16) {
+    pub fn start_pass(&mut self, generate_code: bool) {
         self.generate_code = generate_code;
         self.origin = None;
-        self.location_counter = lc;
+        self.location_counter = DEFAULT_LOCATION_COUNTER;
         self.code.clear();
     }
 
@@ -207,7 +209,7 @@ impl Assembler {
         self.emit_byte((word >> 8) as u8);
     }
 
-    fn set_location_counter(&mut self, addr: u16) -> Result<(), AppError> {
+    pub fn set_location_counter(&mut self, addr: u16) -> Result<(), AppError> {
         if self.origin.is_none() {
             self.origin = Some(addr);
             self.location_counter = addr;
@@ -227,7 +229,7 @@ impl Assembler {
     }
 
     fn process_file(&mut self, generate_code: bool, strbuf: &String) -> Result<(), AppError> {
-        self.reset_phase(generate_code, 0);
+        self.start_pass(generate_code);
         for (num, line) in strbuf.lines().enumerate() {
             self.process_line(line).map_err(|e| AppError::AsmLineError(num + 1, Box::from(e)))?;
         }

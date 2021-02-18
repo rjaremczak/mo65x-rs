@@ -228,18 +228,26 @@ mod tests {
     }
 
     #[test]
+    fn test_adc_absolute() {
+        let op = Operation::get(0x6d);
+        assert_eq!(op.instruction, Adc);
+        assert_eq!(op.addrmode, Absolute);
+        assert_eq!(op.cycles, 4);
+    }
+
+    #[test]
     fn test_unsupported_opcode() {
-        let oc = Operation::get(0x02);
-        assert_eq!(oc.instruction, Kil);
-        assert_eq!(oc.addrmode, Implied);
-        assert_eq!(oc.cycles, 0);
+        let op = Operation::get(0x02);
+        assert_eq!(op.instruction, Kil);
+        assert_eq!(op.addrmode, Implied);
+        assert_eq!(op.cycles, 0);
     }
 
     #[test]
     fn test_supported_opcode() {
-        let oc = Operation::get(0xf0);
-        assert_eq!(oc.instruction, Beq);
-        assert_eq!(oc.addrmode, Relative);
-        assert_eq!(oc.cycles, 2);
+        let op = Operation::get(0xf0);
+        assert_eq!(op.instruction, Beq);
+        assert_eq!(op.addrmode, Relative);
+        assert_eq!(op.cycles, 2);
     }
 }
