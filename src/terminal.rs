@@ -1,4 +1,3 @@
-use std::io::{stdout, Write};
 use crossterm::{
     cursor::{EnableBlinking, Hide, MoveLeft, MoveTo, MoveToColumn, MoveToNextLine, RestorePosition, SavePosition, Show},
     execute,
@@ -8,6 +7,7 @@ use crossterm::{
     },
     ExecutableCommand, QueueableCommand,
 };
+use std::io::{stdout, Write};
 
 #[inline]
 pub fn bold() {
