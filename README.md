@@ -9,65 +9,28 @@ Project is based on original version written in C++, available here https://gith
 When started in console mode (interactive mode) all options available through GUI in original version are now implemented in command line.
 In short these are:
 
-l <address> <file-path>
-load binary file at given address
-
-d <address>
-set starting address of disassembly view
-
-m <address>
-set starting address of memody dump view
-
-reset
-trigger hardware reset
-
-nmi
-trigger NMI request
-
-irq
-trigger IRQ request
-
-sb <address> <byte-value>
-set byte at address to given byte value
-
-sw <address> <word-value>
-set word at address to given 16-bit value using little-endian convention
-
-pc=<word-value>
-set PC register to given 16-bit value
-
-sp=<byte-value>
-set LSB of SP register to given 8-bit value
-
-a=<byte-value>
-set Accumulator to given 8-bit value
-
-x=<byte-value>
-set X register to given 8-bit value
-
-y=<byte-value>
-set Y register to given 8-bit value
-
-n=<bit-value>
-set Negative flag
-
-v=<bit-value>
-set Overflog flag
-
-d=<bit-value>
-set Decimal Mode flag
-
-i=<bit-value>
-set Interrupt flag
-
-z=<bit-value>
-set Zero flag
-
-c=<bit-value>
-set Carry flag
+* `l <address> <file-path>` - load binary file at given address
+* `d <address>` - set starting address of disassembly view
+* `m <address>` - set starting address of memody dump view
+* `reset` - trigger hardware reset
+* `nmi` - trigger NMI request
+* `irq` - trigger IRQ request
+* `sb <address> <byte-value>` - set byte at address to given byte value
+* `sw <address> <word-value>` - set word at address to given 16-bit value
+* `pc=<word-value>` - set PC register to given 16-bit value
+* `sp=<byte-value>` - set LSB of SP register to given 8-bit value
+* `a=<byte-value>` - set Accumulator to given 8-bit value
+* `x=<byte-value>` - set X register to given 8-bit value
+* `y=<byte-value>` - set Y register to given 8-bit value
+* `n=<bit-value>` - set Negative flag
+* `v=<bit-value>` - set Overflog flag
+* `d=<bit-value>` - set Decimal Mode flag
+* `i=<bit-value>` - set Interrupt flag
+* `z=<bit-value>` - set Zero flag
+* `c=<bit-value>` - set Carry flag
 
 All expected and displayed values are hexadecimal, except the binary values of the flags.
-Press ESC to quit the emulator.
+Press `ESC` to quit the emulator.
 
 ## License
 All design and code so far is written entirely by Robert Jaremczak (robert@mindpart.com) and is licensed as GPL.
