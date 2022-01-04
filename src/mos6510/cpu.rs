@@ -38,7 +38,7 @@ impl Cpu {
         self.regs = Registers::default();
         self.regs.pc = memory.word(Cpu::RESET_VECTOR);
         self.regs.sp = Cpu::SP_INIT;
-        self.flags = Flags::from_byte(0b00110100);
+        self.flags = Flags::default();
     }
 
     #[inline]
