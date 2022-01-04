@@ -108,12 +108,14 @@ fn test_irq() {
     let mut ctx = Ctx::new();
     ctx.memory.set_word(super::Cpu::IRQ_VECTOR, 0xabcd);
     ctx.cpu.reset(&ctx.memory);
-    ctx.cpu.flags = Flags::from_byte(0b11001111);
+    ctx.cpu.flags.i = false;
+    assert!(!ctx.cpu.flags.i);
+    let flg = ctx.cpu.flags.to_byte();
     let sp0 = ctx.cpu.regs.sp_address();
     let pc0 = ctx.cpu.regs.pc;
     ctx.cpu.irq(&mut ctx.memory);
     assert!(ctx.cpu.flags.i);
-    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 1], 0b11001111);
+    assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 1], flg);
     assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 2], pc0 as u8);
     assert_eq!(ctx.memory[ctx.cpu.regs.sp_address() + 3], (pc0 >> 8) as u8);
     assert_eq!(ctx.cpu.regs.sp_address(), sp0 - 3);

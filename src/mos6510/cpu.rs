@@ -38,7 +38,7 @@ impl Cpu {
         self.regs = Registers::default();
         self.regs.pc = memory.word(Cpu::RESET_VECTOR);
         self.regs.sp = Cpu::SP_INIT;
-        self.flags = Flags::default();
+        self.flags = Flags::from_byte(0b00110100);
     }
 
     #[inline]
@@ -50,7 +50,9 @@ impl Cpu {
     }
 
     pub fn irq(&mut self, memory: &mut Memory) {
-        self.general_irq(memory, self.regs.pc, self.flags.to_byte(), Cpu::IRQ_VECTOR);
+        if !self.flags.i {
+            self.general_irq(memory, self.regs.pc, self.flags.to_byte(), Cpu::IRQ_VECTOR);
+        }
     }
 
     pub fn nmi(&mut self, memory: &mut Memory) {
