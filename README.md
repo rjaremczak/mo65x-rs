@@ -1,7 +1,7 @@
 # mo65x-rs
 stands for My Own 65 eXpandable emulator written in Rust programming language. The project has educational motivation and is a genuine project based on technical specifications of 6502/6510 family microprocessors. See the screenshot of assembler mode running slightly modified program "demoscene.asm" from http://www.6502asm.com
 
-![Alt text](http://mindpart.com/wp-content/uploads/2021/01/mo65x-rs.png "Interactive console view")
+![Alt text](https://github.com/rjaremczak/mo65x-rs/blob/master/img/mo65x-rs.png "Interactive console view")
 
 Project is based on original version written in C++, available here https://github.com/rjaremczak/mo65x-rs. This version is a terminal application with extra window for showing frame-buffer's content. Functionality is almost identical with the original version. Several functions like assembler or disassembler have been implemented in command line interface. Please launch the app with --help to see what are the options.
 
