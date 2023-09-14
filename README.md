@@ -3,7 +3,7 @@ stands for My Own 65 eXpandable emulator written in Rust programming language. T
 
 ![Alt text](https://github.com/rjaremczak/mo65x-rs/blob/master/img/mo65x-rs.png "Interactive console view")
 
-Project is based on original version written in C++, available here https://github.com/rjaremczak/mo65x-rs. This version is a terminal application with extra window for showing frame-buffer's content. Functionality is almost identical with the original version. Several functions like assembler or disassembler have been implemented in command line interface. Please launch the app with --help to see what are the options.
+Project is based on original version written in C++, available here https://github.com/rjaremczak/mo65x. This version is a terminal application with extra window for showing frame-buffer's content. Functionality is almost identical with the original version. Several functions like assembler or disassembler have been implemented in command line interface. Please launch the app with --help to see what are the options.
 
 ## Console mode
 When started in console mode (interactive mode) all options available through GUI in original version are now implemented in command line.
