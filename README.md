@@ -33,6 +33,6 @@ All expected and displayed values are hexadecimal, except the binary values of t
 Press `ESC` to quit the emulator.
 
 ## License
-All design and code so far is written entirely by Robert Jaremczak (robert@mindpart.com) and is licensed as GPL.
+All design and code so far is written entirely by Robert Jaremczak (robert@emanacja.top) and is licensed as GPL.
 
 GPL in short means this: feel free to use as long as sources of your own work remain public. Don't forget to mention me, as an author of this code :-)
