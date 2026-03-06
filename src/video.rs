@@ -48,7 +48,7 @@ impl Video {
         for i in 0..FB_LEN {
             self.framebuf[i] = C64_PALETTE[vmem[i] as usize & 0x0f];
         }
-        self.window.update_with_buffer(&mut self.framebuf, WIDTH, HEIGHT)?;
+        self.window.update_with_buffer(&self.framebuf, WIDTH, HEIGHT)?;
         Ok(())
     }
 

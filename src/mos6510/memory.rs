@@ -19,7 +19,7 @@ impl Memory {
         self.data[address as usize] = value;
     }
 
-    pub fn set_block(&mut self, addr: u16, data: &Vec<u8>) {
+    pub fn set_block(&mut self, addr: u16, data: &[u8]) {
         data.iter().enumerate().for_each(|(i, e)| self.set_byte(addr + i as u16, *e));
     }
 

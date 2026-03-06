@@ -79,9 +79,5 @@ impl Flags {
 
 #[inline]
 fn mask(b: bool, m: u8) -> u8 {
-    if b {
-        m
-    } else {
-        0
-    }
+    if b { m } else { 0 }
 }

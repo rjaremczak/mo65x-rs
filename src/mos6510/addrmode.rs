@@ -26,7 +26,7 @@ impl AddrMode {
     }
 
     pub fn optimized(&self, opvalue: i32) -> AddrMode {
-        if opvalue < 0 || opvalue > 255 {
+        if !(0..=255).contains(&opvalue) {
             *self
         } else {
             match self {

@@ -223,7 +223,7 @@ mod tests {
                 assert_eq!(kv.1.instruction, Jmp);
                 assert_eq!(kv.1.addrmode, Absolute);
             }
-            None => assert!(false, "opcode not found"),
+            None => panic!("opcode not found"),
         }
     }
 

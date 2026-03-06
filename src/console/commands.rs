@@ -49,11 +49,7 @@ fn hex(captures: &Captures, i: usize) -> u16 {
 }
 
 fn bin(captures: &Captures) -> bool {
-    if u16::from_str_radix(&arg(captures, 2), 16).unwrap() == 0 {
-        false
-    } else {
-        true
-    }
+    u16::from_str_radix(&arg(captures, 2), 16).unwrap() != 0
 }
 
 impl CommandParser {

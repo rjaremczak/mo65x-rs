@@ -82,7 +82,7 @@ impl View {
     }
 
     pub fn update_size(&mut self, backend: &Emulator, size: Option<(u16, u16)>, req_clock: f64, idle: bool) {
-        let (cols, rows) = size.unwrap_or_else(|| terminal::size());
+        let (cols, rows) = size.unwrap_or_else(terminal::size);
 
         #[cfg(target_os = "windows")]
         let rows = rows + 1;
@@ -120,7 +120,7 @@ impl View {
         for _ in self.dump_row..self.command_row {
             terminal::clear_line();
             let highlight = code == pc;
-            let columns = disassemble(&memory, &mut code);
+            let columns = disassemble(memory, &mut code);
             if highlight {
                 terminal::normal()
             } else {
