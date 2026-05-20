@@ -1,6 +1,6 @@
 [package]
 name = "mo65x-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Robert Jaremczak <robert@emanacja.top>"]
 edition = "2018"
 description = "My Own 65xx emulator, assembler and monitor"
@@ -12,4 +12,3 @@ regex = "1"
 structopt = "0.3.20"
 crossterm = "0.29.0"
 minifb = "0.28"
-lazy_static = "1.4.0"

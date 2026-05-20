@@ -187,7 +187,7 @@ impl View {
         print_shortcut(" F1", "Help");
         print_shortcut(" F2", "Clear Stats.");
         print_shortcut(" F5", "Run/Stop");
-        print_shortcut(" F10", "Step");
+        print_shortcut(" F6", "Step");
         print_shortcut(" Esc", "Quit");
     }
 
@@ -262,7 +262,7 @@ pub fn print_help() {
     print_help_line("F1", "this help information");
     print_help_line("F2", "clear runtime statistics");
     print_help_line("F5", "start/stop continuous execution at requested speed");
-    print_help_line("F10", "execute single instruction");
+    print_help_line("F6", "execute single instruction");
     print_help_line("Esc", "quit application");
     terminal::newline();
     terminal::dim();

@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::LazyLock};
 use Instruction::*;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -78,8 +78,7 @@ impl Instruction {
     }
 }
 
-lazy_static! {
-    static ref MNEMONICS: BTreeMap<Instruction, &'static str> = {
+    static MNEMONICS: LazyLock<BTreeMap<Instruction, &'static str>> = LazyLock::new(|| {
         let mut m = BTreeMap::new();
         m.insert(Kil, "KIL");
         m.insert(Adc, "ADC");
@@ -139,8 +138,8 @@ lazy_static! {
         m.insert(Plp, "PLP");
         m.insert(Nop, "NOP");
         m
-    };
-}
+    });
+
 
 #[cfg(test)]
 mod tests {

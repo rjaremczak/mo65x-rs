@@ -3,21 +3,21 @@ mod view;
 
 use self::commands::Command;
 use crate::{emulator::Emulator, error::AppError, video};
-use Event::{Key, Resize};
-use KeyCode::{Backspace, Char, Enter, Esc, F};
 use commands::CommandParser;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, poll};
+use crossterm::event::{self, poll, Event, KeyCode, KeyEvent};
 use std::{
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicPtr, Ordering},
+        Arc,
     },
     thread::{self, JoinHandle},
     time::Duration,
 };
 use video::Video;
 use view::View;
+use Event::{Key, Resize};
+use KeyCode::{Backspace, Char, Enter, Esc, F};
 
 pub struct Console {
     emulator: Emulator,
@@ -268,7 +268,7 @@ impl Console {
                     }
                     self.print_cpu_line();
                 }
-                Ok(Key(KeyEvent { code: F(10), .. })) => {
+                Ok(Key(KeyEvent { code: F(6), .. })) => {
                     if idle {
                         self.emulator.trap_on();
                         let status = self.emulator.execute(Duration::from_micros(1));
