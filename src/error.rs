@@ -1,8 +1,8 @@
 use crate::mos6510::{addrmode::AddrMode, instruction::Instruction};
-use crossterm::ErrorKind;
 use std::fmt::Display;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     UndefinedSymbol(String),
     RedefinedSymbol(String, i32, i32),
@@ -17,7 +17,6 @@ pub enum AppError {
     EmulatorAlreadyRunning,
     EmulatorNotRunning,
     InvalidOpCode(u16, u8),
-    CrossTermError(ErrorKind),
     MiniFbError(minifb::Error),
     AsmLineError(usize, Box<AppError>),
 }
@@ -31,12 +30,6 @@ impl Display for AppError {
 impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
         Self::IoError(err)
-    }
-}
-
-impl From<ErrorKind> for AppError {
-    fn from(err: ErrorKind) -> Self {
-        Self::CrossTermError(err)
     }
 }
 

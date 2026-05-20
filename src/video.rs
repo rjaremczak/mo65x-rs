@@ -1,6 +1,5 @@
 use crate::{error::AppError, mos6510::memory::Memory};
 use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
 
 pub struct Video {
     framebuf: Vec<u32>,
@@ -11,14 +10,14 @@ const WIDTH: usize = 32;
 const HEIGHT: usize = 32;
 const FB_ADDR: u16 = 0x200;
 const FB_LEN: usize = WIDTH * HEIGHT;
-const UPDATE_PERIOD: Duration = Duration::from_millis(20);
+const TARGET_FPS: usize = 50;
 
 impl Video {
     pub fn new() -> Self {
         let mut frontend = Self {
             framebuf: vec![0; FB_LEN],
             window: Window::new(
-                &format!("{:04X} {:.1} fps", FB_ADDR, 1.0 / UPDATE_PERIOD.as_secs_f64()),
+                &format!("{:04X} {:.1} fps", FB_ADDR, TARGET_FPS),
                 WIDTH,
                 HEIGHT,
                 WindowOptions {
@@ -27,7 +26,7 @@ impl Video {
                     title: true,
                     borderless: false,
                     resize: false,
-                    topmost: true,
+                    topmost: false,
                     transparency: false,
                     none: false,
                 },
@@ -35,7 +34,7 @@ impl Video {
             .unwrap(),
         };
         frontend.framebuf.iter_mut().enumerate().for_each(|(i, x)| *x = i as u32);
-        frontend.window.limit_update_rate(Some(UPDATE_PERIOD));
+        frontend.window.set_target_fps(TARGET_FPS);
         frontend
     }
 
